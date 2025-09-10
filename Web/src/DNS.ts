@@ -1,9 +1,27 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // dns-server.ts
 import dgram from "dgram";
+import os from "os";
 import { exec } from "child_process";
 
 const server = dgram.createSocket("udp4");
+
+
+function getLocalIP() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    const netList = nets[name];
+    if (!netList) continue;
+    for (const net of netList) {
+      // Skip internal (i.e. 127.0.0.1) and non-IPv4
+      if (net.family === "IPv4" && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return "127.0.0.1"; // fallback
+}
+
 
 // Google Web IP (one of Google's web servers)
 const GOOGLE_IP = "1.1.1.1";
@@ -128,4 +146,4 @@ server.on("listening", () => {
 });
 
 // Run on 5353 (non-root). Use 53 if root/admin
-server.bind(53, "172.25.1.111");
+server.bind(53, getLocalIP());
