@@ -1,0 +1,1 @@
+console.log("NexoralDNS Web package.json updated successfully.");

@@ -1,0 +1,16 @@
+{
+  "name": "NexoralDNS",
+  "version": "1.0.1",
+  "description": "This is the main core DNS Server for NexoralDNS Service, it was main responsible for handling DNS queries and responses.",
+  "main": "./lib/DNS.js",
+  "scripts": {
+    "start": "node ./lib/DNS.js",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "typescript": "^5.9.2"
+  }
+}
