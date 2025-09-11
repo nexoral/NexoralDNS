@@ -1,13 +1,15 @@
-// dns-server.ts
 import dgram from "dgram";
+
+// Utility to get local IP address
 import getLocalIP from "./utilities/GetWLANIP.utls";
+// DNS forwarder service
 import GlobalDNSforwarder from "./services/GlobalDNSforwarder.service";
 
 const server = dgram.createSocket("udp4");
 
 // Google Web IP (one of Google's web servers)
 const GOOGLE_IP = "1.1.1.1";
-const DOMAIN = "ankan.test";
+const DOMAIN = "ankan.local";
 
 
 

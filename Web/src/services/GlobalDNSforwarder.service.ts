@@ -1,13 +1,13 @@
 import dgram from "dgram";
 
 const GlobalDNS: { ip: string; name: string, location: string }[] = [
-  // Google Public DNS (completely unrestricted)
-  { ip: "8.8.8.8", name: "Google DNS", location: "Global (Anycast)" },
-  { ip: "8.8.4.4", name: "Google DNS", location: "Global (Anycast)" },
-
   // Cloudflare DNS (privacy-focused, but no filtering)
   { ip: "1.1.1.1", name: "Cloudflare DNS", location: "Global (Anycast)" },
   { ip: "1.0.0.1", name: "Cloudflare DNS", location: "Global (Anycast)" },
+
+  // Google Public DNS (completely unrestricted)
+  { ip: "8.8.8.8", name: "Google DNS", location: "Global (Anycast)" },
+  { ip: "8.8.4.4", name: "Google DNS", location: "Global (Anycast)" },
 
   // Verisign Public DNS (no filtering, stable, privacy-respecting)
   { ip: "64.6.64.6", name: "Verisign DNS", location: "USA (Global Anycast)" },
@@ -29,6 +29,17 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
 ];
 
 // Function to forward DNS query to Global DNS
+/**
+ * Forwards a DNS query to a list of global DNS servers sequentially until a response is received or all servers fail to respond.
+ *
+ * @param msg - The DNS query message as a Buffer.
+ * @param queryName - The domain name being queried.
+ * @returns A Promise that resolves with the DNS response Buffer if successful, or `null` if no server responds.
+ *
+ * The function attempts to send the DNS query to each server in the `GlobalDNS` array, waiting up to 2 seconds for a response from each.
+ * If a server does not respond or an error occurs, it proceeds to the next server.
+ * The process continues until a response is received or all servers have been tried.
+ */
 export default function GlobalDNSforwarder(msg: Buffer, queryName: string): Promise<Buffer | null> {
   return new Promise((resolve) => {
     let index = 0;
