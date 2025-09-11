@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // dns-server.ts
 import dgram from "dgram";
 import getLocalIP from "./utilities/GetWLANIP.utls";
