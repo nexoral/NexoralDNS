@@ -9,7 +9,7 @@ const server = dgram.createSocket("udp4");
 
 // Google Web IP (one of Google's web servers)
 const GOOGLE_IP = "1.1.1.1";
-const DOMAIN = "ankan.local";
+const DOMAIN = "ankan.nanga";
 
 
 
