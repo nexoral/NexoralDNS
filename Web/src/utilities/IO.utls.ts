@@ -95,4 +95,26 @@ export default class InputOutputHandler {
     this.udpInstance.send(msg, rinfo.port, rinfo.address);
     return true;
   }
+
+  /**
+   * Parses the DNS query name from a DNS message buffer.
+   *
+   * The function starts reading at offset 12, which is the beginning of the question section
+   * in a standard DNS message. It extracts each label of the domain name until it encounters
+   * a zero byte, indicating the end of the name. The labels are then joined with dots to form
+   * the full domain name.
+   *
+   * @param msg - The DNS message buffer to parse.
+   * @returns The parsed domain name as a string.
+   */
+  public parseQueryName(msg: Buffer): string {
+    let offset = 12;
+    const labels: string[] = [];
+    while (msg[offset] !== 0) {
+      const length = msg[offset];
+      labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
+      offset += length + 1;
+    }
+    return labels.join(".");
+  }
 }
