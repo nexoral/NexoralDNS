@@ -12,8 +12,8 @@ import InputOutputHandler from "../utilities/IO.utls";
 
 
 // Google Web IP (one of Google's web servers)
-const GOOGLE_IP = "1.1.1.1";
-const DOMAIN = "ankan.nanga";
+const GOOGLE_IP = "192.168.1.1";
+const DOMAIN = "your.home";
 
 /**
  * DNS class to handle incoming DNS queries and respond accordingly.
