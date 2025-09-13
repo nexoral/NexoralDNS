@@ -1,13 +1,7 @@
-FROM ubuntu:22.04
+FROM node:22-alpine
 
-# Install Node.js and npm
-RUN apt-get update && apt-get install -y \
-    curl \
-    sudo \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Install sudo (Node.js already included in base image)
+RUN apk add --no-cache sudo
 
 # Set working directory
 WORKDIR /app
