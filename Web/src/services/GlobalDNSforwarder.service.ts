@@ -1,4 +1,5 @@
 import dgram from "dgram";
+import { Console } from "outers"
 
 const GlobalDNS: { ip: string; name: string, location: string }[] = [
   // Cloudflare DNS (privacy-focused, but no filtering)
@@ -49,13 +50,13 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string): Prom
     function tryNext() {
       if (index >= GlobalDNS.length) {
         if (client) client.close();
-        console.log(`No response from any DNS server for ${queryName}`);
+        Console.red(`No response from any DNS server for ${queryName}`);
         return resolve(null); // no response from any
       }
 
       const dnsIP = GlobalDNS[index++];
       client = dgram.createSocket("udp4");
-      console.log(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location}`);
+      Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location}`);
 
       timeout = setTimeout(() => {
         client?.close();
