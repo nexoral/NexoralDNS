@@ -2,7 +2,7 @@ import dgram from "dgram";
 import {Console} from "outers"
 
 // Utility to get local IP address
-import getLocalIP from "../utilities/GetWLANIP.utls";
+// import getLocalIP from "../utilities/GetWLANIP.utls";
 
 // DNS forwarder service
 import GlobalDNSforwarder from "../services/GlobalDNSforwarder.service";
@@ -46,7 +46,7 @@ export default class DNS {
     });
 
     // Run on 5353 (non-root). Use 53 if root/admin
-    this.server.bind(53, getLocalIP("any"));
+    this.server.bind(53, "0.0.0.0");
     return this;
   }
 
