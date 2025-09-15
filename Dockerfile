@@ -9,8 +9,8 @@ WORKDIR /app
 # Copy the entire repository
 COPY . .
 
-# Navigate to Web folder, install dependencies and build
-WORKDIR /app/Web
+# Navigate to Server folder, install dependencies and build
+WORKDIR /app/Server
 RUN npm install
 RUN npm run build
 
