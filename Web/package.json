@@ -2,9 +2,9 @@
   "name": "NexoralDNS",
   "version": "1.0.1",
   "description": "This is the main core DNS Server for NexoralDNS Service, it was main responsible for handling DNS queries and responses.",
-  "main": "./lib/Config/DNS.js",
+  "main": "./lib/CombinedRunner.js",
   "scripts": {
-    "start": "node ./lib/Config/DNS.js",
+    "start": "node ./lib/CombinedRunner.js",
     "build": "tsc",
     "lint": "eslint . --ext .ts,.tsx"
   },
@@ -19,5 +19,9 @@
     "jiti": "^2.5.1",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.43.0"
+  },
+  "dependencies": {
+    "axiodb": "^2.31.99",
+    "outers": "^8.6.9"
   }
 }

@@ -1,18 +1,20 @@
 import dgram from "dgram";
+import { Console } from "outers"
 
 // Utility to get local IP address
 import getLocalIP from "../utilities/GetWLANIP.utls";
 
 // DNS forwarder service
-import GlobalDNSforwarder from "../services/GlobalDNSforwarder.service";
+import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../utilities/IO.utls";
 
 
 // Google Web IP (one of Google's web servers)
-const GOOGLE_IP = "1.1.1.1";
-const DOMAIN = "ankan.nanga";
+const GOOGLE_IP = "192.168.1.1";
+const DOMAIN = "your.home";
+
 /**
  * DNS class to handle incoming DNS queries and respond accordingly.
  * It listens for DNS requests on a specified port and IP address,
@@ -40,12 +42,11 @@ export default class DNS {
   public start(): this {
     this.server.on("listening", () => {
       const address = this.server.address();
-      console.log(`DNS server running at udp://${address.address}:${address.port}`);
+      Console.green(`DNS server running at udp://${address.address}:${address.port}`);
     });
 
     // Run on 5353 (non-root). Use 53 if root/admin
     this.server.bind(53, getLocalIP("any"));
-
     return this;
   }
 
@@ -71,7 +72,7 @@ export default class DNS {
         // Use buildSendAnswer method from utilities
         const response = this.IO.buildSendAnswer(msg, rinfo, DOMAIN, GOOGLE_IP);
         if (!response) {
-          console.error(`Failed to respond to ${queryName}`);
+          Console.red(`Failed to respond to ${queryName}`);
         }
       } else {
         // Forward to Google DNS for non-matching domains
@@ -80,17 +81,17 @@ export default class DNS {
           if (forwardedResponse) {
             const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
             if (!resp) {
-              console.error(`Failed to forward ${queryName} to Global DNS`);
+              Console.red(`Failed to forward ${queryName} to Global DNS`);
             }
           }
         } catch (error) {
-          console.error(`Failed to forward ${queryName} to Global DNS:`, error);
+          Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
         }
 
         // Use buildSendAnswer with no matching domain (will return empty answer)
         const response = this.IO.buildSendAnswer(msg, rinfo, DOMAIN, GOOGLE_IP);
         if (!response) {
-          console.error(`Failed to respond to ${queryName}`);
+          Console.red(`Failed to respond to ${queryName}`);
         }
       }
     });
@@ -105,7 +106,7 @@ export default class DNS {
    */
   public listenError(): this {
     this.server.on("error", (err) => {
-      console.error(`DNS server error:\n${err.stack}`);
+      Console.red(`DNS server error:\n${err.stack}`);
       this.server.close();
     });
     return this;
