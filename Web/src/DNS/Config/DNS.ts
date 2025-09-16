@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // Handle incoming DNS queries and respond accordingly
 import DNS from "../services/DNS.Service";
 import NewNexoralDB from "../../Database/Axiodb.config";
