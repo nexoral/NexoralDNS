@@ -10,9 +10,14 @@ import Collection from "axiodb/lib/Services/Collection/collection.operation";
 let DNS_DB: Database;
 let DNS_Record_Collection: Collection;
 
+export { DNS_DB, DNS_Record_Collection };
+
 export default async function startDNSServer() {
+  // Creator a new instance of the AxioDB
   DNS_DB = await NewNexoralDB.createDB("DNS");
   DNS_Record_Collection = await DNS_DB.createCollection("Records");
+
+
   // Start the DNS server and listen for incoming queries
   new DNS().start().listen().listenError();
 }
