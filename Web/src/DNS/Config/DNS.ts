@@ -1,23 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // Handle incoming DNS queries and respond accordingly
 import DNS from "../services/DNS.Service";
-import NewNexoralDB from "../../Database/Axiodb.config";
-// Types
-import Database from "axiodb/lib/Services/Database/database.operation";
-import Collection from "axiodb/lib/Services/Collection/collection.operation";
-
-// DB Configurations
-let DNS_DB: Database;
-let DNS_Record_Collection: Collection;
-
-export { DNS_DB, DNS_Record_Collection };
+import databaseConfig from "../../Database/Axiodb.config";
 
 export default async function startDNSServer() {
-  // Creator a new instance of the AxioDB
-  DNS_DB = await NewNexoralDB.createDB("DNS");
-  DNS_Record_Collection = await DNS_DB.createCollection("Records");
-
-
   // Start the DNS server and listen for incoming queries
-  new DNS().start().listen().listenError();
+  new DNS(databaseConfig).start().listen().listenError();
 }
