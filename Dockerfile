@@ -1,21 +1,34 @@
 FROM node:22-alpine
 
-# Install sudo (Node.js already included in base image)
-RUN apk add --no-cache sudo
+# Install sudo (and optional libc6-compat for Next.js binaries)
+RUN apk add --no-cache sudo libc6-compat
 
-# Set working directory
+# Base workspace
 WORKDIR /app
-
-# Copy the entire repository
 COPY . .
 
-# Navigate to Server folder, install dependencies and build
-WORKDIR /app/Server
-RUN npm install
-RUN npm run build
+# Build server (NestJS)
+WORKDIR /app/server
+RUN npm install && npm run build
 
-# Expose DNS port (typically 53)
+# Build client (Next.js)
+WORKDIR /app/client
+RUN npm install && npm run build
+
+# Install PM2 globally
+WORKDIR /app
+RUN npm install -g pm2
+
+# Build DNS Web component
+WORKDIR /app/Web
+RUN npm install && npm run build
+
+# Now set production env for runtime
+ENV NODE_ENV=production
+
+# Expose DNS ports
 EXPOSE 53/udp 53/tcp
 
-# Run the DNS service
-CMD ["sudo", "node", "./lib/Config/DNS.js"]
+# Start PM2 (client + server) first, then run DNS service from /app/Web
+ENTRYPOINT ["sh","-lc","cd /app && pm2 start ecosystem.config.js && exec \"$@\""]
+CMD ["sudo", "node", "./Web/lib/Config/DNS.js"]

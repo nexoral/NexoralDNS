@@ -4,6 +4,9 @@ import { Console } from "outers"
 // Utility to get local IP address
 import getLocalIP from "../utilities/GetWLANIP.utls";
 
+// Types
+import databaseConfigs from "../Database/Axiodb.config";
+
 // DNS forwarder service
 import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
 
@@ -24,10 +27,12 @@ const DOMAIN = "your.home";
 export default class DNS {
   private server: dgram.Socket;
   private IO: InputOutputHandler;
+  private databaseConfig: typeof databaseConfigs;
 
-  constructor() {
+  constructor(databaseConfig: typeof databaseConfigs) {
     this.server = dgram.createSocket("udp4");
     this.IO = new InputOutputHandler(this.server);
+    this.databaseConfig = databaseConfig;
   }
 
   /**
@@ -44,6 +49,8 @@ export default class DNS {
       const address = this.server.address();
       Console.green(`DNS server running at udp://${address.address}:${address.port}`);
     });
+    // Initialize database configurations
+    this.databaseConfig();
 
     // Run on 5353 (non-root). Use 53 if root/admin
     this.server.bind(53, getLocalIP("any"));
