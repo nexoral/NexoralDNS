@@ -4,7 +4,7 @@
   "description": "This is the main core DNS Server for NexoralDNS Service, it was main responsible for handling DNS queries and responses.",
   "main": "./lib/CombinedRunner.js",
   "scripts": {
-    "start": "node ./lib/CombinedRunner.js",
+    "start": "node ./lib/Config/DNS.js",
     "build": "tsc",
     "lint": "eslint . --ext .ts,.tsx"
   },
