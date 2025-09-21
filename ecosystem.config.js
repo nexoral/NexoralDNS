@@ -4,7 +4,7 @@ module.exports = {
     {
       name: 'server',
       script: 'npm',
-      args: 'run start:prod',
+      args: 'run start',
       cwd: '/app/server',
       env: { NODE_ENV: 'production' },
       out_file: '/var/log/server.log',
