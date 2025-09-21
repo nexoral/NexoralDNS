@@ -3,6 +3,8 @@ import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
 import { CORS_CONFIG, ServerKeys } from "./key";
 import checkPortAndDocker from "./PostFreeChecker";
+import mainRouter from "../Router/Router";
+import MongoConnector from "../Database/mongodb.db";
 
 const NexoralServer = Fastify({
   logger: false, // Disable default logging
@@ -35,14 +37,15 @@ NexoralServer.addContentTypeParser(
 );
 
 // Register the main router with /api prefix
-// NexoralServer.register(router, {
-//   prefix: "/api",
-// });
+NexoralServer.register(mainRouter, {
+  prefix: "/api",
+});
   
 
-checkPortAndDocker(ServerKeys.PORT).then(() => {
+checkPortAndDocker(ServerKeys.PORT).then(async () => {
   console.log(`Port ${ServerKeys.PORT} is available.`);
   try {
+    await MongoConnector();
     NexoralServer.listen({
       port: Number(ServerKeys.PORT),
       host: String(ServerKeys.HOST),
