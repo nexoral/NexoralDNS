@@ -2,8 +2,9 @@
 import path from "path";
 
 export enum ServerKeys {
-  PORT = 27018,
-  LOCALHOST = "127.0.1",
+  PORT = 4773,
+  HOST = "0.0.0.0",
+  LOCALHOST = "127.0.0.1",
   DEFAULT_KEY_EXPIRE = "24h",
   DEFAULT_KEY_ISSUER = "Nexoral Server",
   DEFAULT_KEY_AUDIENCE = "Nexoral Client",

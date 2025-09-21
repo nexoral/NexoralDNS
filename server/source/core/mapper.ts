@@ -45,7 +45,7 @@ checkPortAndDocker(ServerKeys.PORT).then(() => {
   try {
     NexoralServer.listen({
       port: Number(ServerKeys.PORT),
-      host: "0.0.0.0",
+      host: String(ServerKeys.HOST),
     });
     console.log(
       `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
