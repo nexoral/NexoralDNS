@@ -21,7 +21,6 @@
     "typescript-eslint": "^8.43.0"
   },
   "dependencies": {
-    "axiodb": "^2.31.99",
     "outers": "^8.6.9"
   }
 }
