@@ -5,7 +5,7 @@ import { Console } from "outers"
 import getLocalIP from "../utilities/GetWLANIP.utls";
 
 // Types
-import databaseConfigs from "../Database/Axiodb.config";
+import databaseConfigs from "../Database/NexoralDNS.config";
 
 // DNS forwarder service
 import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
