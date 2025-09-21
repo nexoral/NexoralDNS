@@ -4,19 +4,14 @@ import { Console } from "outers"
 // Utility to get local IP address
 import getLocalIP from "../utilities/GetWLANIP.utls";
 
-// Types
-import databaseConfigs from "../Database/NexoralDNS.config";
 
 // DNS forwarder service
 import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../utilities/IO.utls";
+import MongoConnector, { getMongoClient } from "../Database/mongodb.db";
 
-
-// Google Web IP (one of Google's web servers)
-const GOOGLE_IP = "192.168.1.1";
-const DOMAIN = "your.home";
 
 /**
  * DNS class to handle incoming DNS queries and respond accordingly.
@@ -27,12 +22,10 @@ const DOMAIN = "your.home";
 export default class DNS {
   private server: dgram.Socket;
   private IO: InputOutputHandler;
-  private databaseConfig: typeof databaseConfigs;
 
-  constructor(databaseConfig: typeof databaseConfigs) {
+  constructor() {
     this.server = dgram.createSocket("udp4");
     this.IO = new InputOutputHandler(this.server);
-    this.databaseConfig = databaseConfig;
   }
 
   /**
@@ -49,8 +42,10 @@ export default class DNS {
       const address = this.server.address();
       Console.green(`DNS server running at udp://${address.address}:${address.port}`);
     });
-    // Initialize database configurations
-    this.databaseConfig();
+
+    MongoConnector().catch((error) => {
+      Console.red("Failed to connect to MongoDB:", error);
+    });
 
     // Run on 5353 (non-root). Use 53 if root/admin
     this.server.bind(53, getLocalIP("any"));
@@ -75,9 +70,15 @@ export default class DNS {
       // Parse query name
       const queryName = this.IO.parseQueryName(msg);
 
-      if (queryName === DOMAIN) {
+      const mongoClient = getMongoClient();
+      const db = mongoClient.db("DNS");
+      const recordCollection = db.collection("Records");
+
+      // Fetch the first record from the collection
+      const record = await recordCollection.findOne({ domain: queryName });
+      if (queryName === record?.domain) {
         // Use buildSendAnswer method from utilities
-        const response = this.IO.buildSendAnswer(msg, rinfo, DOMAIN, GOOGLE_IP);
+        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value);
         if (!response) {
           Console.red(`Failed to respond to ${queryName}`);
         }
@@ -96,7 +97,7 @@ export default class DNS {
         }
 
         // Use buildSendAnswer with no matching domain (will return empty answer)
-        const response = this.IO.buildSendAnswer(msg, rinfo, DOMAIN, GOOGLE_IP);
+        const response = this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0");
         if (!response) {
           Console.red(`Failed to respond to ${queryName}`);
         }
