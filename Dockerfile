@@ -7,10 +7,6 @@ RUN apk add --no-cache sudo libc6-compat
 WORKDIR /app
 COPY . .
 
-# Build Database module
-WORKDIR /app/Database
-RUN npm install && npm run build
-
 # Build server (Fastify Server)
 WORKDIR /app/server
 RUN npm install && npm run build
