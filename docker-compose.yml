@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  nexoraldns:
+    image: node:18-alpine
+    container_name: nexoraldns
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "8080:8080"
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - mongodb
+    networks:
+      - nexoral_network
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/nexoraldns
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongo
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - nexoral_network
+
+networks:
+  nexoral_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
