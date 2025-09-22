@@ -78,7 +78,7 @@ export default class DNS {
       const record = await recordCollection.findOne({ domain: queryName });
       if (queryName === record?.domain) {
         // Use buildSendAnswer method from utilities
-        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value);
+        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value, record.TTL);
         if (!response) {
           Console.red(`Failed to respond to ${queryName}`);
         }

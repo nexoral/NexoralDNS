@@ -39,6 +39,7 @@ export default async () => {
       domain: "my.home",
       domainProtocol: "http",
       type: "A",
+      TTL: 10,
       value: "192.168.1.1",
     });
   }
