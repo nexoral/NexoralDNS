@@ -4,7 +4,6 @@ import { Console } from "outers"
 // Utility to get local IP address
 import getLocalIP from "../utilities/GetWLANIP.utls";
 
-
 // DNS forwarder service
 import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
 
@@ -77,6 +76,7 @@ export default class DNS {
       // Fetch the first record from the collection
       const record = await recordCollection.findOne({ domain: queryName });
       if (queryName === record?.domain) {
+        Console.bright(`Responding to ${queryName} with ${record.value} with TTL: ${record.TTL} from database`);
         // Use buildSendAnswer method from utilities
         const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value, record.TTL);
         if (!response) {
