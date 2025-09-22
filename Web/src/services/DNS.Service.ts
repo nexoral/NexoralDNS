@@ -83,9 +83,9 @@ export default class DNS {
           Console.red(`Failed to respond to ${queryName}`);
         }
       } else {
-        // Forward to Google DNS for non-matching domains
+        // Forward to Global DNS for non-matching domains
         try {
-          const forwardedResponse = await GlobalDNSforwarder(msg, queryName);
+          const forwardedResponse = await GlobalDNSforwarder(msg, queryName, 10); // Set custom TTL to 10 seconds
           if (forwardedResponse) {
             const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
             if (!resp) {

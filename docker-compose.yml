@@ -1,14 +1,6 @@
 version: '3'
 
 services:
-  nexoraldns:
-    image: ghcr.io/nexoral/nexoraldns:latest
-    container_name: nexoraldns
-    restart: always
-    network_mode: "host"              # 👈 host mode so it can bind to port 53
-    environment:
-      - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns  # 👈 connect via localhost (because host mode)
-
   mongodb:
     image: mongo:latest
     container_name: mongo
@@ -19,6 +11,14 @@ services:
       - "27017:27017"                 # 👈 exposed to host so nexoraldns can reach it on localhost
     networks:
       - nexoral_network                    # 👈 keep Mongo in bridge network for safety/port isolation
+
+  nexoraldns:
+    build: .
+    container_name: nexoraldns
+    restart: always
+    network_mode: "host"              # 👈 host mode so it can bind to port 53
+    environment:
+      - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns  # 👈 connect via localhost (because host mode)
 
 networks:
   nexoral_network:
