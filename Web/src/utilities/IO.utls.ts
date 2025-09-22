@@ -23,13 +23,15 @@ export default class InputOutputHandler {
    * @param rinfo - Remote information about the UDP sender, including address and port.
    * @param domain - The domain name to match against the DNS query.
    * @param ResponseIP - The IPv4 address to return in the answer (defaults to "8.8.8.8").
+   * @param ttl - The time-to-live value in seconds for the DNS record (defaults to 10 seconds).
    * @returns `true` if the response was constructed and sent.
    */
   public buildSendAnswer(
     msg: Buffer,
     rinfo: dgram.RemoteInfo,
     domain: string,
-    ResponseIP: string = "8.8.8.8"
+    ResponseIP: string = "0.0.0.0",
+    ttl: number = 10
   ): boolean {
     // Transaction ID (first 2 bytes)
     const transactionId = msg.subarray(0, 2);
@@ -59,10 +61,11 @@ export default class InputOutputHandler {
       const name = Buffer.from([0xc0, 0x0c]);
       const type = Buffer.from([0x00, 0x01]); // A record
       const cls = Buffer.from([0x00, 0x01]); // IN class
-      const ttl = Buffer.from([0x00, 0x00, 0x00, 0x3c]); // 60 seconds
+      const ttlBuffer = Buffer.alloc(4);
+      ttlBuffer.writeUInt32BE(ttl, 0);
       const rdlength = Buffer.from([0x00, 0x04]); // IPv4 = 4 bytes
       const rdata = Buffer.from(ResponseIP.split(".").map((octet) => parseInt(octet)));
-      answer = Buffer.concat([name, type, cls, ttl, rdlength, rdata]);
+      answer = Buffer.concat([name, type, cls, ttlBuffer, rdlength, rdata]);
     } else {
       // No answer if domain doesn't match
       ancount = Buffer.from([0x00, 0x00]);
