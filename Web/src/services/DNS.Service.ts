@@ -1,4 +1,4 @@
-import dgram from "dgram";
+import dgram from "node:dgram";
 import { Console } from "outers"
 
 // Utility to get local IP address
