@@ -13,7 +13,7 @@ services:
       - nexoral_network                    # 👈 keep Mongo in bridge network for safety/port isolation
 
   nexoraldns:
-    build: .
+    image: ghcr.io/nexoral/nexoraldns:latest
     container_name: nexoraldns
     restart: always
     network_mode: "host"              # 👈 host mode so it can bind to port 53
