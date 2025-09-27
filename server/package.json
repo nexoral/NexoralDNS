@@ -12,13 +12,15 @@
   "scripts": {
     "test": "npm test",
     "build": "tsc",
-    "start": "node lib/core/mapper.js"
+    "start": "node lib/core/mapper.js",
+    "dev": "npm run build && npm start"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "fastify": "^5.6.0",
     "mongodb": "^6.20.0",
     "outers": "^8.6.9",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
   "devDependencies": {

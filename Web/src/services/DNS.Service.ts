@@ -1,9 +1,8 @@
-import dgram from "dgram";
+import dgram from "node:dgram";
 import { Console } from "outers"
 
 // Utility to get local IP address
 import getLocalIP from "../utilities/GetWLANIP.utls";
-
 
 // DNS forwarder service
 import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
@@ -68,7 +67,8 @@ export default class DNS {
   public listen(): this {
     this.server.on("message", async (msg, rinfo) => {
       // Parse query name
-      const queryName = this.IO.parseQueryName(msg);
+      const queryName: string = this.IO.parseQueryName(msg);
+      const queryType: string = this.IO.parseQueryType(msg);
 
       const mongoClient = getMongoClient();
       const db = mongoClient.db("DNS");
@@ -77,8 +77,9 @@ export default class DNS {
       // Fetch the first record from the collection
       const record = await recordCollection.findOne({ domain: queryName });
       if (queryName === record?.domain) {
+        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.TTL} from database`);
         // Use buildSendAnswer method from utilities
-        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value);
+        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value, record.TTL);
         if (!response) {
           Console.red(`Failed to respond to ${queryName}`);
         }

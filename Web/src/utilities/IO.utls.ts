@@ -120,4 +120,47 @@ export default class InputOutputHandler {
     }
     return labels.join(".");
   }
+
+  /**
+   * Parses the query type from a DNS message buffer.
+   * 
+   * This method extracts the QTYPE field from a DNS message by:
+   * 1. Skipping the header (12 bytes)
+   * 2. Navigating through the QNAME field (domain name with length prefixes)
+   * 3. Reading the 16-bit QTYPE value
+   * 
+   * @param msg - A Buffer containing the DNS message to parse
+   * @returns A string representation of the query type (e.g., "A", "NS", "CNAME", etc.)
+   *          or "Unknown (qtype)" for unrecognized types
+   */
+  public parseQueryType(msg: Buffer): string {
+    let offset = 12;
+    while (msg[offset] !== 0) {
+      const length = msg[offset];
+      offset += length + 1;
+    }
+    // Move past the null byte at the end of the QNAME
+    offset += 1;
+    const qtype = msg.readUInt16BE(offset);
+    switch (qtype) {
+      case 1:
+        return "A";
+      case 2:
+        return "NS";
+      case 5:
+        return "CNAME";
+      case 6:
+        return "SOA";
+      case 12:
+        return "PTR";
+      case 15:
+        return "MX";
+      case 16:
+        return "TXT";
+      case 28:
+        return "AAAA";
+      default:
+        return `Unknown (${qtype})`;
+    }
+  }
 }
