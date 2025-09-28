@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "this server is responsible for managing the all records that are custom build for the all networks",
   "keywords": [
     "server"
