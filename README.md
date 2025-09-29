@@ -13,7 +13,7 @@
 **One-command installation:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -
 ```
 
 > ✅ **That's it!** The script will automatically install Docker, download the latest version, and start the NexoralDNS server.
@@ -21,7 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/ins
 **Complete removal:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -s remove
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove
 ```
 
 > 🗑️ **This will completely remove NexoralDNS** including all configurations, services, and data.
