@@ -28,6 +28,69 @@ print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
+# Check for remove argument
+if [[ "$1" == "remove" ]]; then
+    clear
+    echo -e "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║${NC}                                                              ${RED}║${NC}"
+    echo -e "${RED}║${NC}          ${BOLD}${WHITE}NexoralDNS Uninstaller${NC}                          ${RED}║${NC}"
+    echo -e "${RED}║${NC}                                                              ${RED}║${NC}"
+    echo -e "${RED}║${NC}        ${WHITE}This will completely remove NexoralDNS${NC}              ${RED}║${NC}"
+    echo -e "${RED}║${NC}                                                              ${RED}║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    DOWNLOAD_DIR="$HOME/NexoralDNS"
+    
+    print_warning "This will remove all NexoralDNS configurations and data!"
+    read -p "Are you sure you want to continue? (y/N): " -n 1 -r
+    echo
+    
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Uninstallation cancelled."
+        exit 0
+    fi
+    
+    print_status "Stopping NexoralDNS services..."
+    if [ -d "$DOWNLOAD_DIR" ]; then
+        cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
+        print_success "Services stopped successfully."
+    else
+        print_warning "NexoralDNS directory not found."
+    fi
+    
+    print_status "Removing Docker images..."
+    sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
+    sudo docker rmi mongo:latest 2>/dev/null || true
+    print_success "Docker images removed."
+    
+    print_status "Removing NexoralDNS directory..."
+    if [ -d "$DOWNLOAD_DIR" ]; then
+        rm -rf "$DOWNLOAD_DIR"
+        print_success "Directory removed: $DOWNLOAD_DIR"
+    else
+        print_warning "Directory not found: $DOWNLOAD_DIR"
+    fi
+    
+    print_status "Cleaning up Docker volumes..."
+    sudo docker volume rm nexoraldns_mongodb_data 2>/dev/null || true
+    print_success "Docker volumes cleaned."
+    
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}                    ${BOLD}${GREEN}Uninstallation Complete!${NC}                  ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${WHITE}NexoralDNS has been completely removed from your system${NC}  ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${YELLOW}Don't forget to:${NC}                                      ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${WHITE}• Reset your router's DNS settings${NC}                     ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${WHITE}• Remove any static IP reservations${NC}                    ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
+    
+    exit 0
+fi
+
 # Fetch version for welcome banner
 VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
 REMOTE_VERSION=$(curl -s "$VERSION_URL" 2>/dev/null || echo "Unknown")
@@ -46,14 +109,6 @@ echo -e "${CYAN}║${NC}                                                        
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Request sudo access upfront and keep it alive
-print_status "This script requires ${BOLD}sudo access${NC} for Docker installation and management."
-sudo -v
-
-# Keep sudo alive by updating timestamp every 60 seconds
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-
-echo ""
 print_status "Checking Docker installation..."
 
 # Check if Docker is installed
@@ -110,7 +165,7 @@ else
 fi
 
 # Create directory if it doesn't exist
-DOWNLOAD_DIR="$HOME/ExtraBin"
+DOWNLOAD_DIR="$HOME/NexoralDNS"
 if [ ! -d "$DOWNLOAD_DIR" ]; then
   print_status "Creating directory ${BOLD}$DOWNLOAD_DIR${NC}..."
   mkdir -p "$DOWNLOAD_DIR"

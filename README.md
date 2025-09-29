@@ -18,6 +18,14 @@ curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/ins
 
 > ✅ **That's it!** The script will automatically install Docker, download the latest version, and start the NexoralDNS server.
 
+**Complete removal:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -s remove
+```
+
+> 🗑️ **This will completely remove NexoralDNS** including all configurations, services, and data.
+
 ---
 
 ## 🎯 What is NexoralDNS?
@@ -164,45 +172,42 @@ We welcome contributions! Please see our contributing guidelines in the reposito
 ---
 
 > **🎉 Ready to get started?** Run the installation command and transform your network's DNS in minutes!
+
+---
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+**DNS not working after installation:**
+- Ensure your router's DNS is set to the NexoralDNS machine IP
+- Check if the Docker containers are running: `sudo docker compose ps`
+- Verify port 53 is not blocked by firewall
+
+**Web interface not accessible:**
+- Check if port 4000 is open
+- Restart services: `sudo docker compose restart`
+
 **Version updates not working:**
 - Ensure internet connectivity
 - Check Docker image permissions
 
----
+### Complete Uninstallation
 
-## 📜 License
+If you need to completely remove NexoralDNS from your system:
 
-MIT License - See [LICENSE](LICENSE) file for details.
+```bash
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -s remove
+```
 
----
+This will:
+- Stop all NexoralDNS services
+- Remove Docker containers and images
+- Delete all configuration files and data
+- Clean up the installation directory
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our contributing guidelines in the repository.
-
----
-
-> **🎉 Ready to get started?** Run the installation command and transform your network's DNS in minutes!
+> ⚠️ **Warning:** This action is irreversible and will delete all your custom DNS configurations.
 
 ---
 
 **Made with ❤️ by the NexoralDNS Team**
-            <div class="feature-card">
-                <h3>🏢 Small Business</h3>
-                <p>Easy-to-remember domain names for internal services and enhanced network security.</p>
-            </div>
-            <div class="feature-card">
-                <h3>👨‍💻 Development Teams</h3>
-                <p>Custom <code>.local</code> or <code>.dev</code> domains for development projects without host file modifications.</p>
-            </div>
-            <div class="feature-card">
-                <h3>🏫 Educational Institutions</h3>
-                <p>Manage and monitor student access to web resources within school networks.</p>
-            </div>
-            <div class="feature-card">
-                <h3>🏠 Home Networks</h3>
-                <p>Parental controls, device monitoring, and custom domain management for smart homes.</p>
-            </div>
-        </div>
-</body>
-</html>
