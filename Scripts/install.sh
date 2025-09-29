@@ -97,6 +97,75 @@ if [[ "$1" == "remove" ]]; then
     exit 0
 fi
 
+# Check for stop argument
+if [[ "$1" == "stop" ]]; then
+    clear
+    echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║${NC}                                                              ${YELLOW}║${NC}"
+    echo -e "${YELLOW}║${NC}          ${BOLD}${WHITE}Stopping NexoralDNS Services${NC}                   ${YELLOW}║${NC}"
+    echo -e "${YELLOW}║${NC}                                                              ${YELLOW}║${NC}"
+    echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    DOWNLOAD_DIR="$HOME/NexoralDNS"
+    
+    if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
+        print_status "Stopping NexoralDNS services..."
+        cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
+        print_success "All NexoralDNS services have been stopped successfully!"
+    else
+        print_warning "NexoralDNS installation not found or docker-compose.yml missing."
+        print_status "Please ensure NexoralDNS is installed in $DOWNLOAD_DIR"
+    fi
+    
+    exit 0
+fi
+
+# Check for start argument
+if [[ "$1" == "start" ]]; then
+    clear
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}          ${BOLD}${WHITE}Starting NexoralDNS Services${NC}                   ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    DOWNLOAD_DIR="$HOME/NexoralDNS"
+    
+    if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
+        print_status "Starting NexoralDNS services..."
+        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
+        print_success "All NexoralDNS services have been started successfully!"
+        
+        # Get the DHCP IP address
+        print_status "Detecting network configuration..."
+        DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
+        if [ -z "$DHCP_IP" ]; then
+            DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+        fi
+        
+        echo ""
+        echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║${NC}                    ${BOLD}${GREEN}Services Started!${NC}                       ${GREEN}║${NC}"
+        echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+        if [ -n "$DHCP_IP" ]; then
+            echo -e "${GREEN}║${NC}  ${WHITE}Server IP:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC}                              ${GREEN}║${NC}"
+            echo -e "${GREEN}║${NC}  ${WHITE}Web Interface:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}              ${GREEN}║${NC}"
+        else
+            echo -e "${GREEN}║${NC}  ${WHITE}Web Interface:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}              ${GREEN}║${NC}"
+        fi
+        echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+        echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
+    else
+        print_error "NexoralDNS installation not found or docker-compose.yml missing."
+        print_status "Please run the installation first:"
+        echo "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -"
+    fi
+    
+    exit 0
+fi
+
 # Fetch version for welcome banner
 VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
 REMOTE_VERSION=$(curl -s "$VERSION_URL" 2>/dev/null || echo "Unknown")
@@ -170,6 +239,14 @@ else
   print_success "Docker Compose is already available."
 fi
 
+# Function to run docker compose with progress indication
+run_docker_compose() {
+    local command="$1"
+    local message="$2"
+    print_status "$message"
+    cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
+}
+
 # Create directory if it doesn't exist
 DOWNLOAD_DIR="$HOME/NexoralDNS"
 if [ ! -d "$DOWNLOAD_DIR" ]; then
@@ -239,27 +316,25 @@ if [ -f "$COMPOSE_FILE" ]; then
       
       if [ $comparison_result -eq 0 ]; then
         print_success "Versions are identical. Starting services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
+        run_docker_compose "up -d" "Starting Docker containers (this may take a few minutes on first run)..."
       elif [ $comparison_result -eq 1 ] && [[ "$remote_version" == *"-stable" ]]; then
         print_warning "New stable version available! Updating..."
         print_status "Removing old Docker image..."
         sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
         echo "$remote_version" > "$VERSION_FILE"
-        print_status "Starting updated services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
+        run_docker_compose "up -d" "Starting updated services (downloading new image, please wait)..."
       else
         print_status "Local version is current. Starting services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
+        run_docker_compose "up -d" "Starting Docker containers..."
       fi
     else
       print_status "First time installation. Creating version file..."
       echo "$remote_version" > "$VERSION_FILE"
-      print_status "Starting services..."
-      cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
+      run_docker_compose "up -d" "Starting services (downloading images, this may take several minutes)..."
     fi
   else
     print_warning "Could not fetch version information. Starting services with current setup..."
-    cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
+    run_docker_compose "up -d" "Starting Docker containers..."
   fi
   
   echo ""
