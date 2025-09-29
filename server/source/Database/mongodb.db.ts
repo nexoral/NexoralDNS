@@ -1,10 +1,21 @@
-import { MongoClient } from "mongodb";
+import { Collection, Document, MongoClient } from "mongodb";
 import { ClassBased, Console } from "outers";
+import { DB_DEFAULT_CONFIGS } from "../core/key";
 const connections = new Map<string, MongoClient>();
+const DB_clients = new Map<string, MongoClient>();
+const Collection_clients = new Map<string, Collection<Document>>();
 
 
-export const getMongoClient = () => {
-  const mongoURL = process.env.MONGO_URI || "mongodb://localhost:27017";
+/**
+ * Retrieves a MongoDB client instance for the specified URL.
+ * 
+ * If a client already exists for the URL in the connections Map, it returns the existing client.
+ * Otherwise, it creates a new client, stores it in the connections Map, and returns the new client.
+ * 
+ * @returns {MongoClient} A MongoDB client instance
+ */
+export const getMongoClient = (): MongoClient => {
+  const mongoURL = DB_DEFAULT_CONFIGS.HOST;
   const client = new MongoClient(mongoURL);
   if (!connections.has(mongoURL)) {
     connections.set(mongoURL, client);
@@ -14,7 +25,52 @@ export const getMongoClient = () => {
   return client;
 }
 
+/**
+ * Retrieves a MongoDB database client for the specified database name.
+ * 
+ * @param dbName - The name of the database to retrieve the client for
+ * @returns The MongoDB database client instance associated with the given database name,
+ *          or undefined if no client exists for the specified name
+ */
+export const getDBClient = (dbName: string): MongoClient | undefined => {
+  return DB_clients.get(dbName);
+}
 
+/**
+ * Retrieves a MongoDB Collection client by name.
+ * 
+ * @param collectionName - The name of the collection to retrieve
+ * @returns The Collection client if found, otherwise undefined
+ */
+export const getCollectionClient = (collectionName: string): Collection<Document> | undefined => {
+  return Collection_clients.get(collectionName);
+}
+
+
+/**
+ * Initializes the MongoDB connection and sets up the database with required collections and default data.
+ * 
+ * This function performs the following operations:
+ * 1. Connects to the MongoDB server
+ * 2. Creates necessary collections if they don't exist:
+ *    - Permissions collection
+ *    - Roles collection
+ *    - Users collection
+ * 3. Sets up indexes for optimization:
+ *    - Unique index on 'code' field for permissions
+ *    - Unique index on 'code' field for roles
+ *    - Unique index on 'username' field for users
+ * 4. Populates default data if collections are empty:
+ *    - Default permissions with numeric codes
+ *    - Super Admin role with full access permissions
+ *    - Admin user with encrypted password
+ * 
+ * The function implements a Role-Based Access Control (RBAC) system with
+ * permissions, roles, and users as the core entities.
+ * 
+ * @returns {Promise<MongoClient>} A promise that resolves to the connected MongoDB client
+ * @throws {Error} If the connection to MongoDB fails
+ */
 export default async () => {
   const client = getMongoClient();
   
@@ -22,11 +78,16 @@ export default async () => {
     await client.connect();
     Console.green("Connected to MongoDB successfully.");
 
-    const db = client.db("nexoral_db");
+    const db = client.db(DB_DEFAULT_CONFIGS.DB_NAME);
+    DB_clients.set(DB_DEFAULT_CONFIGS.DB_NAME, client);
+
     // Create the DB and Collection if they don't exist
-    const permissionsCol = db.collection("permissions");
-    const rolesCol = db.collection("roles");
-    const usersCol = db.collection("users");
+    const permissionsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS, permissionsCol);
+    const rolesCol = db.collection(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.ROLES, rolesCol);
+    const usersCol = db.collection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.USERS, usersCol);
 
     // Ensure index on code field for permissions
     await permissionsCol.createIndex({ code: 1 }, { unique: true });
@@ -35,13 +96,7 @@ export default async () => {
     const existingPerms = await permissionsCol.countDocuments();
     let permissionIds = [];
     if (existingPerms === 0) {
-      const permissions = [
-        { code: 1, name: "Add Domain" },
-        { code: 2, name: "Remove Domain" },
-        { code: 3, name: "View Logs" },
-        { code: 4, name: "Full Access" },
-      ];
-      const result = await permissionsCol.insertMany(permissions);
+      const result = await permissionsCol.insertMany(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_PERMISSIONS_TYPE);
       permissionIds = Object.values(result.insertedIds);
       console.log("✅ Permissions inserted with numeric codes");
     } else {
@@ -50,11 +105,16 @@ export default async () => {
       console.log("ℹ️ Permissions already exist");
     }
 
+    // store only super admin permission full access
+    permissionIds = permissionIds.filter((_, code) => code === DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PERMISSIONS_CODE);
+
     // 2. Insert Super Admin role if not exists
-    let superAdminRole = await rolesCol.findOne({ name: "Super Admin" });
+    let superAdminRole = await rolesCol.findOne({ name: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE });
     if (!superAdminRole) {
+      await rolesCol.createIndex({ code: 1 }, { unique: true }); // Ensure unique role codes
       const result = await rolesCol.insertOne({
-        name: "Super Admin",
+        code: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE_CODE,
+        name: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE,
         permissions: permissionIds,
       });
       superAdminRole = { _id: result.insertedId };
@@ -64,11 +124,12 @@ export default async () => {
     }
 
     // 3. Insert admin user if not exists
-    let adminUser = await usersCol.findOne({ username: "admin" });
+    let adminUser = await usersCol.findOne({ username: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_USERNAME });
     if (!adminUser) {
+      await usersCol.createIndex({ username: 1 }, { unique: true }); // Ensure unique usernames
       await usersCol.insertOne({
-        username: "admin",
-        password: await new ClassBased.CryptoGraphy(process.arch).Encrypt("admin"),
+        username: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_USERNAME,
+        password: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PASSWORD),
         roleId: superAdminRole._id,
       });
       console.log("✅ Admin user created");

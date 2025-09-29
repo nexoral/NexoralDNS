@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { FastifyInstance, FastifyPluginOptions } from "fastify";
+import { FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from "fastify";
 import { AuthorInfo } from "../core/key";
 import buildResponse, {
   ResponseBuilder,
@@ -29,13 +29,12 @@ interface RouterOptions extends FastifyPluginOptions { }
  */
 export default async function mainRouter(
   fastify: FastifyInstance,
-  options: RouterOptions,
+  _options: RouterOptions,
   done: () => void,
 ): Promise<void> {
-  // Now you can access the NexoralDNS instance
-  const { NexoralDNSInstance } = options;
-
-  fastify.get("/info", async () => {
+  
+  // General Specific Middleware (e.g, health check, info, etc.)
+  fastify.get("/info", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const PackageFile: PackageInterface = JSON.parse(
       await readFile("./package.json", "utf-8"),
     );
@@ -50,11 +49,12 @@ export default async function mainRouter(
         AuthorDetails: AuthorInfo,
       },
     );
-    return Reply;
+    return reply.code(StatusCodes.OK).send(Reply);
   });
 
+
   // Health check route
-  fastify.get("/health", async () => {
+  fastify.get("/health", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const Reply: ResponseBuilder = buildResponse(
       StatusCodes.OK,
       "Server is healthy",
@@ -63,14 +63,14 @@ export default async function mainRouter(
         timestamp: new Date().toISOString(),
       },
     );
-    return Reply;
+    return reply.code(StatusCodes.OK).send(Reply);
   });
 
 
   // Handle 404 Not Found
   fastify.setNotFoundHandler((request, reply) => {
     return reply
-      .status(404)
+      .status(StatusCodes.NOT_FOUND)
       .send(
         buildResponse(
           StatusCodes.NOT_FOUND,
