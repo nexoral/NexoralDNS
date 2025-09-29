@@ -67,7 +67,7 @@ if [ -f "$COMPOSE_FILE" ]; then
   echo "Existing docker-compose.yml found. Stopping and removing services..."
   cd "$DOWNLOAD_DIR" && sudo docker compose down
   echo "Removing existing docker-compose.yml..."
-  rm "$COMPOSE_FILE"
+  sudo rm -rf "$COMPOSE_FILE"
 fi
 
 # Download the docker-compose.yml file
@@ -83,17 +83,15 @@ if [ -f "$COMPOSE_FILE" ]; then
   VERSION_FILE="$DOWNLOAD_DIR/VERSION"
   VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
   
-  echo "Downloading VERSION file..."
-  curl -s "$VERSION_URL" -o "$VERSION_FILE"
+  echo "Downloading remote VERSION file..."
+  remote_version=$(curl -s "$VERSION_URL")
   
-  if [ -f "$VERSION_FILE" ]; then
-    remote_version=$(cat "$VERSION_FILE")
+  if [ -n "$remote_version" ]; then
     echo "Remote version: $remote_version"
     
     # Check if local VERSION file exists
-    local_version_file="$DOWNLOAD_DIR/VERSION.local"
-    if [ -f "$local_version_file" ]; then
-      local_version=$(cat "$local_version_file")
+    if [ -f "$VERSION_FILE" ]; then
+      local_version=$(cat "$VERSION_FILE")
       echo "Local version: $local_version"
       
       # Function to compare versions
@@ -127,15 +125,15 @@ if [ -f "$COMPOSE_FILE" ]; then
         echo "Remote stable version ($remote_version) is newer than local ($local_version)."
         echo "Removing old Docker image and updating..."
         sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
-        echo "$remote_version" > "$local_version_file"
+        echo "$remote_version" > "$VERSION_FILE"
         cd "$DOWNLOAD_DIR" && sudo docker compose up -d
       else
         echo "Local version is up to date or remote version is not stable. Starting services..."
         cd "$DOWNLOAD_DIR" && sudo docker compose up -d
       fi
     else
-      echo "No local version file found. Creating one and starting services..."
-      echo "$remote_version" > "$local_version_file"
+      echo "No local VERSION file found. Creating one and starting services..."
+      echo "$remote_version" > "$VERSION_FILE"
       cd "$DOWNLOAD_DIR" && sudo docker compose up -d
     fi
   else
