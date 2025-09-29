@@ -1,80 +1,208 @@
-# NexoralDNS
+# 🚀 NexoralDNS
 
-## Overview
-NexoralDNS is a powerful DNS surveillance and management system designed for local area networks. This repository contains the agent component that can be installed on any machine within a LAN to provide custom DNS functionality for the entire network.
+**Advanced DNS Management & Surveillance System**
 
-## What is NexoralDNS?
-NexoralDNS is a Software-as-a-Service (SaaS) solution that allows system administrators to:
-- Monitor all DNS traffic within their network
-- Create and manage custom domain names for internal resources
-- Control and filter DNS requests for enhanced security
-- Provide detailed analytics on network DNS usage
-- Simplify local development environments with custom domain routing
+![Version](https://img.shields.io/badge/version-Latest%20Stable-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Docker](https://img.shields.io/badge/docker-supported-blue)
 
-## How It Works
-1. The NexoralDNS agent is installed on any machine within your LAN
-2. System administrators configure the network's default DNS settings to point to the machine running NexoralDNS
-3. All DNS requests within the network are now routed through NexoralDNS
-4. Administrators can define custom domain rules through the management interface
-5. The system logs and monitors all DNS traffic for surveillance purposes
+---
 
-## Key Features
-- **Custom Domain Management**: Create and manage internal domains without modifying external DNS servers
-- **DNS Traffic Monitoring**: Comprehensive logging of all DNS requests within the network
-- **Easy Deployment**: Simple installation process on any network-connected machine
-- **Web-based Management**: Intuitive interface for managing DNS rules and viewing analytics
-- **Security Filtering**: Block malicious domains and protect your network
-- **Developer-Friendly**: Simplify development environments with custom domain routing
+## ⚡ Quick Installation
 
-## Installation
+**One-command installation:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -
+```
+
+> ✅ **That's it!** The script will automatically install Docker, download the latest version, and start the NexoralDNS server.
+
+---
+
+## 🎯 What is NexoralDNS?
+
+NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your network's DNS infrastructure. It provides comprehensive DNS management, monitoring, and custom domain resolution for your entire Local Area Network (LAN).
+
+---
+
+## 🤔 Why Do You Need NexoralDNS?
+
+### 🔒 Enhanced Security
+- Monitor all DNS traffic within your network
+- Block malicious domains and protect against DNS-based threats
+- Get real-time alerts on suspicious DNS activity
+
+### 🏠 Local Development
+- Create custom domains like `myapp.local` for development
+- No need to modify host files on every machine
+- Seamless team collaboration with shared custom domains
+
+### 📊 Network Monitoring
+- Detailed analytics on DNS usage and popular domains
+- Track network activity patterns
+- Identify bandwidth-heavy applications
+
+### 🎛️ Centralized Control
+- Manage DNS settings for your entire network from one interface
+- Easy configuration without touching individual devices
+- Backup and restore DNS configurations
+
+---
+
+## ✨ Key Features
+
+- **🌐 Custom Domain Management:** Create internal domains without external DNS servers
+- **📈 DNS Traffic Monitoring:** Comprehensive logging and real-time analytics
+- **🐳 Easy Deployment:** One-command installation via Docker
+- **🖥️ Web-based Management:** Intuitive dashboard accessible at `localhost:4000`
+- **🛡️ Security Filtering:** Block unwanted domains and protect your network
+- **👨‍💻 Developer-Friendly:** Perfect for development environments
+- **📊 Real-time Analytics:** Monitor DNS queries as they happen
+- **☁️ Cloud Integration:** Sync settings across multiple installations
+- **🔄 Auto-Updates:** Automatic version management and updates
+- **📱 Mobile Responsive:** Manage your DNS from any device
+
+---
+
+## 🔧 How It Works
+
+1. **Install:** Run the installation command on any machine in your LAN
+2. **Configure Router:** Set your router's DNS to point to the NexoralDNS machine
+3. **Activate:** Use the web interface to activate with your cloud key
+4. **Manage:** Create custom domains and monitor traffic through the dashboard
+
+---
+
+## 🛠️ Manual Installation (Alternative)
+
+If you prefer manual installation or want to contribute to development:
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/nexoral/NexoralDNS.git
+cd NexoralDNS
+```
+
+### 2. Start with Docker Compose
+```bash
+cd Scripts
+sudo docker compose up -d
+```
 
 ### Requirements
-- Any machine running on your LAN network (Linux, Windows, or macOS)
-- Node.js v14 or higher
-- Network administrator privileges to modify DNS settings
+- Docker and Docker Compose installed
+- Sudo/Administrator privileges
+- Network access to configure router DNS settings
 
-### Setup Process
-1. Clone this repository:
-   ```
-   git clone https://github.com/yourusername/NexoralDNS.git
-   ```
+---
 
-2. Install dependencies:
-   ```
-   cd NexoralDNS
-   npm install
-   ```
+## 🌐 Post-Installation Setup
 
-3. Configure the agent:
-   ```
-   npm run configure
-   ```
+1. **Access Web Interface:** Open `http://localhost:4000`
+2. **Login:** Username: `admin`, Password: `admin`
+3. **Change Password:** Update default credentials immediately
+4. **Activate Service:** Enter your activation key from the cloud platform
+5. **Configure Router:** Set DNS server to your machine's IP address
+6. **Set Static IP:** Reserve IP address in router to prevent DNS interruption
 
-4. Start the DNS agent:
-   ```
-   npm run start
-   ```
+---
 
-5. Configure your network router to use the IP address of the machine running NexoralDNS as the primary DNS server.
+## 💡 Use Cases
 
-## Configuration
-The configuration file is located at `config/settings.json`. Here you can define:
-- Custom domain mappings
-- Logging preferences
-- Access controls
-- Filtering rules
+### 🏢 Small Business
+- Easy-to-remember domain names for internal services
+- Enhanced network security and monitoring
+- Centralized DNS management for all employees
 
-## Use Cases
-- **Development Environments**: Create custom `.local` or `.dev` domains for your development projects
-- **Small Business Networks**: Provide easy-to-remember domain names for internal services
-- **Network Security**: Monitor and control DNS traffic to enhance security
-- **Educational Institutions**: Manage access to web resources within a school network
+### 👨‍💻 Development Teams
+- Custom `.local` or `.dev` domains for development projects
+- No more host file modifications across team machines
+- Simplified development environment setup
 
-## Dashboard Access
-Access the management dashboard at `http://[NexoralDNS-IP]:8080/dashboard` after installation.
+### 🏫 Educational Institutions
+- Manage and monitor student access to web resources
+- Filter inappropriate content automatically
+- Track network usage patterns
 
-## License
-[MIT License](LICENSE)
+### 🏠 Home Networks
+- Parental controls and device monitoring
+- Custom domain management for smart homes
+- Enhanced security for IoT devices
 
-## Support
-For questions or support, please open an issue in this repository or contact support@nexoraldns.com.
+---
+
+## 📋 System Requirements
+
+- **Operating System:** Linux Debian/Ubuntu
+- **Memory:** Minimum 512MB RAM
+- **Storage:** 1GB free space
+- **Network:** LAN connectivity
+- **Privileges:** Administrator/root access for installation
+
+---
+
+## 🔗 Links & Resources
+
+- **Dashboard:** `http://[server-ip]:4000`
+- **GitHub Repository:** [https://github.com/nexoral/NexoralDNS](https://github.com/nexoral/NexoralDNS)
+- **Documentation:** Available in the web interface
+- **Support:** Open an issue on GitHub
+
+---
+
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our contributing guidelines in the repository.
+
+---
+
+> **🎉 Ready to get started?** Run the installation command and transform your network's DNS in minutes!
+**Version updates not working:**
+- Ensure internet connectivity
+- Check Docker image permissions
+
+---
+
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our contributing guidelines in the repository.
+
+---
+
+> **🎉 Ready to get started?** Run the installation command and transform your network's DNS in minutes!
+
+---
+
+**Made with ❤️ by the NexoralDNS Team**
+            <div class="feature-card">
+                <h3>🏢 Small Business</h3>
+                <p>Easy-to-remember domain names for internal services and enhanced network security.</p>
+            </div>
+            <div class="feature-card">
+                <h3>👨‍💻 Development Teams</h3>
+                <p>Custom <code>.local</code> or <code>.dev</code> domains for development projects without host file modifications.</p>
+            </div>
+            <div class="feature-card">
+                <h3>🏫 Educational Institutions</h3>
+                <p>Manage and monitor student access to web resources within school networks.</p>
+            </div>
+            <div class="feature-card">
+                <h3>🏠 Home Networks</h3>
+                <p>Parental controls, device monitoring, and custom domain management for smart homes.</p>
+            </div>
+        </div>
+</body>
+</html>

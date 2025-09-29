@@ -1,100 +1,156 @@
 #!/bin/bash
 
+# Color definitions
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
+
+# Function to print colored output
+print_status() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+# Fetch version for welcome banner
+VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
+REMOTE_VERSION=$(curl -s "$VERSION_URL" 2>/dev/null || echo "Unknown")
+
+# Welcome Banner
+clear
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}          ${BOLD}${WHITE}Welcome to NexoralDNS Server Installation${NC}         ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                    ${PURPLE}Version: ${BOLD}${WHITE}${REMOTE_VERSION}${NC}                     ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}        ${BLUE}This script will install and configure Docker${NC}         ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}        ${BLUE}and deploy the NexoralDNS server automatically${NC}        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
 # Request sudo access upfront and keep it alive
-echo "This script requires sudo access for Docker installation and management."
+print_status "This script requires ${BOLD}sudo access${NC} for Docker installation and management."
 sudo -v
 
 # Keep sudo alive by updating timestamp every 60 seconds
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
+echo ""
+print_status "Checking Docker installation..."
+
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
-  echo "Docker is not installed. Installing Docker..."
+  print_warning "Docker is not installed. Installing Docker..."
   
   # Add Docker's official GPG key
-  sudo apt-get update
-  sudo apt-get install -y ca-certificates curl
+  print_status "Updating package repositories..."
+  sudo apt-get update > /dev/null 2>&1
+  print_status "Installing required packages..."
+  sudo apt-get install -y ca-certificates curl > /dev/null 2>&1
   sudo install -m 0755 -d /etc/apt/keyrings
+  print_status "Adding Docker's official GPG key..."
   sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
   sudo chmod a+r /etc/apt/keyrings/docker.asc
 
   # Add the repository to Apt sources
+  print_status "Adding Docker repository..."
   echo \
     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
     $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  sudo apt-get update
+  sudo apt-get update > /dev/null 2>&1
 
   # Install Docker and Docker Compose plugin
-  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  print_status "Installing Docker and Docker Compose..."
+  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin > /dev/null 2>&1
   
   # Check if installation was successful
   if ! command -v docker &> /dev/null; then
-    echo "Docker installation failed."
+    print_error "Docker installation failed."
     exit 1
   fi
   
-  echo "Docker has been installed successfully."
+  print_success "Docker has been installed successfully."
 else
-  echo "Docker is already installed."
+  print_success "Docker is already installed."
 fi
 
 # Check if Docker Compose is available
-if ! docker compose version &> /dev/null; then
-  echo "Docker Compose is not available. Installing Docker Compose plugin..."
-  sudo apt-get install -y docker-compose-plugin
+print_status "Checking Docker Compose availability..."
+if ! sudo docker compose version &> /dev/null; then
+  print_warning "Docker Compose is not available. Installing Docker Compose plugin..."
+  sudo apt-get install -y docker-compose-plugin > /dev/null 2>&1
   
-  if ! docker compose version &> /dev/null; then
-    echo "Docker Compose installation failed."
+  if ! sudo docker compose version &> /dev/null; then
+    print_error "Docker Compose installation failed."
     exit 1
   fi
   
-  echo "Docker Compose has been installed successfully."
+  print_success "Docker Compose has been installed successfully."
 else
-  echo "Docker Compose is already available."
+  print_success "Docker Compose is already available."
 fi
 
 # Create directory if it doesn't exist
 DOWNLOAD_DIR="$HOME/ExtraBin"
 if [ ! -d "$DOWNLOAD_DIR" ]; then
-  echo "Creating directory $DOWNLOAD_DIR..."
+  print_status "Creating directory ${BOLD}$DOWNLOAD_DIR${NC}..."
   mkdir -p "$DOWNLOAD_DIR"
+else
+  print_status "Using existing directory ${BOLD}$DOWNLOAD_DIR${NC}..."
 fi
 
 # Check if docker-compose.yml already exists
 COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
 if [ -f "$COMPOSE_FILE" ]; then
-  echo "Existing docker-compose.yml found. Stopping and removing services..."
-  cd "$DOWNLOAD_DIR" && sudo docker compose down
-  echo "Removing existing docker-compose.yml..."
-  rm "$COMPOSE_FILE"
+  print_warning "Existing docker-compose.yml found. Stopping current services..."
+  cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
+  print_status "Removing existing docker-compose.yml..."
+  sudo rm -rf "$COMPOSE_FILE"
 fi
 
 # Download the docker-compose.yml file
-echo "Downloading docker-compose.yml from GitHub..."
-# Using raw URL for direct download
+print_status "Downloading latest docker-compose.yml from GitHub..."
 DOWNLOAD_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/docker-compose.yml"
-curl -L "$DOWNLOAD_URL" -o "$COMPOSE_FILE"
+if curl -L "$DOWNLOAD_URL" -o "$COMPOSE_FILE" > /dev/null 2>&1; then
+  print_success "docker-compose.yml downloaded successfully"
+else
+  print_error "Failed to download docker-compose.yml"
+  exit 1
+fi
 
 if [ -f "$COMPOSE_FILE" ]; then
-  echo "docker-compose.yml has been successfully downloaded to $COMPOSE_FILE"
-  
   # Download and check VERSION file
   VERSION_FILE="$DOWNLOAD_DIR/VERSION"
-  VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
   
-  echo "Downloading VERSION file..."
-  curl -s "$VERSION_URL" -o "$VERSION_FILE"
+  print_status "Checking version information..."
+  remote_version=$(curl -s "$VERSION_URL")
   
-  if [ -f "$VERSION_FILE" ]; then
-    remote_version=$(cat "$VERSION_FILE")
-    echo "Remote version: $remote_version"
+  if [ -n "$remote_version" ]; then
+    echo -e "    ${CYAN}Remote version:${NC} ${BOLD}$remote_version${NC}"
     
     # Check if local VERSION file exists
-    local_version_file="$DOWNLOAD_DIR/VERSION.local"
-    if [ -f "$local_version_file" ]; then
-      local_version=$(cat "$local_version_file")
-      echo "Local version: $local_version"
+    if [ -f "$VERSION_FILE" ]; then
+      local_version=$(cat "$VERSION_FILE")
+      echo -e "    ${CYAN}Local version:${NC}  ${BOLD}$local_version${NC}"
       
       # Function to compare versions
       version_compare() {
@@ -121,30 +177,90 @@ if [ -f "$COMPOSE_FILE" ]; then
       comparison_result=$?
       
       if [ $comparison_result -eq 0 ]; then
-        echo "Versions are the same. Starting services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose up -d
+        print_success "Versions are identical. Starting services..."
+        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
       elif [ $comparison_result -eq 1 ] && [[ "$remote_version" == *"-stable" ]]; then
-        echo "Remote stable version ($remote_version) is newer than local ($local_version)."
-        echo "Removing old Docker image and updating..."
+        print_warning "New stable version available! Updating..."
+        print_status "Removing old Docker image..."
         sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
-        echo "$remote_version" > "$local_version_file"
-        cd "$DOWNLOAD_DIR" && sudo docker compose up -d
+        echo "$remote_version" > "$VERSION_FILE"
+        print_status "Starting updated services..."
+        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
       else
-        echo "Local version is up to date or remote version is not stable. Starting services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose up -d
+        print_status "Local version is current. Starting services..."
+        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
       fi
     else
-      echo "No local version file found. Creating one and starting services..."
-      echo "$remote_version" > "$local_version_file"
-      cd "$DOWNLOAD_DIR" && sudo docker compose up -d
+      print_status "First time installation. Creating version file..."
+      echo "$remote_version" > "$VERSION_FILE"
+      print_status "Starting services..."
+      cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
     fi
   else
-    echo "Failed to download VERSION file. Starting services with current setup..."
-    cd "$DOWNLOAD_DIR" && sudo docker compose up -d
+    print_warning "Could not fetch version information. Starting services with current setup..."
+    cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
   fi
   
-  echo "Services have been started in detached mode."
+  echo ""
+  print_success "NexoralDNS services have been started successfully!"
+  
+  # Get the DHCP IP address
+  print_status "Detecting network configuration..."
+  DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
+  if [ -z "$DHCP_IP" ]; then
+    DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+  fi
+  
+  echo ""
+  echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${CYAN}║${NC}                    ${BOLD}${GREEN}Installation Complete!${NC}                    ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${CYAN}║${NC}                    ${BOLD}${YELLOW}Important Configuration${NC}                 ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  if [ -n "$DHCP_IP" ]; then
+    echo -e "${CYAN}║${NC}  ${WHITE}Server IP:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC}                              ${CYAN}║${NC}"
+  else
+    echo -e "${CYAN}║${NC}  ${WHITE}Server IP:${NC} ${BOLD}${RED}Unable to detect${NC}                       ${CYAN}║${NC}"
+  fi
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}  ${YELLOW}To use NexoralDNS for all LAN devices:${NC}               ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}  ${WHITE}1. Access your Router's Admin Panel${NC}                   ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}  ${WHITE}2. Navigate to DHCP/DNS Settings${NC}                      ${CYAN}║${NC}"
+  if [ -n "$DHCP_IP" ]; then
+    echo -e "${CYAN}║${NC}  ${WHITE}3. Set Primary DNS Server to:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC}           ${CYAN}║${NC}"
+  else
+    echo -e "${CYAN}║${NC}  ${WHITE}3. Set Primary DNS Server to: ${BOLD}${RED}[Your Server IP]${NC}     ${CYAN}║${NC}"
+  fi
+  echo -e "${CYAN}║${NC}  ${WHITE}4. Save and restart your router${NC}                       ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${CYAN}║${NC}                    ${BOLD}${BLUE}Web Interface Setup${NC}                     ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  if [ -n "$DHCP_IP" ]; then
+    echo -e "${CYAN}║${NC}  ${WHITE}1. Open browser and go to:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}         ${CYAN}║${NC}"
+  else
+    echo -e "${CYAN}║${NC}  ${WHITE}1. Open browser and go to:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}         ${CYAN}║${NC}"
+  fi
+  echo -e "${CYAN}║${NC}  ${WHITE}2. Login with Username:${NC} ${BOLD}admin${NC}                    ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}  ${WHITE}3. Login with Password:${NC} ${BOLD}admin${NC}                     ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}  ${WHITE}4. Change the default password immediately${NC}            ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}  ${WHITE}5. Activate NexoralDNS with your Cloud Key${NC}            ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${CYAN}║${NC}  ${RED}${BOLD}CRITICAL: Set Static IP for this machine!${NC}           ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}  ${WHITE}To avoid DNS service interruption:${NC}                    ${CYAN}║${NC}"
+  if [ -n "$DHCP_IP" ]; then
+    echo -e "${CYAN}║${NC}  ${WHITE}• Reserve/Static IP:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC} in router settings    ${CYAN}║${NC}"
+  else
+    echo -e "${CYAN}║${NC}  ${WHITE}• Reserve current IP in router DHCP settings${NC}          ${CYAN}║${NC}"
+  fi
+  echo -e "${CYAN}║${NC}  ${WHITE}• This prevents IP changes that break DNS${NC}             ${CYAN}║${NC}"
+  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+  echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
 else
-  echo "Failed to download docker-compose.yml"
+  print_error "Failed to download docker-compose.yml"
   exit 1
 fi
