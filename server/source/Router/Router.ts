@@ -1,20 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from "fastify";
-import { AuthorInfo } from "../core/key";
 import buildResponse from "../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
-import { readFile } from "node:fs/promises";
 
 // All Sub Routers
+import authRouter from "./Auth/Auth.route";
 
-// Interfaces
-type PackageInterface = {
-  name: string;
-  version: number;
-  author: string;
-  license: string;
-};
+// Controllers
+import PublicInfoController from "../Controller/Public/public.controller";
+
 
 // Extended options interface to include NexoralDNS instance
 interface RouterOptions extends FastifyPluginOptions { }
@@ -33,33 +28,17 @@ export default async function mainRouter(
 
   // General Specific Middleware (e.g, health check, info, etc.)
   fastify.get("/info", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    // Conctruct Fastify Response Class
-    const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS Info");
-    const PackageFile: PackageInterface = JSON.parse(
-      await readFile("./package.json", "utf-8"),
-    );
-    return FastifyResponse.send(
-      {
-        Package_Name: PackageFile.name,
-        NexoralDNS_Version: PackageFile.version,
-        Author_Name: PackageFile.author,
-        License: PackageFile.license,
-        AuthorDetails: AuthorInfo,
-      },
-    );
+    return PublicInfoController.getInfo(reply);
   });
 
 
   // Health check route
   fastify.get("/health", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS is healthy");
-    return FastifyResponse.send(
-      {
-        status: "ok",
-        timestamp: new Date().toISOString(),
-      },
-    );
+    return PublicInfoController.getHealth(reply);
   });
+
+  // Register Sub-Routers
+  fastify.register(authRouter, { prefix: "/auth" });
 
 
   // Handle 404 Not Found
