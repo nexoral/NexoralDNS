@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Request sudo access upfront and keep it alive
+echo "This script requires sudo access for Docker installation and management."
+sudo -v
+
+# Keep sudo alive by updating timestamp every 60 seconds
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
   echo "Docker is not installed. Installing Docker..."
@@ -48,7 +55,7 @@ else
 fi
 
 # Create directory if it doesn't exist
-DOWNLOAD_DIR="/home/ankan/ExtraBin"
+DOWNLOAD_DIR="$HOME/ExtraBin"
 if [ ! -d "$DOWNLOAD_DIR" ]; then
   echo "Creating directory $DOWNLOAD_DIR..."
   mkdir -p "$DOWNLOAD_DIR"
@@ -58,7 +65,7 @@ fi
 COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
 if [ -f "$COMPOSE_FILE" ]; then
   echo "Existing docker-compose.yml found. Stopping and removing services..."
-  cd "$DOWNLOAD_DIR" && docker compose down
+  cd "$DOWNLOAD_DIR" && sudo docker compose down
   echo "Removing existing docker-compose.yml..."
   rm "$COMPOSE_FILE"
 fi
@@ -72,7 +79,7 @@ curl -L "$DOWNLOAD_URL" -o "$COMPOSE_FILE"
 if [ -f "$COMPOSE_FILE" ]; then
   echo "docker-compose.yml has been successfully downloaded to $COMPOSE_FILE"
   echo "Starting Docker Compose services..."
-  cd "$DOWNLOAD_DIR" && docker compose up -d
+  cd "$DOWNLOAD_DIR" && sudo docker compose up -d
   echo "Services have been started in detached mode."
 else
   echo "Failed to download docker-compose.yml"
