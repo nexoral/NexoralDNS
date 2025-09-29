@@ -77,7 +77,7 @@ export default class DNS {
       // Fetch the first record from the collection
       const record = await recordCollection.findOne({ domain: queryName });
       if (queryName === record?.domain) {
-        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.TTL} from database with help of worker: ${process.pid}`);
+        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.TTL} from database with the help of worker: ${process.pid}`);
         // Use buildSendAnswer method from utilities
         const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value, record.TTL);
         if (!response) {
