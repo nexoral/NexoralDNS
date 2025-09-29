@@ -42,9 +42,15 @@ if [[ "$1" == "remove" ]]; then
     
     DOWNLOAD_DIR="$HOME/NexoralDNS"
     
-    print_warning "This will remove all NexoralDNS configurations and data!"
-    read -p "Are you sure you want to continue? (y/N): " -n 1 -r
-    echo
+    # Check if running in non-interactive mode (piped input)
+    if [[ ! -t 0 ]]; then
+        print_warning "Non-interactive mode detected. Proceeding with removal..."
+        REPLY="y"
+    else
+        print_warning "This will remove all NexoralDNS configurations and data!"
+        read -p "Are you sure you want to continue? (y/N): " -n 1 -r
+        echo
+    fi
     
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         print_status "Uninstallation cancelled."
