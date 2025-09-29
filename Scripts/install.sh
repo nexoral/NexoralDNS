@@ -40,11 +40,11 @@ else
 fi
 
 # Check if Docker Compose is available
-if ! docker compose version &> /dev/null; then
+if ! sudo docker compose version &> /dev/null; then
   echo "Docker Compose is not available. Installing Docker Compose plugin..."
   sudo apt-get install -y docker-compose-plugin
   
-  if ! docker compose version &> /dev/null; then
+  if ! sudo docker compose version &> /dev/null; then
     echo "Docker Compose installation failed."
     exit 1
   fi
