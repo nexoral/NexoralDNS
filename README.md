@@ -18,6 +18,22 @@ curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/ins
 
 > ✅ **That's it!** The script will automatically install Docker, download the latest version, and start the NexoralDNS server.
 
+**Start services:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s start
+```
+
+> ▶️ **Start NexoralDNS services** if they are stopped.
+
+**Stop services:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s stop
+```
+
+> ⏹️ **Stop all NexoralDNS services** without removing the installation.
+
 **Complete removal:**
 
 ```bash
