@@ -8,11 +8,11 @@
   "license": "MIT",
   "author": "Ankan Saha",
   "type": "commonjs",
-  "main": "lib/core/core.js",
+  "main": "lib/core/Cluster.js",
   "scripts": {
     "test": "npm test",
     "build": "tsc",
-    "start": "node lib/core/core.js",
+    "start": "node lib/core/Cluster.js",
     "dev": "npm run build && npm start"
   },
   "dependencies": {

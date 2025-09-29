@@ -147,7 +147,7 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, custo
         return resolve(null);
       }
       client = dgram.createSocket("udp4");
-      Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location} with TTL: ${customTTL ?? "original TTL"}`);
+      Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location} with TTL: ${customTTL ?? "original TTL"} With Help of Worker: ${process.pid}`);
 
       timeout = setTimeout(() => {
         client?.close();

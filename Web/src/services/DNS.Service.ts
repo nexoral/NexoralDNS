@@ -23,7 +23,7 @@ export default class DNS {
   private IO: InputOutputHandler;
 
   constructor() {
-    this.server = dgram.createSocket("udp4");
+    this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket with address reuse
     this.IO = new InputOutputHandler(this.server);
   }
 
@@ -39,7 +39,7 @@ export default class DNS {
   public start(): this {
     this.server.on("listening", () => {
       const address = this.server.address();
-      Console.green(`DNS server running at udp://${address.address}:${address.port}`);
+      Console.green(`DNS server running at udp://${address.address}:${address.port} with Worker: ${process.pid}`);
     });
 
     MongoConnector().catch((error) => {
@@ -77,7 +77,7 @@ export default class DNS {
       // Fetch the first record from the collection
       const record = await recordCollection.findOne({ domain: queryName });
       if (queryName === record?.domain) {
-        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.TTL} from database`);
+        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.TTL} from database with the help of worker: ${process.pid}`);
         // Use buildSendAnswer method from utilities
         const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value, record.TTL);
         if (!response) {
