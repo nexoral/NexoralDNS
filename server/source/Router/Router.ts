@@ -2,9 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from "fastify";
 import { AuthorInfo } from "../core/key";
-import buildResponse, {
-  ResponseBuilder,
-} from "../helper/responseBuilder.helper";
+import buildResponse from "../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
 import { readFile } from "node:fs/promises";
 
@@ -32,15 +30,15 @@ export default async function mainRouter(
   _options: RouterOptions,
   done: () => void,
 ): Promise<void> {
-  
+
   // General Specific Middleware (e.g, health check, info, etc.)
   fastify.get("/info", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    // Conctruct Fastify Response Class
+    const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS Info");
     const PackageFile: PackageInterface = JSON.parse(
       await readFile("./package.json", "utf-8"),
     );
-    const Reply: ResponseBuilder = buildResponse(
-      StatusCodes.OK,
-      "NexoralDNS Information",
+    return FastifyResponse.send(
       {
         Package_Name: PackageFile.name,
         NexoralDNS_Version: PackageFile.version,
@@ -49,35 +47,31 @@ export default async function mainRouter(
         AuthorDetails: AuthorInfo,
       },
     );
-    return reply.code(StatusCodes.OK).send(Reply);
   });
 
 
   // Health check route
   fastify.get("/health", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const Reply: ResponseBuilder = buildResponse(
-      StatusCodes.OK,
-      "Server is healthy",
+    const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS is healthy");
+    return FastifyResponse.send(
       {
         status: "ok",
         timestamp: new Date().toISOString(),
       },
     );
-    return reply.code(StatusCodes.OK).send(Reply);
   });
 
 
   // Handle 404 Not Found
   fastify.setNotFoundHandler((request, reply) => {
-    return reply
-      .status(StatusCodes.NOT_FOUND)
-      .send(
-        buildResponse(
-          StatusCodes.NOT_FOUND,
-          `Route ${request.method}:${request.url} not found`,
-        ),
-      );
+    const FastifyResponse = new buildResponse(reply, StatusCodes.NOT_FOUND);
+    return FastifyResponse.send(
+      {
+        message: `Route ${request.method}:${request.url} not found`,
+      },
+    );
   });
 
+// Finalize the router setup
   done();
 }
