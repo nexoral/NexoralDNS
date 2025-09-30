@@ -6,17 +6,30 @@ services:
     volumes:
       - mongodb_data:/data/db
     ports:
-      - "27017:27017"                 # 👈 exposed to host so nexoraldns can reach it on localhost
+      - "27017:27017" # 👈 exposed to host so nexoraldns can reach it on localhost
     networks:
-      - nexoral_network                    # 👈 keep Mongo in bridge network for safety/port isolation
+      - nexoral_network # 👈 keep Mongo in bridge network for safety/port isolation
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379" # 👈 exposed to host so nexoraldns can reach it on localhost
+    networks:
+      - nexoral_network # 👈 keep Redis in bridge network for safety/port isolation
+    command: redis-server --appendonly yes # 👈 enable persistence
+    volumes:
+      - redis_data:/data
 
   nexoraldns:
     image: ghcr.io/nexoral/nexoraldns:latest
     container_name: nexoraldns
     restart: always
-    network_mode: "host"              # 👈 host mode so it can bind to port 53
+    network_mode: "host" # 👈 host mode so it can bind to port 53
     environment:
-      - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns  # 👈 connect via localhost (because host mode)
+      - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns # 👈 connect via localhost (because host mode)
+      - REDIS_URI=redis://127.0.0.1:6379 # 👈 connect to Redis via localhost
 
 networks:
   nexoral_network:
@@ -24,3 +37,4 @@ networks:
 
 volumes:
   mongodb_data:
+  redis_data:

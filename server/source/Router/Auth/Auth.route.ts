@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from "fastify";
-import buildResponse from "../../helper/responseBuilder.helper";
-import { StatusCodes } from "outers";
+import { FastifyInstance, FastifyPluginOptions } from "fastify";
+
+// Controllers
 import AuthController from "../../Controller/Auth/auth.controller";
 
 export interface AuthOptions extends FastifyPluginOptions { }
