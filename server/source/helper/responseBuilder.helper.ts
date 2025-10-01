@@ -90,11 +90,11 @@ export default class ResponseSender {
    * // Send a response with a specific status code
    * responseBuilder.send(null, StatusCodes.CREATED);
    */
-  public send(data: any, statusCode?: number): void {
+  public send(data: any, statusCode?: number, message?: string): void {
     this.fastifyResponse.status(this.statusCode || statusCode || StatusCodes.OK).send(
       this.buildResponse(
         this.statusCode || statusCode || StatusCodes.OK,
-        this.message || "Success",
+        this.message || message || "Success",
         this.data || data,
       ),
     );

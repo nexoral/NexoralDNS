@@ -1,5 +1,6 @@
 import { Collection, Document, MongoClient } from "mongodb";
-import { ClassBased, Console } from "outers";
+import { ClassBased, Console,  } from "outers";
+import Bcrypt from "../helper/bcrypt.helper";
 import { DB_DEFAULT_CONFIGS } from "../core/key";
 const connections = new Map<string, MongoClient>();
 const DB_clients = new Map<string, MongoClient>();
@@ -91,6 +92,9 @@ export default async () => {
     const serviceCol = db.collection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.SERVICE, serviceCol);
 
+    // create Indexes
+    serviceCol.createIndex({ Service_Status: 1 }, { unique: true });
+
     // Ensure index on code field for permissions
     await permissionsCol.createIndex({ code: 1 }, { unique: true });
 
@@ -131,12 +135,24 @@ export default async () => {
       await usersCol.createIndex({ username: 1 }, { unique: true }); // Ensure unique usernames
       await usersCol.insertOne({
         username: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_USERNAME,
-        password: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PASSWORD),
+        password: await new Bcrypt().Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PASSWORD),
         roleId: superAdminRole._id,
       });
       console.log("✅ Admin user created");
     } else {
       console.log("ℹ️ Admin user already exists");
+    }
+
+    // Insert default service config if not exists
+    const serviceConfig = await serviceCol.findOne({ CORE_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CORE_URL });
+    if (!serviceConfig) {
+      await serviceCol.insertOne({
+        CORE_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CORE_URL,
+        apiKey: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.API_KEY),
+        createdAt: new Date(),
+        Service_Status: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Service_Status
+      });
+      console.log("✅ Default service config created");
     }
 
     console.log("🎉 RBAC setup completed");

@@ -24,6 +24,13 @@ export default class AuthController {
     reply: FastifyReply
   ): Promise<void> {
     const { username, password } = request.body;
+
+    if (!request.body || !username || !password) {
+      reply.status(400).send({ message: "Username and password are required" });
+      return;
+    }
+
+    // Initialize LoginService
     const loginService = new LoginService(reply);
 
     return loginService.login(username, password);
