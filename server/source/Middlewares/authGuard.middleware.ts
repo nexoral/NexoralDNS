@@ -2,6 +2,11 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import ResponseBuilder from "../helper/responseBuilder.helper";
 import { StatusCodes, ClassBased } from "outers";
 
+// Extend FastifyRequest to include user property
+  interface authGuardFastifyRequest extends FastifyRequest {
+    user?: any;
+  }
+
 export default class authGuard {
   constructor() {}
 
@@ -22,7 +27,7 @@ export default class authGuard {
    * @param {() => void} [done] - Optional callback to be executed if authentication succeeds
    * @returns {void}
    */
-  public static isAuthenticated(fastifyRequest: FastifyRequest, fastifyReply: FastifyReply, done?: () => void): void {
+  public static isAuthenticated(fastifyRequest: authGuardFastifyRequest, fastifyReply: FastifyReply, done?: () => void): void {
     const responser = new ResponseBuilder(fastifyReply);
     const token = fastifyRequest.headers['authorization'] || fastifyRequest.headers['auth_token'] || (fastifyRequest.query as Record<string, string>)['auth_token'];
     if (!token) {
@@ -32,7 +37,14 @@ export default class authGuard {
     // Verify token (placeholder logic)
     const JWT_MANAGER = new ClassBased.JWT_Manager(process.arch)
     const decodedInfo = JWT_MANAGER.decode(token as string);
-    console.log(decodedInfo.data.data);
+
+    if(decodedInfo.data){
+      fastifyRequest.user = decodedInfo?.data?.data;
+    }
+    else {
+      fastifyRequest.user = null;
+    }
+    
     if (decodedInfo.status !== "Success") {
       return responser.send('Unauthorized, please provide a valid token on headers with any of the keys: authorization, auth_token or as query parameter with key auth_token', StatusCodes.UNAUTHORIZED);
     }
