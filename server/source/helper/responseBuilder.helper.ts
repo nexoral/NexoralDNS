@@ -93,8 +93,8 @@ export default class ResponseSender {
   public send(data: any, statusCode?: number, message?: string): void {
     this.fastifyResponse.status(this.statusCode || statusCode || StatusCodes.OK).send(
       this.buildResponse(
-        this.statusCode || statusCode || StatusCodes.OK,
-        this.message || message || "Success",
+        statusCode || this.statusCode || StatusCodes.OK,
+        message || this.message || "Success",
         this.data || data,
       ),
     );

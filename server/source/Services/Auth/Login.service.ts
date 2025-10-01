@@ -86,7 +86,7 @@ export default class LoginService {
     const JWT_MANAGER = new ClassBased.JWT_Manager(process.arch);
     const token = JWT_MANAGER.generate(userDetails, "1h"); // token valid for 1 hour
     
-    if (token.status !== "success" || !token.toKen) {
+    if (!token.toKen) {
       return Responser.send("Failed to generate token", StatusCodes.INTERNAL_SERVER_ERROR, "Token Generation Failed");
     }
 
