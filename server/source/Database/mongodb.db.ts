@@ -88,6 +88,8 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.ROLES, rolesCol);
     const usersCol = db.collection(DB_DEFAULT_CONFIGS.Collections.USERS);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.USERS, usersCol);
+    const serviceCol = db.collection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.SERVICE, serviceCol);
 
     // Ensure index on code field for permissions
     await permissionsCol.createIndex({ code: 1 }, { unique: true });
