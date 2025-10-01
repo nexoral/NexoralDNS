@@ -5,6 +5,7 @@
   "main": "./lib/cluster/Cluster.js",
   "scripts": {
     "start": "node ./lib/cluster/Cluster.js",
+    "dev": "sudo node ./lib/Config/DNS.js",
     "build": "tsc",
     "lint": "eslint . --ext .ts,.tsx"
   },

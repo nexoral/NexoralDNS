@@ -13,7 +13,7 @@
     "test": "npm test",
     "build": "tsc",
     "start": "node lib/cluster/Cluster.js",
-    "dev": "npm run build && npm start"
+    "dev": "npm run build && node lib/core/fastify.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
