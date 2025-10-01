@@ -64,3 +64,8 @@ export default function FastifyServer() {
     process.exit(1);
   });
 }
+
+// Run the server if this file is executed directly
+if (process.argv[1] === __filename) {
+  FastifyServer();
+}
