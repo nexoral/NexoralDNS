@@ -1,6 +1,6 @@
 {
   "name": "nexoral dns server",
-  "version": "1.1.7-stable",
+  "version": "1.2.7-stable",
   "description": "this server is responsible for managing the all records that are custom build for the all networks",
   "keywords": [
     "server"
@@ -8,15 +8,16 @@
   "license": "MIT",
   "author": "Ankan Saha",
   "type": "commonjs",
-  "main": "lib/core/Cluster.js",
+  "main": "lib/cluster/Cluster.js",
   "scripts": {
     "test": "npm test",
     "build": "tsc",
-    "start": "node lib/core/Cluster.js",
-    "dev": "npm run build && npm start"
+    "start": "node lib/cluster/Cluster.js",
+    "dev": "npm run build && node lib/core/fastify.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
+    "bcryptjs": "^3.0.2",
     "fastify": "^5.6.0",
     "mongodb": "^6.20.0",
     "outers": "^8.6.9",

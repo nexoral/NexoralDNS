@@ -1,5 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import LoginService from "../../Services/Auth/Login.service";
+import { StatusCodes } from "outers";
+import BuildResponse from "../../helper/responseBuilder.helper";
 
 
 type LoginRequestBody = {
@@ -17,13 +19,22 @@ type LoginRequestBody = {
  * @returns {Promise<void>} - A promise that resolves when the login process is complete.
  */
 export default class AuthController {
-  constructor() {}
+  constructor() { }
 
   public static async login(
     request: FastifyRequest<{ Body: LoginRequestBody }>,
     reply: FastifyReply
   ): Promise<void> {
+    // construct Response
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Login failed");
     const { username, password } = request.body;
+
+    if (!request.body || !username || !password) {
+      Responser.send({ message: "Username and password are required" });
+      return;
+    }
+
+    // Initialize LoginService
     const loginService = new LoginService(reply);
 
     return loginService.login(username, password);

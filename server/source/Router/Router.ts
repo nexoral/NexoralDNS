@@ -9,6 +9,7 @@ import authRouter from "./Auth/Auth.route";
 
 // Controllers
 import PublicInfoController from "../Controller/Public/public.controller";
+import authGuard from "../Middlewares/authGuard.middleware";
 
 
 // Extended options interface to include NexoralDNS instance

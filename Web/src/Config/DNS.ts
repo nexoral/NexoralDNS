@@ -5,3 +5,8 @@ export default async function handler() {
   // Initialize and start the DNS server
   new DNS().start().listen().listenError();
 }
+
+// If this file is run directly, execute the handler function
+if (process.argv[1] === __filename) {
+  handler();
+}

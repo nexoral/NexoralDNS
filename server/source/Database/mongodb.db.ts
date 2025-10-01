@@ -1,5 +1,6 @@
 import { Collection, Document, MongoClient } from "mongodb";
-import { ClassBased, Console } from "outers";
+import { ClassBased, Console,  } from "outers";
+import Bcrypt from "../helper/bcrypt.helper";
 import { DB_DEFAULT_CONFIGS } from "../core/key";
 const connections = new Map<string, MongoClient>();
 const DB_clients = new Map<string, MongoClient>();
@@ -88,53 +89,78 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.ROLES, rolesCol);
     const usersCol = db.collection(DB_DEFAULT_CONFIGS.Collections.USERS);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.USERS, usersCol);
+    const serviceCol = db.collection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.SERVICE, serviceCol);
 
-    // Ensure index on code field for permissions
+    // create Indexes
+    await serviceCol.createIndex({ Service_Status: 1 }, { unique: true });
     await permissionsCol.createIndex({ code: 1 }, { unique: true });
+    await rolesCol.createIndex({ code: 1 }, { unique: true }); // Ensure unique role codes
+    await usersCol.createIndex({ username: 1 }, { unique: true }); // Ensure unique usernames
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();
-    let permissionIds = [];
+    let InsertedPermissions = [];
     if (existingPerms === 0) {
-      const result = await permissionsCol.insertMany(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_PERMISSIONS_TYPE);
-      permissionIds = Object.values(result.insertedIds);
+      for (const perm of DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_PERMISSIONS_TYPE) {
+        const result = await permissionsCol.insertOne(perm);
+
+        // Find the newly inserted permission
+        const NewPerm = await permissionsCol.findOne({ _id: result.insertedId });
+        if (!NewPerm) throw new Error("Failed to retrieve the permission after insertion.");
+        InsertedPermissions.push(NewPerm);
+      }
       console.log("✅ Permissions inserted with numeric codes");
     } else {
       const allPerms = await permissionsCol.find().toArray();
-      permissionIds = allPerms.map(p => p._id);
+      InsertedPermissions = allPerms.map(p => p);
       console.log("ℹ️ Permissions already exist");
     }
 
-    // store only super admin permission full access
-    permissionIds = permissionIds.filter((_, code) => code === DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PERMISSIONS_CODE);
+    // 2. Insert role if not exists
+    let allRoles = await rolesCol.countDocuments();
+    let InsertedRoles = [];
+    if (allRoles === 0) {
+      for (const role of DB_DEFAULT_CONFIGS.DefaultValues.DefaultRoles) {
+        const result = await rolesCol.insertOne({
+          code: role.code,
+          name: role.role,
+          permissions: InsertedPermissions.filter(p => role.permissions.includes(p.code)).map(p => p._id),
+        });
 
-    // 2. Insert Super Admin role if not exists
-    let superAdminRole = await rolesCol.findOne({ name: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE });
-    if (!superAdminRole) {
-      await rolesCol.createIndex({ code: 1 }, { unique: true }); // Ensure unique role codes
-      const result = await rolesCol.insertOne({
-        code: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE_CODE,
-        name: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE,
-        permissions: permissionIds,
-      });
-      superAdminRole = { _id: result.insertedId };
-      console.log("✅ Super Admin role created");
+        // Find the newly inserted role
+        const NewRole = await rolesCol.findOne({ _id: result.insertedId });
+        if (!NewRole) throw new Error("Failed to retrieve the Super Admin role after insertion.");
+        InsertedRoles.push(NewRole);
+      }
+      console.log("✅ Default roles created");
     } else {
-      console.log("ℹ️ Super Admin role already exists");
+      console.log("ℹ️ Default roles already exist");
     }
 
     // 3. Insert admin user if not exists
     let adminUser = await usersCol.findOne({ username: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_USERNAME });
     if (!adminUser) {
-      await usersCol.createIndex({ username: 1 }, { unique: true }); // Ensure unique usernames
       await usersCol.insertOne({
         username: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_USERNAME,
-        password: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PASSWORD),
-        roleId: superAdminRole._id,
+        password: await new Bcrypt().Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PASSWORD),
+        roleId: InsertedRoles.find(r => r.name === DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE)?._id,
       });
       console.log("✅ Admin user created");
     } else {
       console.log("ℹ️ Admin user already exists");
+    }
+
+    // Insert default service config if not exists
+    const serviceConfig = await serviceCol.findOne({ CLOUD_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CLOUD_URL });
+    if (!serviceConfig) {
+      await serviceCol.insertOne({
+        CLOUD_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CLOUD_URL,
+        apiKey: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.API_KEY),
+        createdAt: new Date(),
+        Service_Status: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Service_Status
+      });
+      console.log("✅ Default service config created");
     }
 
     console.log("🎉 RBAC setup completed");

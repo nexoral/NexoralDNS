@@ -31,4 +31,4 @@ EXPOSE 53/udp 53/tcp
 
 # Start PM2 (client + server) first, then run DNS service from /app/Web
 ENTRYPOINT ["sh","-lc","cd /app && pm2 start ecosystem.config.js && exec \"$@\""]
-CMD ["sudo", "node", "./Web/lib/Config/Cluster.js"]
+CMD ["sudo", "node", "./Web/lib/cluster/Cluster.js"]
