@@ -26,6 +26,8 @@ export const getMongoClient = () => {
   Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.USERS, usersCol);
   const serviceCol = db.collection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
   Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.SERVICE, serviceCol);
+
+  
   return client;
 }
 

@@ -54,11 +54,11 @@ type DBConfigType = {
     DEFAULT_ADMIN_PASSWORD: string;
     DEFAULT_ADMIN_ROLE: string;
     DEFAULT_ADMIN_ROLE_CODE: number;
-    DEFAULT_ADMIN_PERMISSIONS_CODE: number;
     DEFAULT_PERMISSIONS_TYPE: { code: number; name: string }[];
+    DefaultRoles: { role: string; code: number; permissions: number[] }[];
     ServiceConfigs: {
       API_KEY?: string;
-      CORE_URL?: string;
+      CLOUD_URL?: string;
       Service_Status: "active" | "inactive";
     }
   };
@@ -78,7 +78,6 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
     DEFAULT_ADMIN_PASSWORD: "admin", // Change this after first login
     DEFAULT_ADMIN_ROLE: "Super Admin",
     DEFAULT_ADMIN_ROLE_CODE: 1,
-    DEFAULT_ADMIN_PERMISSIONS_CODE: 3, // Full Access
     DEFAULT_PERMISSIONS_TYPE: [
       { code: 1, name: "Add Domain" },
       { code: 2, name: "Remove Domain" },
@@ -95,11 +94,40 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       { code: 13, name: "Audit Changes" },
       { code: 14, name: "Manage Billing" },
       { code: 15, name: "Support Access" },
-      { code: 16, name: "Activate Service" }
+      { code: 16, name: "Activate Service" },
+      { code: 17, name: "Deactivate Service" }
     ],
+    DefaultRoles: [
+      {
+        role: "Super Admin",
+        code: 1,
+        permissions: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+      },
+      {
+        role: "Admin",
+        code: 2,
+        permissions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      },
+      {
+        role: "Moderator",
+        code: 3,
+        permissions: [1, 2, 3, 7, 8, 9]
+      },
+      {
+        role: "User",
+        code: 4,
+        permissions: [1, 2, 3]
+      },
+      {
+        role: "Guest",
+        code: 5,
+        permissions: [3]
+      }
+    ],
+    // Service Related Configs
     ServiceConfigs: {
       API_KEY: process.env.SERVICE_API_KEY || undefined,
-      CORE_URL: process.env.CORE_SERVICE_URL || undefined,
+      CLOUD_URL: process.env.CLOUD_URL || undefined,
       Service_Status: "active" // active, inactive
     }
   }
