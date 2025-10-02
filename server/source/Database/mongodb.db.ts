@@ -91,6 +91,8 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.USERS, usersCol);
     const serviceCol = db.collection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.SERVICE, serviceCol);
+    const domainsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DOMAINS, domainsCol);
 
     // create Indexes
     await serviceCol.createIndex({ Service_Status: 1 }, { unique: true });
