@@ -20,6 +20,7 @@ import RouterService from "../../Services/DHCP/Router_connection.service";
 export default class DhcpController {
   constructor() { }
 
+  // Fetch all connected IPs from the router
   public static async fetchRouteConnectedIP(
     request: authGuardFastifyRequest,
     reply: FastifyReply
@@ -32,6 +33,24 @@ export default class DhcpController {
 
     try {
       return loginService.fetchConnectedIPs();
+    } catch (error) {
+      return Responser.send(error);
+    }
+  }
+
+  // refresh the connected IPs by calling the cron job function
+  public static async refreshConnectedIP(
+    request: authGuardFastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    // construct Response
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Record update failed");
+
+    // Initialize LoginService
+    const loginService = new RouterService(reply);
+
+    try {
+      return loginService.refreshConnectedIPs();
     } catch (error) {
       return Responser.send(error);
     }

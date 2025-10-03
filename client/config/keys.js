@@ -9,7 +9,8 @@ export const config = {
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',
     SETTINGS: '/api/settings',
-    LIST_OF_DEVICES: '/api/dhcp/list-of-available-ips'
+    LIST_OF_DEVICES: '/api/dhcp/list-of-available-ips',
+    REFRESH_DEVICE_LIST: '/api/dhcp/refresh-connected-ips'
   },
 
   // Application Configuration

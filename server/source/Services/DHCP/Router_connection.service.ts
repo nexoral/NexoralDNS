@@ -7,6 +7,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
 import { getCollectionClient } from "../../Database/mongodb.db";
+import { fetchConnectedIP } from "../../CronJob/Connected_IP_fetcher.cron";
 
 export default class RouterService {
   private readonly fastifyReply: FastifyReply
@@ -47,5 +48,28 @@ export default class RouterService {
     });
 
     return Responser.send(serviceConfig)
+  }
+
+  // refresh the connected IPs by calling the cron job function
+  public async refreshConnectedIPs(): Promise<void> {
+    // construct Response
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Record updated Successful");
+
+    // run the cron job function
+    const status = await fetchConnectedIP();
+
+    if (!status) {
+      Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
+      Responser.setMessage("Failed to update connected IPs");
+      return Responser.send("Failed to update connected IPs");
+    }
+    else if (status === true){
+      Responser.setMessage("Connected IPs updated successfully");
+      return Responser.send({
+        message: "Connected IPs updated successfully",
+        updatedStatus: status
+      });
+    }
+
   }
 }

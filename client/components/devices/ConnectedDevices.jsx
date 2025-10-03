@@ -17,14 +17,13 @@ export default function ConnectedDevices() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { token } = useAuthStore();
 
+  // Function to fetch the list of devices
   const fetchDevices = async () => {
     setLoading(true);
-    setIsRefreshing(true);
     try {
-      // Get token from Zustand store or fallback to localStorage for compatibility
       const authToken = token || localStorage.getItem(config.AUTH.TOKEN_KEY);
 
-      const response = await fetch(getApiUrl('LIST_OF_DEVICES') || 'http://localhost:4773/api/dhcp/list-of-available-ips', {
+      const response = await fetch(getApiUrl('LIST_OF_DEVICES'), {
         method: 'GET',
         headers: {
           'Authorization': `${authToken}`,
@@ -62,6 +61,43 @@ export default function ConnectedDevices() {
     }
   };
 
+  // New function to handle refresh with API call sequence
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+
+    setIsRefreshing(true);
+    setError(null);
+
+    try {
+      const authToken = token || localStorage.getItem(config.AUTH.TOKEN_KEY);
+
+      // First call the REFRESH_DEVICE_LIST API
+      const refreshResponse = await fetch(getApiUrl('REFRESH_DEVICE_LIST'), {
+        method: 'GET',
+        headers: {
+          'Authorization': `${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh device list');
+      }
+
+      const refreshResult = await refreshResponse.json();
+
+      if (refreshResult.statusCode === 200 && refreshResult.data.updatedStatus) {
+        // If update was successful, fetch the updated list
+        await fetchDevices();
+      } else {
+        throw new Error(refreshResult.message || 'Failed to update device list');
+      }
+    } catch (err) {
+      setError(err.message);
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     fetchDevices();
   }, [token]);
@@ -88,7 +124,7 @@ export default function ConnectedDevices() {
                   <span className="font-medium">{serviceInfo.status === 'active' ? 'Active' : 'Inactive'}</span>
                 </div>
                 <button
-                  onClick={fetchDevices}
+                  onClick={handleRefresh} // Changed from fetchDevices to handleRefresh
                   disabled={isRefreshing}
                   className={`flex items-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 ${isRefreshing ? 'opacity-70' : ''}`}
                 >
@@ -264,7 +300,7 @@ export default function ConnectedDevices() {
           <h3 className="text-xl font-semibold text-gray-800 mb-2">No Connected Devices</h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">No devices are currently connected to your network. Devices will appear here when they connect.</p>
           <button
-            onClick={fetchDevices}
+            onClick={handleRefresh} // Changed from fetchDevices to handleRefresh
             className="inline-flex items-center bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors duration-300"
           >
             <FiRefreshCw className="mr-2" /> Check Again

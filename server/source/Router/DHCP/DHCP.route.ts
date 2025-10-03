@@ -12,7 +12,10 @@ export interface DhcpOptions extends FastifyPluginOptions { }
 // Main Router Function
 export default async function DHCPRouter(fastify: FastifyInstance, _options: DhcpOptions): Promise<void> {
 
-  // Login Route
+  // Fetch all connected IPs from the router
   fastify.get("/list-of-available-ips", { preHandler: [authGuard.isAuthenticated] }, DhcpController.fetchRouteConnectedIP);
+
+  // refresh the connected IPs by calling the cron job function
+  fastify.get("/refresh-connected-ips", { preHandler: [authGuard.isAuthenticated] }, DhcpController.refreshConnectedIP);
 
 }
