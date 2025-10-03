@@ -12,60 +12,39 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
 
-  // Dummy data aggregating all features
+  // Simplified dummy data for essential features only
   const [stats, setStats] = useState({
     totalQueries: 152847,
     queriesChange: '+12.5%',
-    activeRules: 24,
-    rulesChange: '+3',
-    managedDomains: 156,
-    domainsChange: '+8',
-    activeUsers: 12,
-    usersChange: '+2'
+    managedDomains: 24,
+    domainsChange: '+3',
+    activeDomains: 22,
+    activeChange: '+2',
+    systemHealth: '99.5%',
+    healthChange: '+0.1%'
   });
 
   const quickActions = [
     {
-      title: 'DNS Rules',
-      description: 'Manage blocklists and routing',
-      icon: '🚫',
-      link: '/dashboard/rules',
-      count: stats.activeRules
-    },
-    {
       title: 'Domain Management',
-      description: 'Add and configure domains',
+      description: 'Add and configure domains & DNS records',
       icon: '🌐',
       link: '/dashboard/domains',
       count: stats.managedDomains
     },
     {
-      title: 'Analytics',
-      description: 'View traffic analytics',
-      icon: '📊',
-      link: '/dashboard/analytics',
-      count: '24h'
+      title: 'Server Settings',
+      description: 'Configure DNS server settings',
+      icon: '⚙️',
+      link: '/dashboard/settings',
+      count: 'Configure'
     },
     {
-      title: 'User Management',
-      description: 'Manage user access',
-      icon: '👥',
-      link: '/dashboard/users',
-      count: stats.activeUsers
-    },
-    {
-      title: 'Reports',
-      description: 'Generate detailed reports',
-      icon: '📈',
-      link: '/dashboard/reports',
-      count: 'PDF/CSV'
-    },
-    {
-      title: 'Subscription',
-      description: 'Manage SaaS access',
-      icon: '💳',
-      link: '/dashboard/subscription',
-      count: 'Active'
+      title: 'Active Domains',
+      description: 'Currently active domains',
+      icon: '✅',
+      link: '/dashboard/domains',
+      count: stats.activeDomains
     }
   ];
 
@@ -90,7 +69,7 @@ export default function Dashboard() {
             <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">
               Welcome back, {user.name.split(' ')[0]}! 👋
             </h1>
-            <p className="text-slate-600">Manage your DNS infrastructure from this central dashboard.</p>
+            <p className="text-slate-600">Manage your DNS infrastructure efficiently.</p>
           </div>
 
           {/* Stats Cards */}

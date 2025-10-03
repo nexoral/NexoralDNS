@@ -7,12 +7,18 @@ import Button from '../../../components/ui/Button';
 import DomainCard from '../../../components/domains/DomainCard';
 import DomainModal from '../../../components/domains/DomainModal';
 import RecordModal from '../../../components/domains/RecordModal';
+import BlockModal from '../../../components/domains/BlockModal';
+import DeleteConfirmModal from '../../../components/domains/DeleteConfirmModal';
 
 export default function DomainsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState(null);
+  const [selectedDomainForBlock, setSelectedDomainForBlock] = useState(null);
+  const [selectedDomainForDelete, setSelectedDomainForDelete] = useState(null);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
 
   // Dummy domains data
@@ -54,13 +60,31 @@ export default function DomainsPage() {
     setDomains(prev => [...prev, domainWithId]);
   };
 
-  const handleDeleteDomain = (id) => {
+  const handleDeleteDomain = (domain) => {
+    setSelectedDomainForDelete(domain);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteDomain = (id) => {
     setDomains(prev => prev.filter(domain => domain.id !== id));
+    // Show success message
+    alert('Domain deleted successfully!');
   };
 
   const handleManageRecords = (domain) => {
     setSelectedDomain(domain);
     setShowRecordModal(true);
+  };
+
+  const handleBlockDomain = (domain) => {
+    setSelectedDomainForBlock(domain);
+    setShowBlockModal(true);
+  };
+
+  const handleSaveBlock = (blockSettings) => {
+    console.log('Block settings:', blockSettings);
+    // Implement block logic here
+    alert(`Domain ${blockSettings.domain} blocked successfully!`);
   };
 
   return (
@@ -142,8 +166,9 @@ export default function DomainsPage() {
                   <DomainCard
                     key={domain.id}
                     domain={domain}
-                    onDelete={() => handleDeleteDomain(domain.id)}
+                    onDelete={() => handleDeleteDomain(domain)}
                     onManageRecords={() => handleManageRecords(domain)}
+                    onBlock={() => handleBlockDomain(domain)}
                   />
                 ))}
               </div>
@@ -187,6 +212,30 @@ export default function DomainsPage() {
             setShowRecordModal(false);
             setSelectedDomain(null);
           }}
+        />
+      )}
+
+      {/* Block Domain Modal */}
+      {showBlockModal && selectedDomainForBlock && (
+        <BlockModal
+          domain={selectedDomainForBlock}
+          onClose={() => {
+            setShowBlockModal(false);
+            setSelectedDomainForBlock(null);
+          }}
+          onSave={handleSaveBlock}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedDomainForDelete && (
+        <DeleteConfirmModal
+          domain={selectedDomainForDelete}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedDomainForDelete(null);
+          }}
+          onConfirm={confirmDeleteDomain}
         />
       )}
     </div>
