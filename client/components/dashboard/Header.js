@@ -124,16 +124,6 @@ export default function Header({ onMenuClick, sidebarOpen }) {
   // Handle logout click
   const handleLogout = async () => {
     try {
-      await fetch(getApiUrl('LOGOUT'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token || localStorage.getItem(config.AUTH.TOKEN_KEY)}`,
-          'Content-Type': 'application/json'
-        }
-      }).catch(() => {
-        console.log('Logout API call failed, proceeding with local logout');
-      });
-
       logout();
       router.push('/');
     } catch (error) {

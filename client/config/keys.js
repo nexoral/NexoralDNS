@@ -3,14 +3,14 @@ export const config = {
   API_BASE_URL: 'http://localhost:4773',
   API_ENDPOINTS: {
     LOGIN: '/api/auth/login',
-    LOGOUT: '/api/auth/logout',
     VERIFY_TOKEN: '/api/auth/verify',
     DNS_RECORDS: '/api/dns/records',
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',
     SETTINGS: '/api/settings',
     LIST_OF_DEVICES: '/api/dhcp/list-of-available-ips',
-    REFRESH_DEVICE_LIST: '/api/dhcp/refresh-connected-ips'
+    REFRESH_DEVICE_LIST: '/api/dhcp/refresh-connected-ips',
+    CREATE_DOMAIN: '/api/domains/create-domain'
   },
 
   // Application Configuration
