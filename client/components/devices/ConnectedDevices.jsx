@@ -3,17 +3,23 @@
 import { useEffect, useState } from 'react';
 import useAuthStore from '../../stores/authStore';
 import config, { getApiUrl } from '../../config/keys';
-import { FiRefreshCw, FiInfo, FiXCircle, FiWifi, FiClock, FiServer, FiAlertCircle } from 'react-icons/fi';
+import {
+  FiRefreshCw, FiInfo, FiXCircle, FiWifi, FiClock,
+  FiServer, FiAlertCircle, FiGlobe, FiActivity,
+  FiShield, FiGrid, FiMonitor
+} from 'react-icons/fi';
 
 export default function ConnectedDevices() {
   const [devices, setDevices] = useState([]);
   const [serviceInfo, setServiceInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { token } = useAuthStore();
 
   const fetchDevices = async () => {
     setLoading(true);
+    setIsRefreshing(true);
     try {
       // Get token from Zustand store or fallback to localStorage for compatibility
       const authToken = token || localStorage.getItem(config.AUTH.TOKEN_KEY);
@@ -39,7 +45,11 @@ export default function ConnectedDevices() {
           status: result.data.Service_Status,
           lastSynced: new Date(result.data.Last_Synced_At),
           nextSync: new Date(result.data.Next_Expected_Sync_At),
-          totalDevices: result.data.Total_Connected_Devices_To_Router
+          totalDevices: result.data.Total_Connected_Devices_To_Router,
+          ipRange: result.data.Current_IP_Range,
+          localIp: result.data.Current_Local_IP,
+          subnetMask: result.data.Current_Subnet_Mask,
+          wifiSSID: result.data.Current_WiFi_SSID
         });
       } else {
         throw new Error(result.message || 'Failed to fetch devices');
@@ -48,6 +58,7 @@ export default function ConnectedDevices() {
       setError(err.message);
     } finally {
       setLoading(false);
+      setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
@@ -56,95 +67,137 @@ export default function ConnectedDevices() {
   }, [token]);
 
   return (
-    <div className="space-y-6">
-      {/* Service Info Card */}
+    <div className="space-y-8">
+      {/* Network Overview Card */}
       {serviceInfo && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
-          <div className="p-6 pb-4">
-            <div className="flex justify-between items-center mb-4">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-500 hover:shadow-xl">
+          <div className="p-6">
+            <div className="flex flex-wrap justify-between items-center mb-6">
+              <div className="flex items-center mb-4 md:mb-0">
+                <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white mr-4">
+                  <FiWifi className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">Network Overview</h2>
+                  <p className="text-gray-500">{serviceInfo.wifiSSID}</p>
+                </div>
+              </div>
               <div className="flex items-center">
-                <div className="p-2 rounded-lg bg-blue-50 mr-3">
-                  <FiServer className="h-6 w-6 text-blue-500" />
+                <div className={`px-3 py-1 rounded-full mr-4 ${serviceInfo.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                  <span className="font-medium">{serviceInfo.status === 'active' ? 'Active' : 'Inactive'}</span>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-800">Network Status</h2>
+                <button
+                  onClick={fetchDevices}
+                  disabled={isRefreshing}
+                  className={`flex items-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 ${isRefreshing ? 'opacity-70' : ''}`}
+                >
+                  <FiRefreshCw className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </button>
               </div>
-              <button
-                onClick={fetchDevices}
-                className="flex items-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md transition-colors"
-              >
-                <FiRefreshCw className="mr-2" /> Refresh
-              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <FiWifi className="text-blue-500 mr-2" />
-                  <h3 className="text-sm font-medium text-blue-800">Service</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl transition-transform duration-300 transform hover:scale-105 group">
+                <div className="flex items-center mb-3 text-blue-600">
+                  <FiGlobe className="h-5 w-5 mr-2 group-hover:animate-pulse" />
+                  <h3 className="font-semibold">IP Range</h3>
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-semibold text-gray-900">{serviceInfo.serviceName}</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${serviceInfo.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                    {serviceInfo.status}
-                  </span>
-                </div>
+                <p className="text-gray-800 font-medium">{serviceInfo.ipRange}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <FiServer className="text-purple-500 mr-2" />
-                  <h3 className="text-sm font-medium text-purple-800">Total Devices</h3>
+              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-5 rounded-xl transition-transform duration-300 transform hover:scale-105 group">
+                <div className="flex items-center mb-3 text-indigo-600">
+                  <FiServer className="h-5 w-5 mr-2 group-hover:animate-pulse" />
+                  <h3 className="font-semibold">Local IP</h3>
                 </div>
-                <p className="text-2xl font-semibold text-gray-900">{serviceInfo.totalDevices}</p>
+                <p className="text-gray-800 font-medium">{serviceInfo.localIp}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <FiClock className="text-green-500 mr-2" />
-                  <h3 className="text-sm font-medium text-green-800">Last Updated</h3>
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl transition-transform duration-300 transform hover:scale-105 group">
+                <div className="flex items-center mb-3 text-purple-600">
+                  <FiGrid className="h-5 w-5 mr-2 group-hover:animate-pulse" />
+                  <h3 className="font-semibold">Subnet Mask</h3>
                 </div>
-                <p className="text-sm font-medium text-gray-700">{serviceInfo.lastSynced.toLocaleString()}</p>
+                <p className="text-gray-800 font-medium">{serviceInfo.subnetMask}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <FiClock className="text-amber-500 mr-2" />
-                  <h3 className="text-sm font-medium text-amber-800">Next Update</h3>
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-xl transition-transform duration-300 transform hover:scale-105 group">
+                <div className="flex items-center mb-3 text-amber-600">
+                  <FiActivity className="h-5 w-5 mr-2 group-hover:animate-pulse" />
+                  <h3 className="font-semibold">Connected Devices</h3>
                 </div>
-                <p className="text-sm font-medium text-gray-700">{serviceInfo.nextSync.toLocaleString()}</p>
+                <p className="text-gray-800 font-medium">{serviceInfo.totalDevices}</p>
+              </div>
+            </div>
+
+            {/* Last Synced Info */}
+            <div className="mt-6 flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-lg p-3">
+              <div className="flex items-center mb-3 md:mb-0">
+                <FiClock className="text-gray-500 mr-2" />
+                <span className="text-sm text-gray-600">Last updated: {serviceInfo.lastSynced.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center">
+                <FiShield className="text-gray-500 mr-2" />
+                <span className="text-sm text-gray-600">Next sync: {serviceInfo.nextSync.toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Loading State */}
-      {loading && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-100 p-10 text-center">
-          <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent mb-3"></div>
-          <p className="text-gray-600">Loading connected devices...</p>
+      {/* Loading State - with animation */}
+      {loading && !isRefreshing && (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12 text-center">
+          <div className="flex flex-col items-center">
+            <div className="relative">
+              <div className="h-16 w-16 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
+              <div className="h-16 w-16 rounded-full border-l-4 border-r-4 border-blue-300 animate-spin absolute top-0 left-0" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+            </div>
+            <p className="text-lg text-gray-600 mt-6 font-medium animate-pulse">Loading network data...</p>
+          </div>
         </div>
       )}
 
-      {/* Error State */}
+      {/* Error State - with animation */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-5">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 animate-fadeIn">
           <div className="flex items-center">
-            <FiAlertCircle className="h-5 w-5 text-red-500 mr-3" />
-            <p className="text-red-700 font-medium">
-              {error}
-            </p>
+            <div className="rounded-full bg-red-100 p-3 mr-4">
+              <FiAlertCircle className="h-6 w-6 text-red-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-red-800 mb-1">Connection Error</h3>
+              <p className="text-red-700">
+                {error}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 text-right">
+            <button
+              onClick={fetchDevices}
+              className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg transition-colors duration-300"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       )}
 
-      {/* Devices Table */}
+      {/* Devices Table - with animations */}
       {!loading && !error && devices.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-500 hover:shadow-xl">
           <div className="p-6 pb-0">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Connected Devices</h2>
-            <p className="text-gray-600 mb-4">All devices currently connected to your network</p>
+            <div className="flex items-center mb-4">
+              <div className="p-2 rounded-lg bg-green-100 mr-3">
+                <FiServer className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Connected Devices</h2>
+                <p className="text-gray-500">All devices currently connected to your network</p>
+              </div>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -158,12 +211,22 @@ export default function ConnectedDevices() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {devices.map((device, index) => (
-                  <tr key={index} className="hover:bg-gray-50 transition-colors">
+                  <tr key={index} className={`hover:bg-blue-50 transition-colors duration-200 animate-fadeIn ${device.ip === serviceInfo.localIp ? 'bg-blue-50' : ''}`} style={{ animationDelay: `${index * 100}ms` }}>
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{device.ip}</div>
+                      <div className="flex items-center">
+                        <div className={`w-2 h-2 rounded-full ${device.status === 'connected' ? 'bg-green-500' : 'bg-red-500'} mr-3 animate-pulse`}></div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {device.ip}
+                          {device.ip === serviceInfo.localIp && (
+                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <FiMonitor className="mr-1" /> My Machine
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${device.status === 'reachable' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${device.status === 'connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
                         {device.status}
                       </span>
@@ -172,28 +235,40 @@ export default function ConnectedDevices() {
                       <div className="text-sm text-gray-500">{new Date(device.lastSeen).toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-sm font-medium">
-                      <button className="inline-flex items-center bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1 rounded mr-2">
+                      <button className="inline-flex items-center bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1 rounded-lg mr-2 transition-all duration-200 hover:shadow-md">
                         <FiInfo className="mr-1" /> Details
                       </button>
-                      <button className="inline-flex items-center bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 rounded">
-                        <FiXCircle className="mr-1" /> Block
-                      </button>
+                      {device.ip !== serviceInfo.localIp && (
+                        <button className="inline-flex items-center bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 rounded-lg transition-all duration-200 hover:shadow-md">
+                          <FiXCircle className="mr-1" /> Block
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <div className="p-4 bg-gray-50 text-center text-sm text-gray-500">
+            Showing {devices.length} of {serviceInfo?.totalDevices || 0} devices
+          </div>
         </div>
       )}
 
+      {/* Empty State - with animation */}
       {!loading && !error && devices.length === 0 && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-100 p-10 text-center">
-          <div className="inline-block p-3 rounded-full bg-gray-100 mb-3">
-            <FiWifi className="h-6 w-6 text-gray-500" />
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12 text-center transition-all duration-300 hover:shadow-xl">
+          <div className="inline-block p-4 rounded-full bg-gray-100 mb-4 animate-bounce">
+            <FiWifi className="h-8 w-8 text-gray-500" />
           </div>
-          <p className="text-lg font-medium text-gray-700 mb-1">No Connected Devices</p>
-          <p className="text-gray-500">No devices are currently connected to your network.</p>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">No Connected Devices</h3>
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">No devices are currently connected to your network. Devices will appear here when they connect.</p>
+          <button
+            onClick={fetchDevices}
+            className="inline-flex items-center bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors duration-300"
+          >
+            <FiRefreshCw className="mr-2" /> Check Again
+          </button>
         </div>
       )}
     </div>

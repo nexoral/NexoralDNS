@@ -67,6 +67,10 @@ type DBConfigType = {
       Service_Status: "active" | "inactive";
       Connected_At: Date | null;
       Disconnected_At: Date | null;
+      Current_WiFi_SSID: string | null;
+      Current_Local_IP: string | null;
+      Current_Subnet_Mask: string | null;
+      Current_IP_Range: string | null;
       Next_Expected_Sync_At: Date | null;
       Last_Synced_At: Date | null;
       Total_Connected_Devices_To_Router: number;
@@ -147,6 +151,10 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       Service_Status: "active", // active, inactive
       Connected_At: null,
       Disconnected_At: null,
+      Current_WiFi_SSID: null,
+      Current_Local_IP: null,
+      Current_Subnet_Mask: null,
+      Current_IP_Range: null,
       Next_Expected_Sync_At: null,
       Last_Synced_At: null,
       Total_Connected_Devices_To_Router: 0,

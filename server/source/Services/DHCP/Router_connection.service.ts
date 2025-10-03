@@ -39,8 +39,13 @@ export default class RouterService {
     delete serviceConfig.Connected_At;
     delete serviceConfig.Disconnected_At;
     delete serviceConfig.CLOUD_URL;
-    
+
+    // Filter out the device with IP ending in .1 (usually the router itself)
+    serviceConfig.List_of_Connected_Devices_Info = serviceConfig.List_of_Connected_Devices_Info.filter((device: any) => {
+      const ipparts = device.ip.split(".");
+      return device.ip.split(".")[ipparts.length - 1] !== "1"
+    });
+
     return Responser.send(serviceConfig)
-    
   }
 }
