@@ -3,7 +3,7 @@ import ResponseBuilder from "../helper/responseBuilder.helper";
 import { StatusCodes, ClassBased } from "outers";
 
 // Extend FastifyRequest to include user property
-  interface authGuardFastifyRequest extends FastifyRequest {
+  export interface authGuardFastifyRequest extends FastifyRequest {
     user?: any;
   }
 
@@ -28,7 +28,7 @@ export default class authGuard {
    * @returns {void}
    */
   public static isAuthenticated(fastifyRequest: authGuardFastifyRequest, fastifyReply: FastifyReply, done?: () => void): void {
-    const responser = new ResponseBuilder(fastifyReply);
+    const responser = new ResponseBuilder(fastifyReply, StatusCodes.UNAUTHORIZED, "Unauthorized access");
     const token = fastifyRequest.headers['authorization'] || fastifyRequest.headers['auth_token'] || (fastifyRequest.query as Record<string, string>)['auth_token'];
     if (!token) {
       return responser.send('Unauthorized, please provide a valid token on headers with any of the keys: authorization, auth_token or as query parameter with key auth_token', StatusCodes.UNAUTHORIZED);
