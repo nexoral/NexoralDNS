@@ -5,6 +5,7 @@ import { StatusCodes, ClassBased } from "outers";
 // Extend FastifyRequest to include user property
   export interface authGuardFastifyRequest extends FastifyRequest {
     user?: any;
+    body: any;
   }
 
 export default class authGuard {
