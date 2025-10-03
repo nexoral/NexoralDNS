@@ -1,4 +1,4 @@
-export default function DomainCard({ domain, onDelete, onManageRecords }) {
+export default function DomainCard({ domain, onDelete, onManageRecords, onBlock }) {
   const getStatusColor = (status) => {
     return status === 'active'
       ? 'bg-green-100 text-green-800 border-green-200'
@@ -30,6 +30,13 @@ export default function DomainCard({ domain, onDelete, onManageRecords }) {
             className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-sm font-medium"
           >
             Manage Records
+          </button>
+
+          <button
+            onClick={onBlock}
+            className="px-4 py-2 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium"
+          >
+            Block
           </button>
 
           <button

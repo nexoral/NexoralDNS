@@ -13,13 +13,8 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard', tooltip: 'Main Dashboard' },
-    { id: 'rules', label: 'DNS Rules', icon: 'rules', href: '/dashboard/rules', tooltip: 'Manage DNS Rules' },
-    { id: 'domains', label: 'Domains', icon: 'domains', href: '/dashboard/domains', tooltip: 'Domain Management' },
-    { id: 'analytics', label: 'Analytics', icon: 'analytics', href: '/dashboard/analytics', tooltip: 'View Analytics' },
-    { id: 'reports', label: 'Reports', icon: 'reports', href: '/dashboard/reports', tooltip: 'Generate Reports' },
-    { id: 'users', label: 'Users', icon: 'users', href: '/dashboard/users', tooltip: 'User Management' },
-    { id: 'subscription', label: 'Subscription', icon: 'subscription', href: '/dashboard/subscription', tooltip: 'Subscription Settings' },
-    { id: 'settings', label: 'Settings', icon: 'settings', href: '/dashboard/settings', tooltip: 'System Settings' }
+    { id: 'domains', label: 'Domain Management', icon: 'domains', href: '/dashboard/domains', tooltip: 'Manage Domains & DNS' },
+    { id: 'settings', label: 'Server Settings', icon: 'settings', href: '/dashboard/settings', tooltip: 'DNS Server Settings' }
   ];
 
   const icons = {
@@ -29,34 +24,9 @@ export default function Sidebar({ isOpen, onClose }) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v14l-5-3-5 3V5z" />
       </svg>
     ),
-    rules: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
     domains: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-      </svg>
-    ),
-    analytics: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-    reports: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    ),
-    users: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-      </svg>
-    ),
-    subscription: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9" />
       </svg>
     ),
     settings: (
@@ -165,5 +135,5 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
       )}
     </div>
-  );
+  )
 }

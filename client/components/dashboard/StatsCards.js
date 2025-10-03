@@ -59,7 +59,7 @@ export default function StatsCards({ stats }) {
       positive: true
     },
     {
-      title: 'Active Rules',
+      title: 'DNS Rules',
       value: animatedStats.activeRules.toString(),
       change: stats.rulesChange || '+0',
       icon: (
@@ -83,12 +83,12 @@ export default function StatsCards({ stats }) {
       positive: true
     },
     {
-      title: 'Active Users',
-      value: animatedStats.activeUsers.toString(),
-      change: stats.usersChange || '+0',
+      title: 'System Health',
+      value: stats.systemHealth || '99.5%',
+      change: stats.healthChange || '+0.1%',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
       color: 'red',

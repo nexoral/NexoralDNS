@@ -4,10 +4,10 @@ export default function SystemOverview() {
   const systemMetrics = [
     { label: 'DNS Rules Active', value: '24', status: 'good' },
     { label: 'Domains Managed', value: '156', status: 'good' },
-    { label: 'Active Users', value: '12', status: 'good' },
-    { label: 'Subscription Status', value: 'Pro Plan', status: 'good' },
-    { label: 'System Health', value: '98.5%', status: 'warning' },
-    { label: 'Last Backup', value: '2h ago', status: 'good' }
+    { label: 'System Uptime', value: '99.9%', status: 'good' },
+    { label: 'Query Response', value: '18ms', status: 'good' },
+    { label: 'Last Backup', value: '2h ago', status: 'good' },
+    { label: 'Server Status', value: 'Online', status: 'good' }
   ];
 
   const getStatusColor = (status) => {
