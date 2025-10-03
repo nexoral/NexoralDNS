@@ -41,11 +41,22 @@ export default class RouterService {
     delete serviceConfig.Disconnected_At;
     delete serviceConfig.CLOUD_URL;
 
+    // Store original length
+    const originalLength = serviceConfig.List_of_Connected_Devices_Info.length;
+
     // Filter out the device with IP ending in .1 (usually the router itself)
     serviceConfig.List_of_Connected_Devices_Info = serviceConfig.List_of_Connected_Devices_Info.filter((device: any) => {
       const ipparts = device.ip.split(".");
-      return device.ip.split(".")[ipparts.length - 1] !== "1"
+      return ipparts[ipparts.length - 1] !== "1";
     });
+
+    // If the length decreased, adjust the count
+    if (serviceConfig.List_of_Connected_Devices_Info.length < originalLength) {
+      serviceConfig.Total_Connected_Devices_To_Router = Math.max(
+        0,
+        serviceConfig.Total_Connected_Devices_To_Router - 1
+      );
+    }
 
     return Responser.send(serviceConfig)
   }
@@ -63,7 +74,7 @@ export default class RouterService {
       Responser.setMessage("Failed to update connected IPs");
       return Responser.send("Failed to update connected IPs");
     }
-    else if (status === true){
+    else if (status === true) {
       Responser.setMessage("Connected IPs updated successfully");
       return Responser.send({
         message: "Connected IPs updated successfully",
