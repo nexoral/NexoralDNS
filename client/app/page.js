@@ -1,14 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import LoginForm from '../components/auth/LoginForm';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Toast from '../components/ui/Toast';
 import config, { getApiUrl } from '../config/keys';
+import useAuthStore from '../stores/authStore';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const router = useRouter();
+  const { login, isAuthenticated } = useAuthStore();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, router]);
 
   const handleLogin = async (credentials) => {
     setIsLoading(true);
@@ -20,12 +31,17 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem(config.AUTH.TOKEN_KEY, data.token);
-        if (data.refreshToken) {
-          localStorage.setItem(config.AUTH.REFRESH_TOKEN_KEY, data.refreshToken);
-        }
-        window.location.href = '/dashboard';
+        const responseData = await response.json();
+
+        // Store auth data in Zustand
+        login({
+          token: responseData.data.token,
+          refreshToken: responseData.data.refreshToken,
+          user: responseData.data.user,
+          data: responseData.data
+        });
+
+        router.push('/dashboard');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Invalid credentials');

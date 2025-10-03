@@ -1,4 +1,4 @@
-const config = {
+export const config = {
   // API Configuration
   API_BASE_URL: 'http://localhost:4773',
   API_ENDPOINTS: {
