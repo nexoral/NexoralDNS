@@ -154,13 +154,20 @@ export default async () => {
     }
 
     // Insert default service config if not exists
-    const serviceConfig = await serviceCol.findOne({ CLOUD_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CLOUD_URL });
+    const serviceConfig = await serviceCol.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
     if (!serviceConfig) {
       await serviceCol.insertOne({
+        SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME,
         CLOUD_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CLOUD_URL,
         apiKey: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.API_KEY),
         createdAt: new Date(),
-        Service_Status: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Service_Status
+        Service_Status: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Service_Status,
+        Connected_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Connected_At,
+        Disconnected_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Disconnected_At,
+        Last_Synced_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Last_Synced_At,
+        Next_Expected_Sync_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Next_Expected_Sync_At,
+        Total_Connected_Devices_To_Router: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Total_Connected_Devices_To_Router,
+        List_of_Connected_Devices_Info: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.List_of_Connected_Devices_Info
       });
       console.log("✅ Default service config created");
     }

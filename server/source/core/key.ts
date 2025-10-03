@@ -61,9 +61,16 @@ type DBConfigType = {
     DEFAULT_PERMISSIONS_TYPE: { code: number; name: string }[];
     DefaultRoles: { role: string; code: number; permissions: number[] }[];
     ServiceConfigs: {
+      SERVICE_NAME: string;
       API_KEY?: string;
       CLOUD_URL?: string;
       Service_Status: "active" | "inactive";
+      Connected_At: Date | null;
+      Disconnected_At: Date | null;
+      Next_Expected_Sync_At: Date | null;
+      Last_Synced_At: Date | null;
+      Total_Connected_Devices_To_Router: number;
+      List_of_Connected_Devices_Info: any[];
     }
   };
 };
@@ -134,9 +141,16 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
     ],
     // Service Related Configs
     ServiceConfigs: {
+      SERVICE_NAME: "NexoralDNS",
       API_KEY: process.env.SERVICE_API_KEY || undefined,
       CLOUD_URL: process.env.CLOUD_URL || undefined,
-      Service_Status: "active" // active, inactive
+      Service_Status: "active", // active, inactive
+      Connected_At: null,
+      Disconnected_At: null,
+      Next_Expected_Sync_At: null,
+      Last_Synced_At: null,
+      Total_Connected_Devices_To_Router: 0,
+      List_of_Connected_Devices_Info: []
     }
   }
 }
