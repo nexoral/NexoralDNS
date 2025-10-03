@@ -8,7 +8,8 @@ export const config = {
     DNS_RECORDS: '/api/dns/records',
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',
-    SETTINGS: '/api/settings'
+    SETTINGS: '/api/settings',
+    LIST_OF_DEVICES: '/api/dhcp/list-of-available-ips'
   },
 
   // Application Configuration
