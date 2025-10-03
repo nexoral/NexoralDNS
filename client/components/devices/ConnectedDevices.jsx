@@ -146,7 +146,7 @@ export default function ConnectedDevices() {
               <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-5 rounded-xl transition-transform duration-300 transform hover:scale-105 group">
                 <div className="flex items-center mb-3 text-indigo-600">
                   <FiServer className="h-5 w-5 mr-2 group-hover:animate-pulse" />
-                  <h3 className="font-semibold">Local IP</h3>
+                  <h3 className="font-semibold">My Local IP</h3>
                 </div>
                 <p className="text-gray-800 font-medium">{serviceInfo.localIp}</p>
               </div>
@@ -271,9 +271,6 @@ export default function ConnectedDevices() {
                       <div className="text-sm text-gray-500">{new Date(device.lastSeen).toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-sm font-medium">
-                      <button className="inline-flex items-center bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1 rounded-lg mr-2 transition-all duration-200 hover:shadow-md">
-                        <FiInfo className="mr-1" /> Details
-                      </button>
                       {device.ip !== serviceInfo.localIp && (
                         <button className="inline-flex items-center bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 rounded-lg transition-all duration-200 hover:shadow-md">
                           <FiXCircle className="mr-1" /> Block
