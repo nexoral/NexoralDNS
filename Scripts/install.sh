@@ -372,6 +372,11 @@ if ! command -v docker &> /dev/null; then
   print_status "Installing Docker and Docker Compose..."
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin > /dev/null 2>&1
   
+  # Add current user to docker group
+  print_status "Adding user $USER to docker group..."
+  sudo groupadd docker
+  sudo usermod -aG docker "$USER"
+
   # Check if installation was successful
   if ! command -v docker &> /dev/null; then
     print_error "Docker installation failed."
