@@ -121,6 +121,39 @@ disable_systemd_resolved_if_enabled() {
   return 0
 }
 
+# Update /etc/resolv.conf to use the given nameserver IP.
+# Replaces existing nameserver lines and preserves other lines.
+set_resolv_nameserver() {
+  local ns_ip="$1"
+  if [ -z "$ns_ip" ]; then
+    print_warning "No nameserver IP provided to set_resolv_nameserver"
+    return 1
+  fi
+
+  print_status "Updating /etc/resolv.conf nameserver -> $ns_ip"
+
+  # Capture existing non-nameserver lines (if any)
+  local rest
+  rest=$(sudo grep -vE '^[[:space:]]*nameserver' /etc/resolv.conf 2>/dev/null || true)
+
+  # If it's a symlink (commonly managed by systemd-resolved), replace it with a regular file
+  if [ -L /etc/resolv.conf ]; then
+    print_warning "/etc/resolv.conf is a symlink; replacing it with a regular file"
+    sudo rm -f /etc/resolv.conf
+  fi
+
+  # Write the new resolv.conf atomically
+  sudo bash -c "printf 'nameserver %s\n' '$ns_ip' > /etc/resolv.conf"
+
+  if [ -n "$rest" ]; then
+    printf '%s\n' "$rest" | sudo tee -a /etc/resolv.conf > /dev/null
+  fi
+
+  print_success "/etc/resolv.conf updated to use nameserver $ns_ip"
+  return 0
+}
+
+
 # Pull required images from registry before stopping system services (so DNS works during pull)
 pull_required_images() {
   local images=("mongo:latest" "redis:latest" "ghcr.io/nexoral/nexoraldns:latest")
@@ -280,6 +313,8 @@ if [[ "$1" == "remove" ]]; then
     
   # Ensure systemd-resolved is running after shutdown
   ensure_systemd_resolved_running
+  # Reset local resolver to systemd stub resolver
+  set_resolv_nameserver "127.0.0.53"
     
     print_status "Removing Docker images..."
     sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
@@ -331,6 +366,8 @@ if [[ "$1" == "stop" ]]; then
         print_success "All NexoralDNS services have been stopped successfully!"
     # Ensure systemd-resolved is running after shutdown
     ensure_systemd_resolved_running
+  # Reset local resolver to systemd stub resolver
+  set_resolv_nameserver "127.0.0.53"
     else
         print_warning "NexoralDNS installation not found or docker-compose.yml missing."
         print_status "Please ensure NexoralDNS is installed in $DOWNLOAD_DIR"
@@ -364,6 +401,13 @@ if [[ "$1" == "start" ]]; then
         DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
         if [ -z "$DHCP_IP" ]; then
             DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+        fi
+
+        # Update system resolver to point to this server so containers and host use NexoralDNS
+        if [ -n "$DHCP_IP" ]; then
+          set_resolv_nameserver "$DHCP_IP"
+        else
+          print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
         fi
         
         echo ""
@@ -579,6 +623,12 @@ if [ -f "$COMPOSE_FILE" ]; then
   DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
   if [ -z "$DHCP_IP" ]; then
     DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+  fi
+  # Update resolv.conf so the machine uses the NexoralDNS server as its nameserver
+  if [ -n "$DHCP_IP" ]; then
+    set_resolv_nameserver "$DHCP_IP"
+  else
+    print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
   fi
   
   echo ""
