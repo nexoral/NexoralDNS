@@ -59,71 +59,133 @@ detect_supported_distro() {
     fi
 }
 
-# Function to check if port 53 is in use and handle conflicts
-check_port_53() {
-  print_status "Checking if port 53 (DNS) is available..."
-  
-  # Check if port 53 is in use
-  if sudo lsof -i :53 > /dev/null 2>&1; then
-    print_warning "Port 53 is currently in use."
-    
-    # Check if systemd-resolved is using port 53
-    if sudo lsof -i :53 | grep systemd-resolve > /dev/null 2>&1; then
-      print_warning "systemd-resolved service is using port 53."
-      
-      # Check if systemd-resolved is active
-      if systemctl is-active systemd-resolved > /dev/null 2>&1; then
-        print_status "Stopping systemd-resolved service temporarily..."
-        
-        # Store systemd-resolved state for later restoration
-        echo "systemd-resolved-was-active=true" > "$DOWNLOAD_DIR/service_state"
-        
-        # Stop systemd-resolved
-        sudo systemctl stop systemd-resolved > /dev/null 2>&1
-        
-        # Check if stop was successful
-        if systemctl is-active systemd-resolved > /dev/null 2>&1; then
-          print_error "Failed to stop systemd-resolved. Port 53 may still be in use."
-          print_error "NexoralDNS might not start properly due to port conflict."
-        else
-          print_success "systemd-resolved stopped successfully. Port 53 is now available."
-        fi
-      else
-        echo "systemd-resolved-was-active=false" > "$DOWNLOAD_DIR/service_state"
-        print_warning "systemd-resolved is installed but not active."
-      fi
+# Ensure systemd-resolved is running; if it's not active, start it.
+ensure_systemd_resolved_running() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    print_warning "systemctl not found; cannot manage systemd-resolved."
+    return 2
+  fi
+
+  if systemctl is-active --quiet systemd-resolved; then
+    print_status "systemd-resolved is already active."
+    return 0
+  fi
+
+  print_status "systemd-resolved is not active — attempting to start..."
+  if sudo systemctl start systemd-resolved >/dev/null 2>&1; then
+    if systemctl is-active --quiet systemd-resolved; then
+      print_success "systemd-resolved started successfully."
+      return 0
+    fi
+  fi
+
+  print_error "Failed to start systemd-resolved."
+  return 1
+}
+
+# If systemd-resolved is enabled, disable and stop it (useful when you must free port 53).
+disable_systemd_resolved_if_enabled() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    print_warning "systemctl not found; cannot manage systemd-resolved."
+    return 2
+  fi
+
+  local acted=0
+  # If the service is active (running) stop it so port 53 is freed
+  if systemctl is-active --quiet systemd-resolved 2>/dev/null; then
+    print_status "systemd-resolved is active — stopping now to free port 53..."
+    if sudo systemctl stop systemd-resolved >/dev/null 2>&1; then
+      print_success "systemd-resolved stopped."
+      acted=1
     else
-      # Another service is using port 53
-      PORT_53_SERVICE=$(sudo lsof -i :53 | grep LISTEN | head -1 | awk '{print $1}')
-      print_error "Port 53 is in use by service: $PORT_53_SERVICE"
-      print_error "Please stop this service before running NexoralDNS."
-      echo "port-53-in-use=true" > "$DOWNLOAD_DIR/service_state"
-      echo "port-53-service=$PORT_53_SERVICE" >> "$DOWNLOAD_DIR/service_state"
+      print_error "Failed to stop systemd-resolved."
       return 1
     fi
-  else
-    print_success "Port 53 is available."
-    echo "port-53-available=true" > "$DOWNLOAD_DIR/service_state"
   fi
-  
+
+  # If the service is enabled, disable it so it doesn't restart at boot
+  if systemctl is-enabled --quiet systemd-resolved 2>/dev/null; then
+    print_status "systemd-resolved is enabled — disabling now..."
+    if sudo systemctl disable systemd-resolved >/dev/null 2>&1; then
+      print_success "systemd-resolved disabled."
+      acted=1
+    else
+      print_error "Failed to disable systemd-resolved."
+      return 1
+    fi
+  fi
+
+  if [ $acted -eq 0 ]; then
+    print_status "systemd-resolved was neither active nor enabled (nothing to do)."
+  fi
   return 0
 }
 
-# Function to restore systemd-resolved if needed
-restore_systemd_resolved() {
-  if [ -f "$DOWNLOAD_DIR/service_state" ]; then
-    if grep -q "systemd-resolved-was-active=true" "$DOWNLOAD_DIR/service_state"; then
-      print_status "Restoring systemd-resolved service..."
-      sudo systemctl start systemd-resolved > /dev/null 2>&1
-      
-      # Check if start was successful
-      if systemctl is-active systemd-resolved > /dev/null 2>&1; then
-        print_success "systemd-resolved restored successfully."
-      else
-        print_error "Failed to restore systemd-resolved service."
-      fi
-    fi
+# Pull required images from registry before stopping system services (so DNS works during pull)
+pull_required_images() {
+  local images=("mongo:latest" "redis:latest" "ghcr.io/nexoral/nexoraldns:latest")
+  local img
+  print_status "Pulling required Docker images before stopping DNS..."
+  for img in "${images[@]}"; do
+    # Friendly service-oriented messages instead of raw image names
+    case "$img" in
+      mongo:*)
+        print_status "Configuring MongoDB..."
+        if sudo docker pull "$img" > /dev/null 2>&1; then
+          print_success "MongoDB configured."
+        else
+          print_warning "Failed to configure MongoDB (continue anyway)"
+        fi
+        ;;
+      redis:*)
+        print_status "Configuring Redis..."
+        if sudo docker pull "$img" > /dev/null 2>&1; then
+          print_success "Redis configured."
+        else
+          print_warning "Failed to configure Redis (continue anyway)"
+        fi
+        ;;
+      *nexoraldns*|*nexoral* )
+        print_status "Installing NexoralDNS..."
+        if sudo docker pull "$img" > /dev/null 2>&1; then
+          print_success "NexoralDNS image pulled."
+        else
+          print_warning "Failed to pull NexoralDNS image (continue anyway)"
+        fi
+        ;;
+      *)
+        print_status "Pulling $img..."
+        if sudo docker pull "$img" > /dev/null 2>&1; then
+          print_success "Pulled $img"
+        else
+          print_warning "Failed to pull $img (continue anyway)"
+        fi
+        ;;
+    esac
+  done
+}
+
+# Run docker compose but first pull required images (used for first-time/default install)
+run_docker_compose_with_pull() {
+  local command="$1"
+  local message="$2"
+  print_status "$message"
+  pull_required_images
+  # After pulling images, disable systemd-resolved if enabled so containers can bind to 53
+  disable_systemd_resolved_if_enabled
+  cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
+}
+
+# Run docker compose without pulling images first (used for start/stop flows)
+run_docker_compose() {
+  local command="$1"
+  local message="$2"
+  print_status "$message"
+  # If bringing containers up, ensure systemd-resolved is disabled before starting
+  if [[ "$command" == *"up -d"* ]]; then
+    disable_systemd_resolved_if_enabled
   fi
+  cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
 }
 
 # System compatibility checks
@@ -216,8 +278,8 @@ if [[ "$1" == "remove" ]]; then
         print_warning "NexoralDNS directory not found."
     fi
     
-    # Restore systemd-resolved if it was active before
-    restore_systemd_resolved
+  # Ensure systemd-resolved is running after shutdown
+  ensure_systemd_resolved_running
     
     print_status "Removing Docker images..."
     sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
@@ -267,9 +329,8 @@ if [[ "$1" == "stop" ]]; then
         print_status "Stopping NexoralDNS services..."
         cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
         print_success "All NexoralDNS services have been stopped successfully!"
-        
-        # Restore systemd-resolved if it was active before
-        restore_systemd_resolved
+    # Ensure systemd-resolved is running after shutdown
+    ensure_systemd_resolved_running
     else
         print_warning "NexoralDNS installation not found or docker-compose.yml missing."
         print_status "Please ensure NexoralDNS is installed in $DOWNLOAD_DIR"
@@ -280,6 +341,8 @@ fi
 
 # Check for start argument
 if [[ "$1" == "start" ]]; then
+    # Ensure systemd-resolved is running after shutdown
+    ensure_systemd_resolved_running
     clear
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
@@ -291,12 +354,10 @@ if [[ "$1" == "start" ]]; then
     DOWNLOAD_DIR="$HOME/NexoralDNS"
     
     if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
-        # Check port 53 availability before starting
-        check_port_53
         
-        print_status "Starting NexoralDNS services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
-        print_success "All NexoralDNS services have been started successfully!"
+  print_status "Starting NexoralDNS services..."
+  run_docker_compose "up -d" "Starting NexoralDNS services (this may take a few minutes)..."
+  print_success "All NexoralDNS services have been started successfully!"
         
         # Get the DHCP IP address
         print_status "Detecting network configuration..."
@@ -325,6 +386,9 @@ if [[ "$1" == "start" ]]; then
     
     exit 0
 fi
+
+  # Ensure systemd-resolved is running after shutdown
+  ensure_systemd_resolved_running
 
 # Fetch version for welcome banner
 VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
@@ -372,6 +436,11 @@ if ! command -v docker &> /dev/null; then
   print_status "Installing Docker and Docker Compose..."
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin > /dev/null 2>&1
   
+  # Add current user to docker group
+  print_status "Adding user $USER to docker group..."
+  sudo groupadd docker
+  sudo usermod -aG docker "$USER"
+
   # Check if installation was successful
   if ! command -v docker &> /dev/null; then
     print_error "Docker installation failed."
@@ -404,8 +473,13 @@ run_docker_compose() {
     local command="$1"
     local message="$2"
     print_status "$message"
+    # If bringing containers up, ensure systemd-resolved is disabled before starting
+    if [[ "$command" == *"up -d"* ]]; then
+      disable_systemd_resolved_if_enabled
+    fi
     cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
 }
+
 
 # Create directory if it doesn't exist
 DOWNLOAD_DIR="$HOME/NexoralDNS"
@@ -476,13 +550,13 @@ if [ -f "$COMPOSE_FILE" ]; then
       
       if [ $comparison_result -eq 0 ]; then
         print_success "Versions are identical. Starting services..."
-        run_docker_compose "up -d" "Starting Docker containers (this may take a few minutes on first run)..."
+        run_docker_compose_with_pull "up -d" "Starting Docker containers (this may take a few minutes on first run)..."
       elif [ $comparison_result -eq 1 ] && [[ "$remote_version" == *"-stable" ]]; then
         print_warning "New stable version available! Updating..."
         print_status "Removing old Docker image..."
         sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
         echo "$remote_version" > "$VERSION_FILE"
-        run_docker_compose "up -d" "Starting updated services (downloading new image, please wait)..."
+        run_docker_compose_with_pull "up -d" "Starting updated services (downloading new image, please wait)..."
       else
         print_status "Local version is current. Starting services..."
         run_docker_compose "up -d" "Starting Docker containers..."
@@ -490,11 +564,11 @@ if [ -f "$COMPOSE_FILE" ]; then
     else
       print_status "First time installation. Creating version file..."
       echo "$remote_version" > "$VERSION_FILE"
-      run_docker_compose "up -d" "Starting services (downloading images, this may take several minutes)..."
+  run_docker_compose_with_pull "up -d" "Starting services (downloading images, this may take several minutes)..."
     fi
   else
-    print_warning "Could not fetch version information. Starting services with current setup..."
-    run_docker_compose "up -d" "Starting Docker containers..."
+  print_warning "Could not fetch version information. Starting services with current setup..."
+  run_docker_compose "up -d" "Starting Docker containers..."
   fi
   
   echo ""
