@@ -1,7 +1,8 @@
-FROM node:22-alpine
+FROM ubuntu:22.04
 
 # Install sudo (and optional libc6-compat for Next.js binaries)
-RUN apk add --no-cache sudo libc6-compat
+RUN apt-get update && apt-get install -y sudo libc6-compat
+RUN apt-get install -y curl wget vim git build-essential nmcli net-tools
 
 # Base workspace
 WORKDIR /app
