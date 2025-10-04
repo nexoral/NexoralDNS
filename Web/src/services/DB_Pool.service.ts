@@ -4,12 +4,11 @@ import { DB_DEFAULT_CONFIGS } from "../Config/key";
 import { getCollectionClient } from "../Database/mongodb.db";
 
 
+// Service to handle domain-related database operations
 export class DomainDBPoolService {
   private DNSRecordsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
-  constructor() { 
-    this.DNSRecordsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
-  }
+  constructor() {}
 
   // get domain matched with the name
   public async getDnsRecordByDomainName(domainName: string) {
