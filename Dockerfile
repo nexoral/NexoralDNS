@@ -1,8 +1,5 @@
 FROM ubuntu:22.04
 
-RUN apt update
-RUN apt install -y curl wget vim git  nmcli net-tools
-
 # Base workspace
 WORKDIR /app
 COPY . .
