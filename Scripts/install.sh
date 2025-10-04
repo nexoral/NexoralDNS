@@ -475,7 +475,7 @@ if [[ "$1" == "update" ]]; then
   ensure_systemd_resolved_running
 
   if [ ! -d "$DOWNLOAD_DIR" ] || [ ! -f "$COMPOSE_FILE" ]; then
-    print_error "NexoralDNS not installed in $DOWNLOAD_DIR. Run the installer first (no args)."
+    print_error "NexoralDNS not installed. Run the installer first (no args)."
     exit 1
   fi
 
