@@ -40,6 +40,13 @@ curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/ins
 curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove
 ```
 
+**Update services:**
+
+```bash
+# Update NexoralDNS to the latest remote version
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s update
+```
+
 > 🗑️ **This will completely remove NexoralDNS** including all configurations, services, and data.
 
 ---
@@ -82,10 +89,8 @@ NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your n
 - **🖥️ Web-based Management:** Intuitive dashboard accessible at `localhost:4000`
 - **🛡️ Security Filtering:** Block unwanted domains and protect your network
 - **👨‍💻 Developer-Friendly:** Perfect for development environments
-- **📊 Real-time Analytics:** Monitor DNS queries as they happen
-- **☁️ Cloud Integration:** Sync settings across multiple installations
-- **🔄 Auto-Updates:** Automatic version management and updates
-- **📱 Mobile Responsive:** Manage your DNS from any device
+ - **📊 Real-time Analytics:** Monitor DNS queries as they happen
+ - **☁️ Cloud Integration:** Sync settings across multiple installations
 
 ---
 
@@ -130,6 +135,11 @@ sudo docker compose up -d
 5. **Configure Router:** Set DNS server to your machine's IP address
 6. **Set Static IP:** Reserve IP address in router to prevent DNS interruption
 
+7. **Create custom domains & blocking rules:**
+
+- Use the web interface to create custom internal domains (for example `myapp.ankan`) that resolve only within your LAN.
+- Create blocking rules to block specific domains either for individual IP addresses or for the entire network. This is useful for parental controls, IoT protection, or blocking malicious domains.
+
 ---
 
 ## 💡 Use Cases
@@ -158,9 +168,11 @@ sudo docker compose up -d
 
 ## 📋 System Requirements
 
+## 📋 System Requirements
+
 - **Operating System:** Linux Debian/Ubuntu
-- **Memory:** Minimum 512MB RAM
-- **Storage:** 1GB free space
+- **Memory:** Minimum 1GB RAM (Docker will be installed and requires additional memory)
+- **Storage:** Minimum 4GB free space
 - **Network:** LAN connectivity
 - **Privileges:** Administrator/root access for installation
 
@@ -207,6 +219,29 @@ We welcome contributions! Please see our contributing guidelines in the reposito
 **Version updates not working:**
 - Ensure internet connectivity
 - Check Docker image permissions
+
+**If updates fail or network requests are blocked:**
+
+- If the `update` command fails to fetch new images or the network is restricted, you can remove and reinstall the service as a recovery path:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -s remove
+```
+
+- If removal also fails due to network/DNS problems, re-enable the system resolver and restart it to restore system DNS resolution before retrying:
+
+```bash
+sudo systemctl enable systemd-resolved
+sudo systemctl restart systemd-resolved
+```
+
+- If you still need to manually restore local name resolution, edit `/etc/resolv.conf` and set the nameserver to the local stub resolver:
+
+```bash
+sudo nano /etc/resolv.conf
+# set or ensure the file contains:
+nameserver 127.0.0.53
+```
 
 ### Complete Uninstallation
 

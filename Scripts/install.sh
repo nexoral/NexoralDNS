@@ -182,6 +182,33 @@ check_ports_free() {
   return $occupied
 }
 
+# Compare semantic version strings: compare a and b
+# returns: 1 if a>b (remote>local), 2 if a<b, 0 if equal
+version_compare() {
+  local a="$1" b="$2"
+  local IFS=.
+  local raw1 raw2 i
+  local -a ver1 ver2
+
+  # Strip suffix (ignore -beta/-stable)
+  raw1="${a%%-*}"
+  raw2="${b%%-*}"
+
+  read -ra ver1 <<<"$raw1"
+  read -ra ver2 <<<"$raw2"
+
+  # pad shorter array with zeros
+  for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do ver1[i]=0; done
+  for ((i=${#ver2[@]}; i<${#ver1[@]}; i++)); do ver2[i]=0; done
+
+  for ((i=0; i<${#ver1[@]}; i++)); do
+    if ((10#${ver1[i]} > 10#${ver2[i]})); then return 1; fi
+    if ((10#${ver1[i]} < 10#${ver2[i]})); then return 2; fi
+  done
+  return 0
+}
+
+
 
 
 # Pull required images from registry before stopping system services (so DNS works during pull)
@@ -473,6 +500,8 @@ if [[ "$1" == "update" ]]; then
   COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
   # Ensure systemd-resolved is running after shutdown
   ensure_systemd_resolved_running
+  # Reset local resolver to systemd stub resolver
+  set_resolv_nameserver "127.0.0.53"
 
   if [ ! -d "$DOWNLOAD_DIR" ] || [ ! -f "$COMPOSE_FILE" ]; then
     print_error "NexoralDNS not installed. Run the installer first (no args)."
@@ -487,21 +516,50 @@ if [[ "$1" == "update" ]]; then
   fi
 
   VERSION_FILE="$DOWNLOAD_DIR/VERSION"
-    # Compare versions: remote vs local
-    version_compare "$remote_version" "$local_version"
-    result=$?
-    if [ $result -eq 1 ]; then
-      print_status "Remote version ($remote_version) is newer than local ($local_version). Updating..."
-      print_status "Removing old NexoralDNS image..."
-      sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
-      echo "$remote_version" > "$VERSION_FILE"
-      run_docker_compose_with_pull "up -d" "Updating services (downloading new image, please wait)..."
-      print_success "Update complete."
-      exit 0
-    else
-      print_status "Local version ($local_version) is up-to-date or newer than remote ($remote_version). No update performed."
-      exit 0
+  # Read local version (if present)
+  local_version=""
+  if [ -f "$VERSION_FILE" ]; then
+    local_version=$(cat "$VERSION_FILE" 2>/dev/null || true)
+  fi
+
+  print_status "Remote version: ${remote_version}  |  Local version: ${local_version:-'(none)'}"
+
+  # Compare versions: remote vs local
+  version_compare "$remote_version" "$local_version"
+  result=$?
+  if [ $result -eq 1 ]; then
+    print_status "Remote version ($remote_version) is newer than local ($local_version). Updating..."
+    # If compose file exists and services are running, bring them down first to safely replace images
+    if [ -f "$COMPOSE_FILE" ]; then
+      print_status "Stopping running NexoralDNS services before update..."
+      cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1 || true
+      print_success "Services stopped."
     fi
+    print_status "Removing old NexoralDNS image..."
+    sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
+    echo "$remote_version" > "$VERSION_FILE"
+    run_docker_compose_with_pull "up -d" "Updating services (downloading new image, please wait)..."
+    print_success "Update complete."
+
+            # Get the DHCP IP address
+        print_status "Detecting network configuration..."
+        DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
+        if [ -z "$DHCP_IP" ]; then
+            DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+        fi
+
+        # Update system resolver to point to this server so containers and host use NexoralDNS
+        if [ -n "$DHCP_IP" ]; then
+          set_resolv_nameserver "$DHCP_IP"
+        else
+          print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
+        fi
+        
+    exit 0
+  else
+    print_status "Local version ($local_version) is up-to-date or newer than remote ($remote_version). No update performed."
+    exit 0
+  fi
 fi
 
 # For any other case (default install or reinstall)
@@ -647,26 +705,7 @@ if [ -f "$COMPOSE_FILE" ]; then
       local_version=$(cat "$VERSION_FILE")
       echo -e "    ${CYAN}Local version:${NC}  ${BOLD}$local_version${NC}"
       
-      # Function to compare versions
-      version_compare() {
-        local IFS=.
-        local raw1 raw2 i ver1 ver2
-        # Strip suffix from versions (ignore -beta or -stable)
-        raw1="${1%%-*}"
-        raw2="${2%%-*}"
-        # parse numeric parts
-        read -ra ver1 <<<"$raw1"
-        read -ra ver2 <<<"$raw2"
-        # pad shorter array with zeros
-        for ((i = ${#ver1[@]}; i < ${#ver2[@]}; i++)); do ver1[i]=0; done
-        for ((i = ${#ver2[@]}; i < ${#ver1[@]}; i++)); do ver2[i]=0; done
-        # compare each segment
-        for ((i = 0; i < ${#ver1[@]}; i++)); do
-          if ((10#${ver1[i]} > 10#${ver2[i]})); then return 1; fi  # remote > local
-          if ((10#${ver1[i]} < 10#${ver2[i]})); then return 2; fi  # remote < local
-        done
-        return 0  # versions are equal
-      }
+      # using top-level version_compare() helper
       
       version_compare "$remote_version" "$local_version"
       comparison_result=$?
