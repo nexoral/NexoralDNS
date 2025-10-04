@@ -64,7 +64,7 @@ export default class DomainAddService {
         {
           domainId: insertResult.insertedId,
           type: type,
-          name: "@",
+          name: domain,
           value: IpAddress,
           ttl: 300,
         }
