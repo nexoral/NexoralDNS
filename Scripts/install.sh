@@ -59,55 +59,6 @@ detect_supported_distro() {
     fi
 }
 
-# Function to check if port 53 is in use and handle conflicts
-check_port_53() {
-  print_status "Checking if port 53 (DNS) is available..."
-  
-  # Check if port 53 is in use
-  if sudo lsof -i :53 > /dev/null 2>&1; then
-    print_warning "Port 53 is currently in use."
-    
-    # Check if systemd-resolved is using port 53
-    if sudo lsof -i :53 | grep systemd-resolve > /dev/null 2>&1; then
-      print_warning "systemd-resolved service is using port 53."
-      
-      # Check if systemd-resolved is active
-      if systemctl is-active systemd-resolved > /dev/null 2>&1; then
-        print_status "Stopping systemd-resolved service temporarily..."
-        
-        # Store systemd-resolved state for later restoration
-        echo "systemd-resolved-was-active=true" > "$DOWNLOAD_DIR/service_state"
-        
-        # Stop systemd-resolved
-        sudo systemctl stop systemd-resolved > /dev/null 2>&1
-        
-        # Check if stop was successful
-        if systemctl is-active systemd-resolved > /dev/null 2>&1; then
-          print_error "Failed to stop systemd-resolved. Port 53 may still be in use."
-          print_error "NexoralDNS might not start properly due to port conflict."
-        else
-          print_success "systemd-resolved stopped successfully. Port 53 is now available."
-        fi
-      else
-        echo "systemd-resolved-was-active=false" > "$DOWNLOAD_DIR/service_state"
-        print_warning "systemd-resolved is installed but not active."
-      fi
-    else
-      # Another service is using port 53
-      PORT_53_SERVICE=$(sudo lsof -i :53 | grep LISTEN | head -1 | awk '{print $1}')
-      print_error "Port 53 is in use by service: $PORT_53_SERVICE"
-      print_error "Please stop this service before running NexoralDNS."
-      echo "port-53-in-use=true" > "$DOWNLOAD_DIR/service_state"
-      echo "port-53-service=$PORT_53_SERVICE" >> "$DOWNLOAD_DIR/service_state"
-      return 1
-    fi
-  else
-    print_success "Port 53 is available."
-    echo "port-53-available=true" > "$DOWNLOAD_DIR/service_state"
-  fi
-  
-  return 0
-}
 
 # Function to restore systemd-resolved if needed
 restore_systemd_resolved() {
@@ -291,8 +242,6 @@ if [[ "$1" == "start" ]]; then
     DOWNLOAD_DIR="$HOME/NexoralDNS"
     
     if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
-        # Check port 53 availability before starting
-        check_port_53
         
         print_status "Starting NexoralDNS services..."
         cd "$DOWNLOAD_DIR" && sudo docker compose up -d > /dev/null 2>&1
