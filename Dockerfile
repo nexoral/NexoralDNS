@@ -1,7 +1,6 @@
 FROM ubuntu:22.04
 
-# Install sudo (and optional libc6-compat for Next.js binaries)
-RUN apt update && apt install -y sudo libc6-compat
+RUN apt update
 RUN apt install -y curl wget vim git  nmcli net-tools
 
 # Base workspace
