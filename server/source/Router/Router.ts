@@ -11,6 +11,7 @@ import authRouter from "./Auth/Auth.route";
 import PublicInfoController from "../Controller/Public/public.controller";
 import authGuard from "../Middlewares/authGuard.middleware";
 import domainRouter from "./Domains/Domains.route";
+import DHCPRouter from "./DHCP/DHCP.route";
 
 
 // Extended options interface to include NexoralDNS instance
@@ -42,6 +43,7 @@ export default async function mainRouter(
   // Register Sub-Routers
   fastify.register(authRouter, { prefix: "/auth" });
   fastify.register(domainRouter, { prefix: "/domains" });
+  fastify.register(DHCPRouter, { prefix: "/dhcp" });
 
 
   // Handle 404 Not Found

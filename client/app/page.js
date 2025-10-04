@@ -1,15 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import LoginForm from '../components/auth/LoginForm';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Toast from '../components/ui/Toast';
 import config, { getApiUrl } from '../config/keys';
+import useAuthStore from '../stores/authStore';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const router = useRouter();
+  const { login, isAuthenticated } = useAuthStore();
 
+  // Check authentication on initial load
+  useEffect(() => {
+    const checkAuth = async () => {
+      // First check if already authenticated in store
+      if (isAuthenticated) {
+        router.replace('/dashboard');
+        return;
+      }
+
+      // Then check for token in localStorage
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem(config.AUTH.TOKEN_KEY);
+        if (token) {
+          login({ token });
+          router.replace('/dashboard');
+          return;
+        }
+      }
+
+      // Not authenticated, show login form
+      setIsInitializing(false);
+    };
+
+    checkAuth();
+  }, [isAuthenticated, router, login]);
+
+  // Regular login handler
   const handleLogin = async (credentials) => {
     setIsLoading(true);
     try {
@@ -20,12 +52,17 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem(config.AUTH.TOKEN_KEY, data.token);
-        if (data.refreshToken) {
-          localStorage.setItem(config.AUTH.REFRESH_TOKEN_KEY, data.refreshToken);
-        }
-        window.location.href = '/dashboard';
+        const responseData = await response.json();
+
+        // Store auth data in Zustand
+        login({
+          token: responseData.data.token,
+          refreshToken: responseData.data.refreshToken,
+          user: responseData.data.user,
+          data: responseData.data
+        });
+
+        router.push('/dashboard');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Invalid credentials');
@@ -40,6 +77,15 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading spinner during initialization
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center px-4">

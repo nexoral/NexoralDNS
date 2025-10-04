@@ -37,6 +37,10 @@ export default class AuthController {
     // Initialize LoginService
     const loginService = new LoginService(reply);
 
-    return loginService.login(username, password);
+    try {
+      return loginService.login(username, password);
+    } catch (error) {
+      return Responser.send(error);
+    }
   }
 }

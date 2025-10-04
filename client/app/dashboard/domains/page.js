@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import Button from '../../../components/ui/Button';
@@ -9,6 +9,9 @@ import DomainModal from '../../../components/domains/DomainModal';
 import RecordModal from '../../../components/domains/RecordModal';
 import BlockModal from '../../../components/domains/BlockModal';
 import DeleteConfirmModal from '../../../components/domains/DeleteConfirmModal';
+import useAuthStore from '../../../stores/authStore';
+import { getApiUrl } from '../../../config/keys';
+import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 
 export default function DomainsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,45 +22,67 @@ export default function DomainsPage() {
   const [selectedDomain, setSelectedDomain] = useState(null);
   const [selectedDomainForBlock, setSelectedDomainForBlock] = useState(null);
   const [selectedDomainForDelete, setSelectedDomainForDelete] = useState(null);
-  const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
+  const [domains, setDomains] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user, token } = useAuthStore();
 
-  // Dummy domains data
-  const [domains, setDomains] = useState([
-    {
-      id: 1,
-      name: 'example.com',
-      status: 'active',
-      records: 12,
-      created: '2024-01-15',
-      lastModified: '2024-01-20'
-    },
-    {
-      id: 2,
-      name: 'mysite.org',
-      status: 'active',
-      records: 8,
-      created: '2024-01-10',
-      lastModified: '2024-01-18'
-    },
-    {
-      id: 3,
-      name: 'test.dev',
-      status: 'inactive',
-      records: 4,
-      created: '2024-01-05',
-      lastModified: '2024-01-12'
+  // Fetch domains from API
+  const fetchDomains = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const authToken = token || localStorage.getItem('nexoral_auth_token');
+
+      const response = await fetch(getApiUrl('GET_ALL_DOMAINS'), {
+        method: 'GET',
+        headers: {
+          'Authorization': `${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch domains');
+      }
+
+      const result = await response.json();
+
+      if (result.statusCode === 200) {
+        // Transform API response to match expected format
+        const transformedDomains = (result.data.domains || []).map(domain => ({
+          id: domain._id,
+          name: domain.domain,
+          status: domain.domainStatus,
+          records: domain.dnsRecords ? domain.dnsRecords.length : 0,
+          created: new Date(domain.createdAt).toISOString().split('T')[0],
+          lastModified: new Date(domain.updatedAt).toISOString().split('T')[0],
+          dnsRecords: domain.dnsRecords || [],
+          // Keep original data for API operations
+          _original: domain
+        }));
+
+        setDomains(transformedDomains);
+      } else {
+        throw new Error(result.message || 'Failed to fetch domains');
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching domains:', err);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  };
+
+  // Fetch domains on component mount
+  useEffect(() => {
+    fetchDomains();
+  }, [token]);
 
   const handleAddDomain = (newDomain) => {
-    const domainWithId = {
-      ...newDomain,
-      id: Date.now(),
-      records: 0,
-      created: new Date().toISOString().split('T')[0],
-      lastModified: new Date().toISOString().split('T')[0]
-    };
-    setDomains(prev => [...prev, domainWithId]);
+    // Refresh the domains list after adding a new domain
+    fetchDomains();
   };
 
   const handleDeleteDomain = (domain) => {
@@ -66,9 +91,10 @@ export default function DomainsPage() {
   };
 
   const confirmDeleteDomain = (id) => {
+    // Delete domain logic would go here
+    // For now just remove from local state
     setDomains(prev => prev.filter(domain => domain.id !== id));
-    // Show success message
-    alert('Domain deleted successfully!');
+    // After API call would call fetchDomains() to refresh
   };
 
   const handleManageRecords = (domain) => {
@@ -82,10 +108,12 @@ export default function DomainsPage() {
   };
 
   const handleSaveBlock = (blockSettings) => {
+    // Block domain logic would go here
     console.log('Block settings:', blockSettings);
-    // Implement block logic here
-    alert(`Domain ${blockSettings.domain} blocked successfully!`);
   };
+
+  // Calculate total records across all domains
+  const totalRecords = domains.reduce((sum, d) => sum + d.records, 0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -144,7 +172,7 @@ export default function DomainsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Total Records</p>
-                  <p className="text-2xl font-bold text-slate-800">{domains.reduce((sum, d) => sum + d.records, 0)}</p>
+                  <p className="text-2xl font-bold text-slate-800">{totalRecords}</p>
                 </div>
                 <div className="p-3 bg-purple-50 rounded-lg">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,30 +188,61 @@ export default function DomainsPage() {
             <div className="p-6 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-800">Your Domains</h2>
             </div>
-            <div className="p-6">
-              <div className="grid gap-4">
-                {domains.map((domain) => (
-                  <DomainCard
-                    key={domain.id}
-                    domain={domain}
-                    onDelete={() => handleDeleteDomain(domain)}
-                    onManageRecords={() => handleManageRecords(domain)}
-                    onBlock={() => handleBlockDomain(domain)}
-                  />
-                ))}
-              </div>
 
-              {domains.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">🌐</div>
-                  <h3 className="text-lg font-medium text-slate-800 mb-2">No domains configured</h3>
-                  <p className="text-slate-600 mb-4">Add your first domain to get started</p>
-                  <Button onClick={() => setShowDomainModal(true)}>
-                    Add First Domain
-                  </Button>
+            {/* Loading State */}
+            {isLoading && (
+              <div className="p-6 text-center">
+                <LoadingSpinner />
+                <p className="mt-2 text-gray-600">Loading domains...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && !isLoading && (
+              <div className="p-6">
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+                  <div className="flex">
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700">{error}</p>
+                      <button
+                        onClick={fetchDomains}
+                        className="mt-2 text-sm text-red-700 font-medium underline"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Domains List */}
+            {!isLoading && !error && (
+              <div className="p-6">
+                <div className="grid gap-4">
+                  {domains.map((domain) => (
+                    <DomainCard
+                      key={domain.id}
+                      domain={domain}
+                      onDelete={() => handleDeleteDomain(domain)}
+                      onManageRecords={() => handleManageRecords(domain)}
+                      onBlock={() => handleBlockDomain(domain)}
+                    />
+                  ))}
+                </div>
+
+                {domains.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">🌐</div>
+                    <h3 className="text-lg font-medium text-slate-800 mb-2">No domains configured</h3>
+                    <p className="text-slate-600 mb-4">Add your first domain to get started</p>
+                    <Button onClick={() => setShowDomainModal(true)}>
+                      Add First Domain
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </div>

@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Sidebar from '../../components/dashboard/Sidebar';
 import Header from '../../components/dashboard/Header';
 import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
 import RecentActivity from '../../components/dashboard/RecentActivity';
 import SystemOverview from '../../components/dashboard/SystemOverview';
+import NetworkOverview from '../../components/dashboard/NetworkOverview';
+import useAuthStore from '../../stores/authStore';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
+  const { user } = useAuthStore();
 
   // Simplified dummy data for essential features only
   const [stats, setStats] = useState({
@@ -18,8 +20,6 @@ export default function Dashboard() {
     queriesChange: '+12.5%',
     managedDomains: 24,
     domainsChange: '+3',
-    activeDomains: 22,
-    activeChange: '+2',
     systemHealth: '99.5%',
     healthChange: '+0.1%'
   });
@@ -40,12 +40,13 @@ export default function Dashboard() {
       count: 'Configure'
     },
     {
-      title: 'Active Domains',
-      description: 'Currently active domains',
-      icon: '✅',
-      link: '/dashboard/domains',
-      count: stats.activeDomains
+      title: 'Connected Devices',
+      description: 'View and manage connected network devices',
+      icon: '📱',
+      link: '/dashboard/devices',
+      count: 'View'
     }
+    // Removed "Active Domains" card as requested
   ];
 
   return (
@@ -67,13 +68,18 @@ export default function Dashboard() {
           {/* Welcome Section */}
           <div className="mb-8">
             <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">
-              Welcome back, {user.name.split(' ')[0]}! 👋
+              Welcome back, {user?.username ? user.username : 'User'}! 👋
             </h1>
             <p className="text-slate-600">Manage your DNS infrastructure efficiently.</p>
           </div>
 
           {/* Stats Cards */}
           <StatsCards stats={stats} />
+
+          {/* Network Overview - New Component */}
+          <div className="mb-8">
+            <NetworkOverview />
+          </div>
 
           {/* Quick Actions */}
           <QuickActions actions={quickActions} />

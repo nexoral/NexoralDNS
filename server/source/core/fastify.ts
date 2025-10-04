@@ -5,6 +5,7 @@ import { CORS_CONFIG, ServerKeys } from "./key";
 import checkPortAndDocker from "./PostFreeChecker";
 import mainRouter from "../Router/Router";
 import MongoConnector from "../Database/mongodb.db";
+import { IpConnectionCronJob } from "../CronJob/Connected_IP_fetcher.cron";
 
 export default function FastifyServer() {
 
@@ -55,6 +56,7 @@ export default function FastifyServer() {
       console.log(
         `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
       );
+      IpConnectionCronJob()
     } catch (err) {
       NexoralServer.log.error(err);
       process.exit(1);

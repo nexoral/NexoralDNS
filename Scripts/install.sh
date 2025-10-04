@@ -28,6 +28,90 @@ print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
+# System detection functions
+detect_linux() {
+    if [[ "$OSTYPE" != "linux-gnu"* ]]; then
+        return 1
+    fi
+    return 0
+}
+
+detect_debian_based() {
+    if ! command -v apt &> /dev/null; then
+        return 1
+    fi
+    return 0
+}
+
+detect_supported_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|zorin|linuxmint|debian)
+                return 0
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    else
+        return 1
+    fi
+}
+
+# System compatibility checks
+print_status "Checking system compatibility..."
+
+# Check if running on Linux
+if ! detect_linux; then
+    print_error "This installer only supports Linux systems."
+    print_status "Requirements:"
+    echo "  • Linux operating system"
+    echo "  • Debian-based distribution (Ubuntu, Zorin OS, Linux Mint, Debian)"
+    echo "  • APT package manager"
+    exit 1
+fi
+
+print_success "✓ Linux system detected"
+
+# Check if Debian-based (has apt)
+if ! detect_debian_based; then
+    print_error "This installer requires a Debian-based Linux distribution with APT package manager."
+    print_status "Supported distributions:"
+    echo "  • Ubuntu (18.04 LTS or newer)"
+    echo "  • Zorin OS (15 or newer)"
+    echo "  • Linux Mint (19 or newer)"
+    echo "  • Debian (10 or newer)"
+    print_status "Your system appears to be missing the APT package manager."
+    exit 1
+fi
+
+print_success "✓ Debian-based system detected"
+
+# Check if supported distribution
+if ! detect_supported_distro; then
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        print_error "Unsupported Linux distribution: $PRETTY_NAME"
+    else
+        print_error "Unable to detect Linux distribution."
+    fi
+    print_status "Supported distributions:"
+    echo "  • Ubuntu (18.04 LTS or newer)"
+    echo "  • Zorin OS (15 or newer)" 
+    echo "  • Linux Mint (19 or newer)"
+    echo "  • Debian (10 or newer)"
+    print_warning "Other Debian-based distributions may work but are not officially supported."
+    exit 1
+fi
+
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    print_success "✓ Supported distribution detected: $PRETTY_NAME"
+fi
+
+echo ""
+
 # Check for remove argument
 if [[ "$1" == "remove" ]]; then
     clear

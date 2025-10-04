@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import InputField from '../ui/InputField';
+import useAuthStore from '../../stores/authStore';
+import { getApiUrl } from '../../config/keys';
 
 export default function DomainModal({ onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -16,6 +18,8 @@ export default function DomainModal({ onClose, onSave }) {
   });
   const [errors, setErrors] = useState({});
   const [mounted, setMounted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { token } = useAuthStore();
 
   // Fix hydration issues
   useEffect(() => {
@@ -35,9 +39,10 @@ export default function DomainModal({ onClose, onSave }) {
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Form validation
     const newErrors = {};
     if (!formData.name.trim()) {
       newErrors.name = 'Domain name is required';
@@ -54,8 +59,55 @@ export default function DomainModal({ onClose, onSave }) {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      onSave(formData);
-      onClose();
+      // Prepare API payload
+      const payload = {
+        type: formData.defaultRecord.type,
+        DomainName: formData.name,
+        IpAddress: formData.defaultRecord.value
+      };
+
+      setIsSubmitting(true);
+
+      try {
+        const authToken = token || localStorage.getItem('nexoral_auth_token');
+
+        const response = await fetch(getApiUrl('CREATE_DOMAIN'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `${authToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Success case
+          onSave({
+            ...formData,
+            id: data.data?.id || Date.now().toString(),
+            createdAt: new Date().toISOString()
+          });
+          onClose();
+        } else {
+          // Enhanced error handling
+          if (response.status === 409) {
+            // Check message to determine the specific conflict type
+            if (data.message.toLowerCase().includes('ip address')) {
+              setErrors({ defaultRecord: `IP address "${formData.defaultRecord.value}" is already in use by another domain` });
+            } else {
+              setErrors({ name: `Domain "${formData.name}" already exists` });
+            }
+          } else {
+            setErrors({ api: data.message || 'Failed to create domain. Please try again.' });
+          }
+        }
+      } catch (error) {
+        setErrors({ api: 'Network error. Please check your connection and try again.' });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -102,20 +154,48 @@ export default function DomainModal({ onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <InputField
-            type="text"
-            name="name"
-            placeholder="Enter domain name (e.g., example.com)"
-            value={formData.name}
-            onChange={handleChange}
-            error={errors.name}
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9 3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9" />
-              </svg>
-            }
-            required
-          />
+          {/* Display API error if any */}
+          {errors.api && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{errors.api}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Replace InputField with direct input for better control of styling */}
+          <div className="space-y-1">
+            <label htmlFor="domain-name" className="block text-sm font-medium text-slate-700">
+              Domain Name
+            </label>
+            <div className="relative rounded-lg shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9 3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                id="domain-name"
+                name="name"
+                placeholder="Enter domain name (e.g., example.com)"
+                value={formData.name}
+                onChange={handleChange}
+                className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 bg-white placeholder-slate-400"
+                required
+              />
+            </div>
+            {errors.name && (
+              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+            )}
+          </div>
 
           <div className="border-t border-slate-200 pt-4">
             <h3 className="text-sm font-medium text-slate-700 mb-3">Default DNS Record</h3>
@@ -156,19 +236,6 @@ export default function DomainModal({ onClose, onSave }) {
                 {errors.defaultRecord}
               </p>
             )}
-
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-slate-700 mb-1">TTL (seconds)</label>
-              <input
-                type="number"
-                name="defaultRecord.ttl"
-                value={formData.defaultRecord.ttl}
-                onChange={handleChange}
-                min="60"
-                max="86400"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </div>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
@@ -176,11 +243,16 @@ export default function DomainModal({ onClose, onSave }) {
               type="button"
               variant="secondary"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
-              Add Domain
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Adding...' : 'Add Domain'}
             </Button>
           </div>
         </form>
