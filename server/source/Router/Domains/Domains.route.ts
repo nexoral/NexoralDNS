@@ -16,7 +16,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
 
   // Domain Routes
   fastify.post("/create-domain", { preHandler: [] }, DomainController.create);
-  // fastify.get("/domains", { preHandler: [] }, DomainController.list);
+  fastify.get("/all-domains", { preHandler: [] }, DomainController.list);
   // fastify.get("/domains/:id", { preHandler: [] }, DomainController.get);
   // fastify.put("/domains/:id", { preHandler: [] }, DomainController.update);
   // fastify.delete("/domains/:id", { preHandler: [] }, DomainController.delete);

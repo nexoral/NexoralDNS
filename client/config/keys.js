@@ -4,6 +4,7 @@ export const config = {
   API_ENDPOINTS: {
     LOGIN: '/api/auth/login',
     VERIFY_TOKEN: '/api/auth/verify',
+    GET_ALL_DOMAINS: '/api/domains/all-domains',
     DNS_RECORDS: '/api/dns/records',
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',

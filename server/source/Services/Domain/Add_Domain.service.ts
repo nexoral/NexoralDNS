@@ -46,6 +46,7 @@ export default class DomainAddService {
     else {
       const domainDoc = {
         domain: domain,
+        domainStatus: "active",
         userId: new ObjectId(user._id),
         createdAt: new Date(),
         updatedAt: new Date()
@@ -65,7 +66,7 @@ export default class DomainAddService {
           type: type,
           name: "@",
           value: IpAddress,
-          ttl: 3600,
+          ttl: 300,
         }
       ];
   

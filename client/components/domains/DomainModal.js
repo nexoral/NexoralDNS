@@ -236,19 +236,6 @@ export default function DomainModal({ onClose, onSave }) {
                 {errors.defaultRecord}
               </p>
             )}
-
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-slate-700 mb-1">TTL (seconds)</label>
-              <input
-                type="number"
-                name="defaultRecord.ttl"
-                value={formData.defaultRecord.ttl}
-                onChange={handleChange}
-                min="60"
-                max="86400"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </div>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
