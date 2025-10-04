@@ -153,6 +153,36 @@ set_resolv_nameserver() {
   return 0
 }
 
+# Check that required TCP ports are free (default: 4000 and 4773).
+# Returns 0 when all ports are free, 1 if any port is in use.
+check_ports_free() {
+  local ports=(4000 4773)
+  local port
+  local occupied=0
+
+  for port in "${ports[@]}"; do
+    if command -v lsof >/dev/null 2>&1; then
+      if sudo lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+        print_error "Port $port is already in use."
+        occupied=1
+      else
+        print_status "Port $port is free."
+      fi
+    else
+      # fallback to ss if lsof isn't available
+      if ss -ltn 2>/dev/null | awk '{print $4}' | grep -Eq ":[0-9]*:$port$|:$port\b"; then
+        print_error "Port $port is already in use."
+        occupied=1
+      else
+        print_status "Port $port is free."
+      fi
+    fi
+  done
+
+  return $occupied
+}
+
+
 
 # Pull required images from registry before stopping system services (so DNS works during pull)
 pull_required_images() {
@@ -378,8 +408,13 @@ fi
 
 # Check for start argument
 if [[ "$1" == "start" ]]; then
-    # Ensure systemd-resolved is running after shutdown
-    ensure_systemd_resolved_running
+  # Ensure required ports are free; abort if any are occupied
+  if ! check_ports_free; then
+    print_error "One or more required ports are in use (4000, 4773). Please free them and try again."
+    exit 1
+  fi
+  # Ensure systemd-resolved is running after shutdown
+  ensure_systemd_resolved_running
     clear
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
@@ -431,6 +466,12 @@ if [[ "$1" == "start" ]]; then
     exit 0
 fi
 
+# For any other case (default install or reinstall)
+  # Ensure required ports are free; abort if any are occupied
+  if ! check_ports_free; then
+    print_error "One or more required ports are in use (4000, 4773). Please free them and try again."
+    exit 1
+  fi
   # Ensure systemd-resolved is running after shutdown
   ensure_systemd_resolved_running
 

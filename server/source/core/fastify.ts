@@ -2,7 +2,6 @@
 import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
 import { CORS_CONFIG, ServerKeys } from "./key";
-import checkPortAndDocker from "./PostFreeChecker";
 import mainRouter from "../Router/Router";
 import MongoConnector from "../Database/mongodb.db";
 import { IpConnectionCronJob } from "../CronJob/Connected_IP_fetcher.cron";
@@ -45,10 +44,8 @@ export default function FastifyServer() {
   });
 
 
-  checkPortAndDocker(ServerKeys.PORT).then(async () => {
-    console.log(`Port ${ServerKeys.PORT} is available.`);
+  MongoConnector().then(async () => {
     try {
-      await MongoConnector();
       NexoralServer.listen({
         port: Number(ServerKeys.PORT),
         host: String(ServerKeys.HOST),
