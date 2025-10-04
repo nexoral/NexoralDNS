@@ -9,8 +9,8 @@ import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../utilities/IO.utls";
-import MongoConnector, { getCollectionClient } from "../Database/mongodb.db";
-import { DB_DEFAULT_CONFIGS } from "../Config/key";
+import MongoConnector from "../Database/mongodb.db";
+import { DomainDBPoolService } from "./DB_Pool.service";
 
 
 /**
@@ -70,37 +70,11 @@ export default class DNS {
       // Parse query name
       const queryName: string = this.IO.parseQueryName(msg);
       const queryType: string = this.IO.parseQueryType(msg);
-
-      const DomainCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-      if (!DomainCollection) {
-        Console.red("Database connection error");
-        return;
-      }
-      const recordCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
-      if (!recordCollection) {
-        Console.red("Database connection error");
-        return;
-      }
-      // Fetch the first record from the collection
-      const record = await DomainCollection.aggregate([
-        {
-          $match: { domain: queryName }
-        },
-        {
-          $lookup: {
-            from: DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS,
-            localField: "_id",
-            foreignField: "domainId",
-            as: "records"
-          }
-        },
-        { $limit: 1 } // Limit to one record
-      ]).toArray().then(results => results[0]); // Get the first result
-
-      if (queryName === record?.domain) {
-        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.records[0].value} with TTL: ${record.records[0].ttl} from database with the help of worker: ${process.pid}`);
+      const record = await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
+      if (queryName === record?.name) {
+        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.ttl} from database with the help of worker: ${process.pid}`);
         // Use buildSendAnswer method from utilities
-        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.records[0].value, record.records[0].ttl);
+        const response = this.IO.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
         if (!response) {
           Console.red(`Failed to respond to ${queryName}`);
         }
