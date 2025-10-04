@@ -9,7 +9,8 @@ import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../utilities/IO.utls";
-import MongoConnector, { getMongoClient } from "../Database/mongodb.db";
+import MongoConnector, { getCollectionClient } from "../Database/mongodb.db";
+import { DB_DEFAULT_CONFIGS } from "../Config/key";
 
 
 /**
@@ -70,16 +71,36 @@ export default class DNS {
       const queryName: string = this.IO.parseQueryName(msg);
       const queryType: string = this.IO.parseQueryType(msg);
 
-      const mongoClient = getMongoClient();
-      const db = mongoClient.db("DNS");
-      const recordCollection = db.collection("Records");
-
+      const DomainCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+      if (!DomainCollection) {
+        Console.red("Database connection error");
+        return;
+      }
+      const recordCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+      if (!recordCollection) {
+        Console.red("Database connection error");
+        return;
+      }
       // Fetch the first record from the collection
-      const record = await recordCollection.findOne({ domain: queryName });
+      const record = await DomainCollection.aggregate([
+        {
+          $match: { domain: queryName }
+        },
+        {
+          $lookup: {
+            from: DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS,
+            localField: "_id",
+            foreignField: "domainId",
+            as: "records"
+          }
+        },
+        { $limit: 1 } // Limit to one record
+      ]).toArray().then(results => results[0]); // Get the first result
+
       if (queryName === record?.domain) {
-        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.TTL} from database with the help of worker: ${process.pid}`);
+        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.records[0].value} with TTL: ${record.records[0].ttl} from database with the help of worker: ${process.pid}`);
         // Use buildSendAnswer method from utilities
-        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.value, record.TTL);
+        const response = this.IO.buildSendAnswer(msg, rinfo, record.domain, record.records[0].value, record.records[0].ttl);
         if (!response) {
           Console.red(`Failed to respond to ${queryName}`);
         }

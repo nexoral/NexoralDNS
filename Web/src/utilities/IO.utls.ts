@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import dgram from 'dgram';
 
 /**
@@ -110,14 +111,33 @@ export default class InputOutputHandler {
    * @param msg - The DNS message buffer to parse.
    * @returns The parsed domain name as a string.
    */
-  public parseQueryName(msg: Buffer): string {
-    let offset = 12;
+  public parseQueryName(msg: Buffer, offset = 12): string {
     const labels: string[] = [];
-    while (msg[offset] !== 0) {
+    let jumped = false;
+    let jumpOffset = 0;
+
+    while (true) {
       const length = msg[offset];
+
+      // End of name
+      if (length === 0) {
+        if (!jumped) offset++;
+        break;
+      }
+
+      // Compression pointer
+      if ((length & 0xC0) === 0xC0) {
+        if (!jumped) jumpOffset = offset + 2;
+        offset = ((length & 0x3F) << 8) | msg[offset + 1];
+        jumped = true;
+        continue;
+      }
+
+      // Normal label
       labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
       offset += length + 1;
     }
+
     return labels.join(".");
   }
 

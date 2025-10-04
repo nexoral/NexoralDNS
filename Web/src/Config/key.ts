@@ -11,9 +11,9 @@ type DBConfigType = {
     PERMISSIONS: string;
     SERVICE: string;
     DOMAINS: string;
-    DNS_RECORDS?: string;
-    LOGS?: string;
-    RULES?: string;
+    DNS_RECORDS: string;
+    LOGS: string;
+    RULES: string;
   };
   DefaultValues: {
     DEFAULT_ADMIN_USERNAME: string;
