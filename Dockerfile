@@ -1,35 +1,63 @@
 FROM ubuntu:latest
 
-# Install Node.js and other dependencies
-RUN apt-get update && apt-get install -y curl sudo net-tools nmcli lsof ping
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
-RUN sudo apt-get install -y nodejs
+# Prevent interactive prompts during apt install
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Base workspace
+# Update system and install required tools
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    sudo \
+    net-tools \
+    iputils-ping \
+    iproute2 \
+    wireless-tools \
+    network-manager \
+    nmcli \
+    dnsutils \
+    traceroute \
+    build-essential \
+    git \
+    vim \
+    nano && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22.x
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    node -v && npm -v
+
+# Create app directory
 WORKDIR /app
+
+# Copy project files
 COPY . .
 
-# Build server (Fastify Server)
+# ---- Build server ----
 WORKDIR /app/server
 RUN npm install && npm run build
 
-# Build client (Next.js)
+# ---- Build client (Next.js) ----
 WORKDIR /app/client
 RUN npm install && npm run build
 
-# Install PM2 globally
-WORKDIR /app
-RUN npm install -g pm2
-
-# Build DNS Web component
+# ---- Build DNS Web component ----
 WORKDIR /app/Web
 RUN npm install && npm run build
 
-# Now set production env for runtime
+# ---- Install PM2 globally ----
+WORKDIR /app
+RUN npm install -g pm2
+
+# Set production environment
 ENV NODE_ENV=production
 
 # Expose DNS ports
 EXPOSE 53/udp 53/tcp
+
+# Grant permission for ping (ICMP requires CAP_NET_RAW)
+# Also ensures node can use it without sudo
+RUN setcap cap_net_raw+ep /bin/ping
 
 # Start PM2 (client + server) first, then run DNS service from /app/Web
 ENTRYPOINT ["sh","-lc","cd /app && pm2 start ecosystem.config.js && exec \"$@\""]
