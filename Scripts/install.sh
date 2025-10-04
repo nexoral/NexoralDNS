@@ -349,6 +349,7 @@ if [[ "$1" == "remove" ]]; then
     print_status "Removing Docker images..."
     sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
     sudo docker rmi mongo:latest 2>/dev/null || true
+    sudo docker rmi redis:latest 2>/dev/null || true
     print_success "Docker images removed."
     
     print_status "Removing NexoralDNS directory..."
