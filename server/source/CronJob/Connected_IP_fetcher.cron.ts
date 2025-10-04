@@ -45,7 +45,7 @@ function numberToIP(num: number): string {
 export async function getWiFiSSID(): Promise<string | null> {
   const execAsync = promisify(exec);
   try {
-    const command = `nmcli -t -f active,ssid dev wifi | egrep '^yes' | cut -d: -f2`;
+    const command = `iwgetid -r`;
     const { stdout } = await execAsync(command);
     return stdout.trim() || null;
   } catch (error) {

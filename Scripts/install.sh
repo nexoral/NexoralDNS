@@ -467,6 +467,43 @@ if [[ "$1" == "start" ]]; then
     exit 0
 fi
 
+# Check for update argument: compare remote vs local and update only if remote > local
+if [[ "$1" == "update" ]]; then
+  DOWNLOAD_DIR="$HOME/NexoralDNS"
+  COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
+  # Ensure systemd-resolved is running after shutdown
+  ensure_systemd_resolved_running
+
+  if [ ! -d "$DOWNLOAD_DIR" ] || [ ! -f "$COMPOSE_FILE" ]; then
+    print_error "NexoralDNS not installed. Run the installer first (no args)."
+    exit 1
+  fi
+
+  print_status "Checking remote version for update..."
+  remote_version=$(curl -s https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION 2>/dev/null || echo "")
+  if [ -z "$remote_version" ]; then
+    print_error "Could not fetch remote version information. Aborting update."
+    exit 1
+  fi
+
+  VERSION_FILE="$DOWNLOAD_DIR/VERSION"
+    # Compare versions: remote vs local
+    version_compare "$remote_version" "$local_version"
+    result=$?
+    if [ $result -eq 1 ]; then
+      print_status "Remote version ($remote_version) is newer than local ($local_version). Updating..."
+      print_status "Removing old NexoralDNS image..."
+      sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
+      echo "$remote_version" > "$VERSION_FILE"
+      run_docker_compose_with_pull "up -d" "Updating services (downloading new image, please wait)..."
+      print_success "Update complete."
+      exit 0
+    else
+      print_status "Local version ($local_version) is up-to-date or newer than remote ($remote_version). No update performed."
+      exit 0
+    fi
+fi
+
 # For any other case (default install or reinstall)
   # Ensure required ports are free; abort if any are occupied
   if ! check_ports_free; then
