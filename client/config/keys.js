@@ -6,6 +6,8 @@ export const config = {
     VERIFY_TOKEN: '/api/auth/verify',
     GET_ALL_DOMAINS: '/api/domains/all-domains',
     DNS_RECORDS: '/api/dns/records',
+    DNS_LIST: '/api/dns/list',
+    CREATE_DNS: '/api/dns/create-dns',
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',
     SETTINGS: '/api/settings',

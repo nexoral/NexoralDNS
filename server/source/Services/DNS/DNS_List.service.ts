@@ -45,6 +45,10 @@ export default class DnsListService {
           foreignField: "domainId",
           as: "dnsRecords"
         }
+      },
+      { $unwind: "$dnsRecords" },
+      {
+        $replaceRoot: { newRoot: "$dnsRecords" }
       }
     ]).toArray();
 

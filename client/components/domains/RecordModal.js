@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button';
+import { config, getApiUrl } from '../../config/keys';
+import LoadingSpinner from '../ui/LoadingSpinner';
 
 export default function RecordModal({ domain, onClose }) {
   const [showAddRecord, setShowAddRecord] = useState(false);
@@ -12,18 +14,78 @@ export default function RecordModal({ domain, onClose }) {
     ttl: 3600
   });
   const [mounted, setMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fix hydration issues
+  // Fix hydration issues and fetch DNS records
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Dummy DNS records data - only A, AAAA, CNAME
-  const [records, setRecords] = useState([
-    { id: 1, type: 'A', name: '@', value: '192.168.1.1', ttl: 3600, status: 'active' },
-    { id: 2, type: 'CNAME', name: 'www', value: domain.name, ttl: 3600, status: 'active' },
-    { id: 3, type: 'AAAA', name: '@', value: '2001:db8::1', ttl: 3600, status: 'active' }
-  ]);
+  // Separate useEffect to fetch records after mounting
+  useEffect(() => {
+    if (mounted) {
+      fetchDnsRecords();
+    }
+  }, [mounted, domain.name]);
+
+  // State for DNS records
+  const [records, setRecords] = useState([]);
+
+  // Fetch DNS records from API
+  const fetchDnsRecords = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const authToken = localStorage.getItem('nexoral_auth_token');
+      if (!authToken) {
+        throw new Error('Authentication token not found');
+      }
+
+      // Construct the URL for fetching DNS records
+      const baseUrl = config.API_BASE_URL;
+      const dnsListUrl = `${baseUrl}${config.API_ENDPOINTS.DNS_LIST}/${domain.name}`;
+
+      const response = await fetch(dnsListUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch DNS records');
+      }
+
+      const result = await response.json();
+
+      if (result.statusCode === 200 && result.data && result.data.DNS_List) {
+        // Transform API response to match expected format
+        const transformedRecords = result.data.DNS_List.map(record => ({
+          id: record._id,
+          type: record.type,
+          name: record.name || '@',
+          value: record.value,
+          ttl: record.ttl,
+          status: 'active', // Assuming all returned records are active
+          _original: record // Keep original data for API operations
+        }));
+
+        setRecords(transformedRecords);
+      } else {
+        // If no records or unexpected response structure
+        setRecords([]);
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching DNS records:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const recordTypes = ['A', 'AAAA', 'CNAME'];
 
@@ -53,15 +115,89 @@ export default function RecordModal({ domain, onClose }) {
     return errors;
   };
 
-  const handleAddRecord = (e) => {
+  const handleAddRecord = async (e) => {
     e.preventDefault();
     const errors = validateRecord();
 
     if (Object.keys(errors).length === 0) {
-      const recordWithId = { ...newRecord, id: Date.now(), status: 'active' };
-      setRecords(prev => [...prev, recordWithId]);
-      setNewRecord({ type: 'A', name: '', value: '', ttl: 3600 });
-      setShowAddRecord(false);
+      // Start loading
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const authToken = localStorage.getItem('nexoral_auth_token');
+        if (!authToken) {
+          throw new Error('Authentication token not found');
+        }
+
+        // Process the record name and value
+        // If name is '@', use the domain name itself
+        const name = newRecord.name.trim() === '@' ? '' : newRecord.name.trim();
+
+        // If value is '@', use the domain name
+        const value = newRecord.value.trim() === '@' ? domain.name : newRecord.value.trim();
+
+        // Prepare API request payload
+        const payload = {
+          DomainName: domain.name,
+          name: name,
+          type: newRecord.type,
+          value: value,
+          ttl: parseInt(newRecord.ttl)
+        };
+
+        // Make API request to create DNS record
+        const response = await fetch(getApiUrl('CREATE_DNS'), {
+          method: 'POST',
+          headers: {
+            'Authorization': `${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // Handle specific error responses
+        if (!response.ok) {
+          const errorData = await response.json();
+
+          // Handle 409 Conflict - Value already in use
+          if (response.status === 409) {
+            // Create a more specific error message based on record type
+            let conflictMessage;
+            switch (newRecord.type) {
+              case 'A':
+                conflictMessage = `IP address '${value}' is already in use by another domain`;
+                break;
+              case 'AAAA':
+                conflictMessage = `IPv6 address '${value}' is already in use by another domain`;
+                break;
+              case 'CNAME':
+                conflictMessage = `Target '${value}' is already referenced by another domain`;
+                break;
+              default:
+                conflictMessage = `Value '${value}' is already in use by another domain`;
+            }
+
+            setError(`Conflict Error: ${conflictMessage}. Please use a different value.`);
+            setIsLoading(false);
+            return;
+          }
+
+          throw new Error(errorData.message || 'Failed to create DNS record');
+        }
+
+        // Reset form
+        setNewRecord({ type: 'A', name: '', value: '', ttl: 3600 });
+        setShowAddRecord(false);
+
+        // Refresh records from API to get updated list with server-generated IDs
+        fetchDnsRecords();
+
+      } catch (err) {
+        setError(`Failed to create record: ${err.message}`);
+        console.error('Error creating DNS record:', err);
+        setIsLoading(false);
+      }
     } else {
       alert(Object.values(errors).join('\n'));
     }
@@ -186,47 +322,95 @@ export default function RecordModal({ domain, onClose }) {
             </div>
           )}
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="py-10 text-center">
+              <LoadingSpinner />
+              <p className="mt-2 text-slate-600">Loading DNS records...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !isLoading && (
+            <div className="mb-6">
+              <div className={`${error.includes('Conflict Error') ? 'bg-orange-50 border-orange-500' : 'bg-red-50 border-red-500'} border-l-4 p-4 rounded-md`}>
+                <div className="flex">
+                  <div className={`flex-shrink-0 ${error.includes('Conflict Error') ? 'text-orange-400' : 'text-red-400'}`}>
+                    {error.includes('Conflict Error') ? (
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.485 2.495c.873-1.512 3.057-1.512 3.93 0l6.28 10.875c.87 1.509-.217 3.378-1.967 3.378H4.172c-1.75 0-2.836-1.869-1.966-3.378l6.28-10.875zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="ml-3">
+                    <p className={`text-sm ${error.includes('Conflict Error') ? 'text-orange-700' : 'text-red-700'}`}>{error}</p>
+                    <button
+                      onClick={fetchDnsRecords}
+                      className={`mt-2 text-sm font-medium underline ${error.includes('Conflict Error') ? 'text-orange-700' : 'text-red-700'}`}
+                    >
+                      {error.includes('Conflict Error') ? 'Refresh records' : 'Try again'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Records Table */}
-          <div className="border border-slate-200 rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Value</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">TTL</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
-                {records.map((record) => (
-                  <tr key={record.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRecordTypeColor(record.type)}`}>
-                        {record.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-900">{record.name || '@'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-900 max-w-xs truncate">{record.value}</td>
-                    <td className="px-4 py-3 text-sm text-slate-900">{record.ttl}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex space-x-2">
-                        <button className="text-blue-600 hover:text-blue-800 text-sm">
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRecord(record.id)}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+          {!isLoading && !error && (
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Value</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">TTL</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {records.length > 0 ? (
+                    records.map((record) => (
+                      <tr key={record.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRecordTypeColor(record.type)}`}>
+                            {record.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-900">{record.name || '@'}</td>
+                        <td className="px-4 py-3 text-sm text-slate-900 max-w-xs truncate">{record.value}</td>
+                        <td className="px-4 py-3 text-sm text-slate-900">{record.ttl}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex space-x-2">
+                            <button className="text-blue-600 hover:text-blue-800 text-sm">
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRecord(record.id)}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
+                        No DNS records found for this domain. Add your first record to get started.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
