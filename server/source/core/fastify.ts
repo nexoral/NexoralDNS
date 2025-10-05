@@ -5,6 +5,9 @@ import { CORS_CONFIG, ServerKeys } from "./key";
 import mainRouter from "../Router/Router";
 import MongoConnector from "../Database/mongodb.db";
 import { IpConnectionCronJob } from "../CronJob/Connected_IP_fetcher.cron";
+import swagger from '@fastify/swagger';
+import swaggerUI from '@fastify/swagger-ui';
+
 
 export default function FastifyServer() {
 
@@ -37,6 +40,29 @@ export default function FastifyServer() {
       }
     },
   );
+
+
+
+  // ====== Swagger setup ======
+  NexoralServer.register(swagger, {
+    swagger: {
+      info: {
+        title: 'NexoralDNS API',
+        description: 'Full API documentation for NexoralDNS Server',
+        version: '1.0.0',
+      },
+      consumes: ['application/json'],
+      produces: ['application/json'],
+    },
+  });
+
+  NexoralServer.register(swaggerUI, {
+    routePrefix: '/docs', // Swagger UI will be available at /docs
+    uiConfig: { docExpansion: 'full' },
+    staticCSP: true,
+  });
+
+
 
   // Register the main router with /api prefix
   NexoralServer.register(mainRouter, {

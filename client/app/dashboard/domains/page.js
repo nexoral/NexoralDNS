@@ -10,7 +10,7 @@ import RecordModal from '../../../components/domains/RecordModal';
 import BlockModal from '../../../components/domains/BlockModal';
 import DeleteConfirmModal from '../../../components/domains/DeleteConfirmModal';
 import useAuthStore from '../../../stores/authStore';
-import { getApiUrl } from '../../../config/keys';
+import { getApiUrl, config } from '../../../config/keys';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 
 export default function DomainsPage() {
@@ -90,11 +90,59 @@ export default function DomainsPage() {
     setShowDeleteModal(true);
   };
 
-  const confirmDeleteDomain = (id) => {
-    // Delete domain logic would go here
-    // For now just remove from local state
-    setDomains(prev => prev.filter(domain => domain.id !== id));
-    // After API call would call fetchDomains() to refresh
+  const confirmDeleteDomain = async (id) => {
+    setIsLoading(true);
+    try {
+      const domainToDelete = domains.find(domain => domain.id === id);
+      if (!domainToDelete) return;
+
+      const authToken = token || localStorage.getItem('nexoral_auth_token');
+
+      // The server expects a path parameter, not a body parameter
+      const deleteUrl = `${config.API_BASE_URL}${config.API_ENDPOINTS.DELETE_DOMAIN}`;
+
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ domainName: domainToDelete.name })
+      });
+
+      // Parse response JSON before any other operations
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        throw new Error('Failed to parse server response');
+      }
+
+      // Check for specific error types
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Handle "Domain not found" scenario
+          setError(`Domain "${domainToDelete.name}" not found or already deleted. Refreshing domain list...`);
+          // Refresh domain list since it's out of sync with the server
+          await fetchDomains();
+          return;
+        }
+
+        throw new Error(errorData.message || 'Failed to delete domain');
+      }
+
+      // Success message
+      setError(null);
+
+      // Refetch domains to update the list after successful deletion
+      await fetchDomains();
+    } catch (err) {
+      setError(`Delete failed: ${err.message}`);
+      console.error('Error deleting domain:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleManageRecords = (domain) => {
@@ -270,6 +318,8 @@ export default function DomainsPage() {
           onClose={() => {
             setShowRecordModal(false);
             setSelectedDomain(null);
+            // Refetch all domains when the DNS Records modal is closed
+            fetchDomains();
           }}
         />
       )}

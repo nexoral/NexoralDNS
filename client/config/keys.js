@@ -6,12 +6,15 @@ export const config = {
     VERIFY_TOKEN: '/api/auth/verify',
     GET_ALL_DOMAINS: '/api/domains/all-domains',
     DNS_RECORDS: '/api/dns/records',
+    DNS_LIST: '/api/dns/list',
+    CREATE_DNS: '/api/dns/create-dns',
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',
     SETTINGS: '/api/settings',
     LIST_OF_DEVICES: '/api/dhcp/list-of-available-ips',
     REFRESH_DEVICE_LIST: '/api/dhcp/refresh-connected-ips',
-    CREATE_DOMAIN: '/api/domains/create-domain'
+    CREATE_DOMAIN: '/api/domains/create-domain',
+    DELETE_DOMAIN: '/api/domains/delete'
   },
 
   // Application Configuration
