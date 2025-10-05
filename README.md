@@ -43,7 +43,6 @@ curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/ins
 **Update services:**
 
 ```bash
-# Update NexoralDNS to the latest remote version
 curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s update
 ```
 
