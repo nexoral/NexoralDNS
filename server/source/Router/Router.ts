@@ -30,14 +30,28 @@ export default async function mainRouter(
 ): Promise<void> {
 
   // General Specific Middleware (e.g, health check, info, etc.)
-  fastify.get("/info", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    return PublicInfoController.getInfo(reply);
+  fastify.get("/info", {
+    schema: {
+      description: 'Get public information about the NexoralDNS server',
+      tags: ['Public'],
+    },
+    preHandler: [],
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
+      return PublicInfoController.getInfo(reply);
+    }
   });
 
 
   // Health check route
-  fastify.get("/health", { preHandler: [] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    return PublicInfoController.getHealth(reply);
+  fastify.get("/health", {
+    schema: {
+      description: 'Health check endpoint to verify server status',
+      tags: ['Public'],
+    },
+    preHandler: [],
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
+      return PublicInfoController.getHealth(reply);
+    }
   });
 
   // Register Sub-Routers
