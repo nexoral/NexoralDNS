@@ -18,7 +18,7 @@ export default class DomainRemoveService {
 
   // Remove a domain record
   public async removeDomain(domain: string, user: any): Promise<void> {
-
+    console.log("Removing domain:", domain, "for user:", user);
     // construct Response
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Domain removed successfully");
     const DomainCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);

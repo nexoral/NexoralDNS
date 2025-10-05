@@ -59,11 +59,11 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
   });
 
   // Delete a domain by its name
-  fastify.delete("/domains/:domainName", {
+  fastify.delete("/delete", {
     schema: {
       description: 'Delete a domain by its name',
       tags: ['Domain'],
-      params: {
+      body: {
         type: 'object',
         properties: {
           domainName: { type: 'string', description: 'The name of the domain to delete' },

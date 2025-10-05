@@ -11,7 +11,8 @@ export const config = {
     SETTINGS: '/api/settings',
     LIST_OF_DEVICES: '/api/dhcp/list-of-available-ips',
     REFRESH_DEVICE_LIST: '/api/dhcp/refresh-connected-ips',
-    CREATE_DOMAIN: '/api/domains/create-domain'
+    CREATE_DOMAIN: '/api/domains/create-domain',
+    DELETE_DOMAIN: '/api/domains/delete'
   },
 
   // Application Configuration

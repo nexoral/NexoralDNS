@@ -42,12 +42,13 @@ export default class DomainController {
 
   // Remove a domain record
   public static async remove(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
-    const { domainName } = request.params as { domainName: string };
+    const { domainName } = request.body as { domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain removed successfully");
     const domainRemoveService = new DomainRemoveService(reply);
     try {
       await domainRemoveService.removeDomain(domainName, request.user);
     } catch (error) {
+      console.error("Error removing domain:", error);
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error removing domain");
       return Responser.send("An error occurred while removing the domain");
