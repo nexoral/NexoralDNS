@@ -46,6 +46,8 @@ export default function DomainModal({ onClose, onSave }) {
     const newErrors = {};
     if (!formData.name.trim()) {
       newErrors.name = 'Domain name is required';
+    } else if (formData.name.toLowerCase().endsWith('.local')) {
+      newErrors.name = 'Domains ending with .local are not allowed as they can cause resolution errors. Please use a different domain extension.';
     } else if (!/^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(formData.name)) {
       newErrors.name = 'Please enter a valid domain name';
     }
@@ -113,6 +115,7 @@ export default function DomainModal({ onClose, onSave }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     if (name.startsWith('defaultRecord.')) {
       const field = name.split('.')[1];
       setFormData(prev => ({
@@ -121,6 +124,15 @@ export default function DomainModal({ onClose, onSave }) {
       }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+
+      // Real-time validation for .local domain
+      if (name === 'name' && value.toLowerCase().endsWith('.local')) {
+        setErrors(prev => ({
+          ...prev,
+          [name]: 'Domains ending with .local are not allowed as they can cause resolution errors. Please use a different domain extension.'
+        }));
+        return;
+      }
     }
 
     if (errors[name] || errors.defaultRecord) {
@@ -192,8 +204,17 @@ export default function DomainModal({ onClose, onSave }) {
                 required
               />
             </div>
-            {errors.name && (
+            {errors.name ? (
               <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+            ) : (
+              <p className="text-slate-500 text-xs mt-1">
+                <span className="flex items-center">
+                  <svg className="h-3 w-3 mr-1 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Note: Domain names ending with .local are not allowed as they can cause resolution errors.
+                </span>
+              </p>
             )}
           </div>
 

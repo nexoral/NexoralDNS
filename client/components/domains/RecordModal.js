@@ -239,7 +239,12 @@ export default function RecordModal({ domain, onClose }) {
               <p className="text-sm text-slate-600 mt-1">Domain: {domain.name}</p>
             </div>
             <button
-              onClick={onClose}
+              onClick={() => {
+                // Give final API requests a chance to complete before closing
+                setTimeout(() => {
+                  onClose();
+                }, 100);
+              }}
               className="p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100"
               aria-label="Close modal"
             >
@@ -411,6 +416,21 @@ export default function RecordModal({ domain, onClose }) {
               </table>
             </div>
           )}
+
+          {/* Footer with Done button */}
+          <div className="mt-6 border-t border-slate-200 pt-6 flex justify-end">
+            <Button
+              variant="primary"
+              onClick={() => {
+                // Give final API requests a chance to complete before closing
+                setTimeout(() => {
+                  onClose();
+                }, 100);
+              }}
+            >
+              Done
+            </Button>
+          </div>
         </div>
       </div>
     </div>

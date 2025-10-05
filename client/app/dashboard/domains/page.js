@@ -318,6 +318,8 @@ export default function DomainsPage() {
           onClose={() => {
             setShowRecordModal(false);
             setSelectedDomain(null);
+            // Refetch all domains when the DNS Records modal is closed
+            fetchDomains();
           }}
         />
       )}
