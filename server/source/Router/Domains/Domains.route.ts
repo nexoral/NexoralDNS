@@ -15,6 +15,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
   fastify.addHook("preHandler", authGuard.isAuthenticated);
 
   // Domain Routes
+  // Create a new domain
   fastify.post("/create-domain", {
     schema: {
       description: 'Create a new domain',
@@ -39,6 +40,8 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
     preHandler: [],
     handler: DomainController.create
   });
+
+  // Get all domains for the authenticated user
   fastify.get("/all-domains", {
     schema: {
       description: 'Get a list of all domains',
@@ -54,8 +57,29 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
     preHandler: [],
     handler: DomainController.list
   });
-  // fastify.get("/domains/:id", { preHandler: [] }, DomainController.get);
-  // fastify.put("/domains/:id", { preHandler: [] }, DomainController.update);
-  // fastify.delete("/domains/:id", { preHandler: [] }, DomainController.delete);
+
+  // Delete a domain by its name
+  fastify.delete("/domains/:domainName", {
+    schema: {
+      description: 'Delete a domain by its name',
+      tags: ['Domain'],
+      params: {
+        type: 'object',
+        properties: {
+          domainName: { type: 'string', description: 'The name of the domain to delete' },
+        },
+        required: ['domainName'],
+      },
+      headers: {
+        type: 'object',
+        properties: {
+          Authorization: { type: 'string', description: 'token for authentication' },
+        },
+        required: ['Authorization'],
+      },
+    },
+    preHandler: [],
+    handler: DomainController.remove
+  });
 
 }
