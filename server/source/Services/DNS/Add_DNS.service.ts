@@ -18,7 +18,7 @@ export default class DnsAddService {
   }
 
   // Add a new DNS record
-  public async addDnsRecord(domain: string, type: string, value: string, ttl: number, user: any): Promise<void> {
+  public async addDnsRecord(domain: string, name: string, type: string, value: string, ttl: number, user: any): Promise<void> {
 
     // construct Response
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "DNS record added successfully");
@@ -50,7 +50,7 @@ export default class DnsAddService {
         {
           domainId: existingDomain[0]._id,
           type: type,
-          name: domain,
+          name: name,
           value: value,
           ttl: 300,
         }
