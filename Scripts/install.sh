@@ -71,11 +71,16 @@ ensure_systemd_resolved_running() {
     return 0
   fi
 
-  print_status "systemd-resolved is not active — attempting to start..."
-  if sudo systemctl start systemd-resolved >/dev/null 2>&1; then
-    if systemctl is-active --quiet systemd-resolved; then
-      print_success "systemd-resolved started successfully."
-      return 0
+  print_status "systemd-resolved is not active — enabling and restarting service..."
+  # First enable the service so it starts automatically at boot
+  if sudo systemctl enable systemd-resolved >/dev/null 2>&1; then
+    print_status "systemd-resolved enabled for automatic startup at boot."
+    # Then restart the service to activate it now
+    if sudo systemctl restart systemd-resolved >/dev/null 2>&1; then
+      if systemctl is-active --quiet systemd-resolved; then
+        print_success "systemd-resolved enabled and started successfully."
+        return 0
+      fi
     fi
   fi
 
