@@ -7,6 +7,7 @@ import MongoConnector from "../Database/mongodb.db";
 import { IpConnectionCronJob } from "../CronJob/Connected_IP_fetcher.cron";
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
+import createTCPBroker from "../Broker/TCP.broker";
 
 
 export default function FastifyServer() {
@@ -79,6 +80,8 @@ export default function FastifyServer() {
       console.log(
         `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
       );
+      // Initialize TCP Broker Client
+      createTCPBroker();
       IpConnectionCronJob()
     } catch (err) {
       NexoralServer.log.error(err);

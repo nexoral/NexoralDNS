@@ -1,0 +1,27 @@
+{
+  "name": "message-broker",
+  "version": "1.1.1",
+  "description": "this service is used for make a intermidate broker to help services to communicate",
+  "main": "Broker.js",
+  "scripts": {
+    "dev": "npm run build && npm start",
+    "start": "node ./lib/Core/Broker.js",
+    "build": "tsc",
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nexoral/NexoralDNS.git"
+  },
+  "keywords": [
+    "Server"
+  ],
+  "author": "Ankan Saha",
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0"
+  }
+}
