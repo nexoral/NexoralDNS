@@ -1,6 +1,7 @@
 import net from 'net';
 import { ServerKeys } from './key';
 import { createMessage, parseMessage } from './parser.broker';
+import IP_SCAN from '../service/AutoScanIPchange.service';
 
 export default function createTCPBroker() {
   // Create a TCP server
@@ -8,16 +9,21 @@ export default function createTCPBroker() {
     console.log(`Broker Client server listening on port ${ServerKeys.BROKER_PORT}`);
   });
 
+  // register the service upon connection
+   new IP_SCAN(server).scan();
+
   // send a message to the server
   server.write(createMessage({ type: 'register', service: 'DHCP_SERVER' }));
-
-  // Example of sending an event invocation message
-  server.write(createMessage({ type: "message", targetService: "NexoralDNS", event: "INVOKE_IP_FETCH" }));
 
   server.on("data", (data) => {
     const messageObject = parseMessage(data);
     if (messageObject.type === "message") {
       console.log("Received message:", messageObject);
+    }
+    else if (messageObject.type === "response") {
+      if (messageObject.status === "success") {
+        console.log("Response received:", messageObject);
+      }
     }
   });
 

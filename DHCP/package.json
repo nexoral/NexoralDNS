@@ -19,7 +19,8 @@
   "author": "Ankan Saha",
   "license": "MIT",
   "dependencies": {
-    "@types/node": "^24.7.0",
+    "@types/node": "^24.7.2",
+    "outers": "^8.6.10",
     "typescript": "^5.9.3"
   }
 }
