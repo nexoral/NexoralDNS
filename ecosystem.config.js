@@ -26,6 +26,19 @@ module.exports = {
       max_restarts: 3,
       user: 'nobody'
     },
+    // DHCP Server - Runs from DHCP
+    {
+      name: 'DHCP_Server',
+      script: 'npm',
+      args: 'run start',
+      cwd: '/app/DHCP',
+      env: { NODE_ENV: 'production' },
+      out_file: '/var/log/server.log',
+      error_file: '/var/log/server.err.log',
+      restart_delay: 5000,
+      max_restarts: 3,
+      user: 'nobody'
+    },
     // client (frontend) — runs from /client
     {
       name: 'client',

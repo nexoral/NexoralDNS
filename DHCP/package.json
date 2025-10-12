@@ -1,6 +1,6 @@
 {
   "name": "dhcp",
-  "version": "1.1.1",
+  "version": "2.4.12-stable",
   "description": "this is the service to control all DHCP Related Works",
   "main": "DHCP.js",
   "scripts": {
@@ -19,7 +19,8 @@
   "author": "Ankan Saha",
   "license": "MIT",
   "dependencies": {
-    "@types/node": "^24.7.0",
+    "@types/node": "^24.7.2",
+    "outers": "^8.6.10",
     "typescript": "^5.9.3"
   }
 }
