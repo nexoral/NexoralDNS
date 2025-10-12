@@ -116,7 +116,10 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       { code: 15, name: "Support Access" },
       { code: 16, name: "Activate Service" },
       { code: 17, name: "Deactivate Service" },
-      { code: 18, name: "Refresh Connected IPs" }
+      { code: 18, name: "Refresh Connected IPs" },
+      { code: 19, name: "Create DNS Record" },
+      { code: 20, name: "Delete DNS Record" },
+      { code: 21, name: "Modify DNS Record" }
     ],
     DefaultRoles: [
       {

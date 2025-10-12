@@ -43,7 +43,7 @@ export default async function DHCPRouter(fastify: FastifyInstance, _options: Dhc
         required: ['authorization'],
       },
     },
-    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(58)],
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(18)],
     handler: DhcpController.refreshConnectedIP
   });
 
