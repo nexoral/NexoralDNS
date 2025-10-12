@@ -6,6 +6,7 @@ import DomainController from "../../Controller/Domain/Domain.controller";
 
 // middleware
 import authGuard from "../../Middlewares/authGuard.middleware";
+import PermissionGuard from "../../Middlewares/permissionGuard.middleware";
 
 export interface DomainOptions extends FastifyPluginOptions { }
 
@@ -37,7 +38,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
         required: ['Authorization'],
       },
     },
-    preHandler: [],
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(1)],
     handler: DomainController.create
   });
 
@@ -78,7 +79,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
         required: ['Authorization'],
       },
     },
-    preHandler: [],
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(2)],
     handler: DomainController.remove
   });
 

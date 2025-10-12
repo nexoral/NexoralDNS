@@ -1,7 +1,6 @@
 import net from 'net';
-import { ServerKeys } from '../core/key';
+import { ServerKeys } from './key';
 import { createMessage, parseMessage } from './parser.broker';
-import { getEventHandler } from './EventMapper.broker';
 
 export default function createTCPBroker() {
   // Create a TCP server
@@ -10,18 +9,15 @@ export default function createTCPBroker() {
   });
 
   // send a message to the server
-  server.write(createMessage({ type: 'register', service: 'NexoralDNS' }));
+  server.write(createMessage({ type: 'register', service: 'DHCP_SERVER' }));
+
+  // Example of sending an event invocation message
+  server.write(createMessage({ type: "message", targetService: "NexoralDNS", event: "INVOKE_IP_FETCH" }));
 
   server.on("data", (data) => {
     const messageObject = parseMessage(data);
-    if (messageObject.type ==="message") {
-      console.log("Received message:", messageObject.event);
-      const getFunction = getEventHandler(String(messageObject.event));
-      if (getFunction) {
-        getFunction();
-      } else {
-        console.log(`No handler found for event: ${messageObject.event}`);
-      }
+    if (messageObject.type === "message") {
+      console.log("Received message:", messageObject);
     }
   });
 
@@ -36,3 +32,5 @@ export default function createTCPBroker() {
     setTimeout(createTCPBroker, 1000); // try to reconnect after 1 second
   });
 }
+
+createTCPBroker();

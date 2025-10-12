@@ -27,6 +27,7 @@ const server = net.createServer((socket) => {
       const targetSocket = getClient(String(messageObject.targetService));
       if (targetSocket) {
         targetSocket.write(JSON.stringify({
+          type: messageObject.type,
           event: messageObject.event,
           payload: messageObject.payload ? messageObject.payload : null
         }));

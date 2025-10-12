@@ -33,6 +33,10 @@ COPY . .
 WORKDIR /app/server
 RUN npm install && npm run build
 
+# Build Broker
+WORKDIR /app/Broker
+RUN npm install && npm run build
+
 # ---- Build client ----
 WORKDIR /app/client
 RUN npm install && npm run build

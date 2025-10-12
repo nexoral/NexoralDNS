@@ -1,0 +1,25 @@
+{
+  "name": "dhcp",
+  "version": "1.1.1",
+  "description": "this is the service to control all DHCP Related Works",
+  "main": "DHCP.js",
+  "scripts": {
+    "test": "test",
+    "dev": "npm run build && npm start",
+    "start": "node ./lib/config/DHCP.js",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "nex"
+  },
+  "keywords": [
+    "nex"
+  ],
+  "author": "Ankan Saha",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^24.7.0",
+    "typescript": "^5.9.3"
+  }
+}

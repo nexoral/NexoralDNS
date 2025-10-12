@@ -6,6 +6,7 @@ import authGuard from "../../Middlewares/authGuard.middleware";
 
 // Controllers
 import DhcpController from "../../Controller/DHCP/DHCP.controller";
+import PermissionGuard from "../../Middlewares/permissionGuard.middleware";
 
 export interface DhcpOptions extends FastifyPluginOptions { }
 
@@ -42,7 +43,7 @@ export default async function DHCPRouter(fastify: FastifyInstance, _options: Dhc
         required: ['authorization'],
       },
     },
-    preHandler: [authGuard.isAuthenticated],
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(18)],
     handler: DhcpController.refreshConnectedIP
   });
 
