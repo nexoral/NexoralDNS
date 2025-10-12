@@ -7,6 +7,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import DnsAddService from "../../Services/DNS/Add_DNS.service";
 import DnsListService from "../../Services/DNS/DNS_List.service";
 import DnsUpdateService from "../../Services/DNS/DNS_Update.service";
+import DnsDeleteService from "../../Services/DNS/DNS_Delete.service";
 
 
 export default class DnsController {
@@ -53,6 +54,21 @@ export default class DnsController {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error updating DNS record");
       return Responser.send("An error occurred while updating the DNS record");
+    }
+  }
+
+  // Delete a DNS record by ID
+  public static async delete(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id, domainName } = request.query as { id: string, domainName: string };
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record deleted successfully");
+    const dnsDeleteService = new DnsDeleteService(reply);
+
+    try {
+      await dnsDeleteService.deleteDnsRecord(id, domainName, request.user);
+    } catch (error) {
+      Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
+      Responser.setMessage("Error deleting DNS record");
+      return Responser.send("An error occurred while deleting the DNS record");
     }
   }
 }
