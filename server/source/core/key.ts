@@ -115,28 +115,29 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       { code: 14, name: "Manage Billing" },
       { code: 15, name: "Support Access" },
       { code: 16, name: "Activate Service" },
-      { code: 17, name: "Deactivate Service" }
+      { code: 17, name: "Deactivate Service" },
+      { code: 18, name: "Refresh Connected IPs" }
     ],
     DefaultRoles: [
       {
         role: "Super Admin",
         code: 1,
-        permissions: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+        permissions: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
       },
       {
         role: "Admin",
         code: 2,
-        permissions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        permissions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 18]
       },
       {
         role: "Moderator",
         code: 3,
-        permissions: [1, 2, 3, 7, 8, 9]
+        permissions: [1, 2, 3, 7, 8, 9, 10, 18]
       },
       {
         role: "User",
         code: 4,
-        permissions: [1, 2, 3]
+        permissions: [1, 2, 3, 7, 8, 9, 10, 18]
       },
       {
         role: "Guest",
