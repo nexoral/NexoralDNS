@@ -41,6 +41,10 @@ RUN npm install && npm run build
 WORKDIR /app/client
 RUN npm install && npm run build
 
+# ---- Build DHCP Client ----
+WORKDIR /app/DHCP
+RUN npm install && npm run build
+
 # ---- Build DNS Web component ----
 WORKDIR /app/Web
 RUN npm install && npm run build
