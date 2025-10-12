@@ -78,7 +78,7 @@ export default function DomainsPage() {
   // Fetch domains on component mount
   useEffect(() => {
     fetchDomains();
-  }, [token]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddDomain = (newDomain) => {
     // Refresh the domains list after adding a new domain

@@ -67,4 +67,62 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(20)],
     handler: DnsController.list
   });
+
+  // Update a DNS record by ID
+  fastify.put("/update/:id", {
+    schema: {
+      description: 'Update a DNS record by its ID',
+      tags: ['DNS'],
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'The ID of the DNS record' },
+        },
+        required: ['id'],
+      },
+      body: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'The name of the DNS record' },
+          type: { type: 'string', enum: ['A', 'CNAME', "AAAA"], description: 'The type of DNS record' },
+          value: { type: 'string', description: 'The value of the DNS record' },
+          ttl: { type: 'number', description: 'Time to live for the DNS record in seconds' },
+        }
+      },
+      headers: {
+        type: 'object',
+        properties: {
+          Authorization: { type: 'string', description: 'token for authentication' },
+        },
+        required: ['Authorization'],
+      },
+    },
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(21)],
+    handler: DnsController.update
+  });
+
+  // Delete a DNS record by ID
+  fastify.delete("/delete", {
+    schema: {
+      description: 'Delete a DNS record by its ID',
+      tags: ['DNS'],
+      querystring: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'The ID of the DNS record' },
+          domainName: { type: 'string', description: 'The name of the domain' },
+        },
+        required: ['id', 'domainName'],
+      },
+      headers: {
+        type: 'object',
+        properties: {
+          Authorization: { type: 'string', description: 'token for authentication' },
+        },
+        required: ['Authorization'],
+      },
+    },
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(22)],
+    handler: DnsController.delete
+  });
 }
