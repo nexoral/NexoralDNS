@@ -119,4 +119,20 @@ else
     echo "Warning: Web/package.json not found."
 fi
 
+DHCP_package="$(dirname "$0")/../DHCP/package.json"
+if [ -f "$DHCP_package" ]; then
+    sed -i "s|^\(\s*\"version\":\s*\"\)[^\"]*\(\",\?\)$|\1${new_version}-${suffix}\2|" "$DHCP_package"
+    echo "Updated DHCP/package.json with new version."
+else
+    echo "Warning: Web/package.json not found."
+fi
+
+Broker_package="$(dirname "$0")/../Broker/package.json"
+if [ -f "$Broker_package" ]; then
+    sed -i "s|^\(\s*\"version\":\s*\"\)[^\"]*\(\",\?\)$|\1${new_version}-${suffix}\2|" "$Broker_package"
+    echo "Updated Broker/package.json with new version."
+else
+    echo "Warning: Broker/package.json not found."
+fi
+
 echo "All version updates completed successfully."
