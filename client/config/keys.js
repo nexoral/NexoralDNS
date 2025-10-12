@@ -8,6 +8,7 @@ export const config = {
     DNS_RECORDS: '/api/dns/records',
     DNS_LIST: '/api/dns/list',
     CREATE_DNS: '/api/dns/create-dns',
+    UPDATE_DNS: '/api/dns/update',
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',
     SETTINGS: '/api/settings',

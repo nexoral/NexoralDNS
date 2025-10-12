@@ -37,11 +37,7 @@ export default class DnsUpdateService {
     const existingValue = await DNSCollectionClient.find({ value: value }).toArray();
 
     
-    if (existingName.length > 0) {
-      Responser.setStatusCode(StatusCodes.CONFLICT);
-      Responser.setMessage("Name already in use");
-      return Responser.send("Name already in use by another domain");
-    } else if (existingValue.length > 0) {
+    if (existingValue.length > 0) {
       Responser.setStatusCode(StatusCodes.CONFLICT);
       Responser.setMessage("Value already in use");
       return Responser.send("Value already in use by another domain");

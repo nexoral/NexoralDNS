@@ -7,6 +7,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 
 export default function RecordModal({ domain, onClose }) {
   const [showAddRecord, setShowAddRecord] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [newRecord, setNewRecord] = useState({
     type: 'A',
     name: '',
@@ -89,24 +90,25 @@ export default function RecordModal({ domain, onClose }) {
 
   const recordTypes = ['A', 'AAAA', 'CNAME'];
 
-  const validateRecord = () => {
+  const validateRecord = (record = null) => {
     const errors = {};
+    const recordToValidate = record || editingRecord || newRecord;
 
-    if (!newRecord.name.trim()) {
+    if (!recordToValidate.name.trim()) {
       errors.name = 'Name is required';
     }
 
-    if (!newRecord.value.trim()) {
+    if (!recordToValidate.value.trim()) {
       errors.value = 'Value is required';
     } else {
-      if (newRecord.type === 'A') {
+      if (recordToValidate.type === 'A') {
         const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        if (!ipv4Regex.test(newRecord.value)) {
+        if (!ipv4Regex.test(recordToValidate.value)) {
           errors.value = 'Please enter a valid IPv4 address';
         }
-      } else if (newRecord.type === 'AAAA') {
+      } else if (recordToValidate.type === 'AAAA') {
         const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
-        if (!ipv6Regex.test(newRecord.value)) {
+        if (!ipv6Regex.test(recordToValidate.value)) {
           errors.value = 'Please enter a valid IPv6 address';
         }
       }
@@ -201,6 +203,98 @@ export default function RecordModal({ domain, onClose }) {
     } else {
       alert(Object.values(errors).join('\n'));
     }
+  };
+
+  const handleEditRecord = (record) => {
+    setEditingRecord({
+      ...record,
+      name: record.name || '',
+      value: record.value,
+      type: record.type,
+      ttl: record.ttl
+    });
+    setShowAddRecord(false);
+  };
+
+  const handleUpdateRecord = async (e) => {
+    e.preventDefault();
+    const errors = validateRecord();
+
+    if (Object.keys(errors).length === 0 && editingRecord) {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const authToken = localStorage.getItem('nexoral_auth_token');
+        if (!authToken) {
+          throw new Error('Authentication token not found');
+        }
+
+        // Prepare API request payload according to schema
+        const payload = {
+          name: editingRecord.name.trim() === '@' ? '' : editingRecord.name.trim(),
+          type: editingRecord.type,
+          value: editingRecord.value.trim() === '@' ? domain.name : editingRecord.value.trim(),
+          ttl: parseInt(editingRecord.ttl)
+        };
+
+        // Make API request to update DNS record
+        const updateUrl = `${config.API_BASE_URL}${config.API_ENDPOINTS.UPDATE_DNS}/${editingRecord.id}`;
+
+        const response = await fetch(updateUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // Handle specific error responses
+        if (!response.ok) {
+          const errorData = await response.json();
+
+          // Handle 409 Conflict
+          if (response.status === 409) {
+            if (errorData.message.toLowerCase().includes('name')) {
+              setError(`Name '${payload.name || '@'}' is already in use by another record`);
+            } else if (errorData.message.toLowerCase().includes('value')) {
+              setError(`Value '${payload.value}' is already in use by another record`);
+            } else {
+              setError(`Conflict: ${errorData.message}`);
+            }
+            setIsLoading(false);
+            return;
+          }
+
+          // Handle 404 Not Found
+          if (response.status === 404) {
+            setError('DNS record not found. It may have been deleted.');
+            setIsLoading(false);
+            return;
+          }
+
+          throw new Error(errorData.message || 'Failed to update DNS record');
+        }
+
+        // Reset editing state
+        setEditingRecord(null);
+
+        // Refresh records from API to get updated list
+        await fetchDnsRecords();
+
+      } catch (err) {
+        setError(`Failed to update record: ${err.message}`);
+        console.error('Error updating DNS record:', err);
+        setIsLoading(false);
+      }
+    } else {
+      alert(Object.values(errors).join('\n'));
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRecord(null);
   };
 
   const handleDeleteRecord = (id) => {
@@ -327,6 +421,67 @@ export default function RecordModal({ domain, onClose }) {
             </div>
           )}
 
+          {/* Edit Record Form */}
+          {editingRecord && (
+            <div className="bg-blue-50 rounded-lg p-4 mb-6 border-2 border-blue-200">
+              <h4 className="text-sm font-semibold text-blue-800 mb-3">Edit DNS Record</h4>
+              <form onSubmit={handleUpdateRecord} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <select
+                  value={editingRecord.type}
+                  onChange={(e) => setEditingRecord(prev => ({ ...prev, type: e.target.value, value: '' }))}
+                  className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  {recordTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="Name (@ for root)"
+                  value={editingRecord.name}
+                  onChange={(e) => setEditingRecord(prev => ({ ...prev, name: e.target.value }))}
+                  className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+
+                <input
+                  type="text"
+                  placeholder={getPlaceholder(editingRecord.type)}
+                  value={editingRecord.value}
+                  onChange={(e) => setEditingRecord(prev => ({ ...prev, value: e.target.value }))}
+                  className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+
+                <input
+                  type="number"
+                  placeholder="TTL"
+                  value={editingRecord.ttl}
+                  onChange={(e) => setEditingRecord(prev => ({ ...prev, ttl: parseInt(e.target.value) }))}
+                  className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  min="60"
+                  max="86400"
+                  required
+                />
+
+                <div className="flex space-x-2">
+                  <Button type="submit" variant="primary" size="sm">
+                    Update
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {/* Loading State */}
           {isLoading && (
             <div className="py-10 text-center">
@@ -392,7 +547,10 @@ export default function RecordModal({ domain, onClose }) {
                         <td className="px-4 py-3 text-sm text-slate-900">{record.ttl}</td>
                         <td className="px-4 py-3">
                           <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-800 text-sm">
+                            <button
+                              onClick={() => handleEditRecord(record)}
+                              className="text-blue-600 hover:text-blue-800 text-sm"
+                            >
                               Edit
                             </button>
                             <button
