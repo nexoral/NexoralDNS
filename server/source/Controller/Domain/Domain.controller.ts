@@ -9,6 +9,8 @@ import { StatusCodes } from "outers";
 import DomainListService from "../../Services/Domain/Domain_List.service";
 import DomainRemoveService from "../../Services/Domain/Remove_Domain.service";
 
+// In-flight request tracking to prevent duplicate processing
+const inFlightRequests = new Map<string, Promise<void>>();
 
 export default class DomainController {
   constructor() { }
@@ -16,15 +18,43 @@ export default class DomainController {
   // Add a new domain record
   public static async create(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const { type, DomainName, IpAddress } = request.body;
+
+    // Create a unique key for this request to prevent duplicate processing
+    const requestKey = `${request.user._id}:${DomainName}:${IpAddress}`;
+
+    // Check if this request is already being processed
+    if (inFlightRequests.has(requestKey)) {
+      console.log(`[DEDUP] Duplicate request detected for ${requestKey}, waiting for existing request...`);
+      // Wait for the in-flight request to complete
+      await inFlightRequests.get(requestKey);
+      return;
+    }
+
+    console.log(`[CREATE] Processing domain creation request for ${DomainName} by user ${request.user._id}`);
+
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "Domain created successfully");
     const domainAddService = new DomainAddService(reply);
-    try {
-      await domainAddService.addDomain(DomainName, type, IpAddress, request.user);
-    } catch (error) {
-      Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
-      Responser.setMessage("Error adding domain");
-      return Responser.send("An error occurred while adding the domain");
-    }
+
+    // Create the promise for this request
+    const requestPromise = (async () => {
+      try {
+        await domainAddService.addDomain(DomainName, type, IpAddress, request.user);
+      } catch (error) {
+        Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
+        Responser.setMessage("Error adding domain");
+        return Responser.send("An error occurred while adding the domain");
+      } finally {
+        // Remove from in-flight requests after completion
+        inFlightRequests.delete(requestKey);
+        console.log(`[CLEANUP] Removed in-flight request for ${requestKey}`);
+      }
+    })();
+
+    // Store the promise
+    inFlightRequests.set(requestKey, requestPromise);
+
+    // Wait for completion
+    await requestPromise;
   }
 
   // List all domains for the authenticated user

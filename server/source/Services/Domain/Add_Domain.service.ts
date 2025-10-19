@@ -19,6 +19,8 @@ export default class DomainAddService {
   // Add a new domain record
   public async addDomain(domain: string, type: string, IpAddress: string, user: any): Promise<void> {
 
+    console.log(`[SERVICE] addDomain called for domain: ${domain}, IP: ${IpAddress}, user: ${user._id}`);
+
     // construct Response
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Domain added successfully");
     const DomainCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
@@ -33,7 +35,9 @@ export default class DomainAddService {
 
     const existingDomain = await DomainCollectionClient.find({ domain: domain, userId: new ObjectId(user._id) }).toArray();
     const existingIP = await DNSCollectionClient.find({ value: IpAddress }).toArray();
-    
+
+    console.log(`[SERVICE] Existing domain check: ${existingDomain.length}, Existing IP check: ${existingIP.length}`);
+
     if (existingIP.length > 0) {
       Responser.setStatusCode(StatusCodes.CONFLICT);
       Responser.setMessage("IP Address already in use");
@@ -44,6 +48,8 @@ export default class DomainAddService {
       return Responser.send("Domain already exists");
     }
     else {
+      console.log(`[SERVICE] Inserting new domain: ${domain}`);
+
       const domainDoc = {
         domain: domain,
         domainStatus: "active",
@@ -51,14 +57,17 @@ export default class DomainAddService {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       const insertResult = await DomainCollectionClient.insertOne(domainDoc);
+
+      console.log(`[SERVICE] Domain insert result: ${insertResult.acknowledged}, ID: ${insertResult.insertedId}`);
+
       if (!insertResult.acknowledged) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
         Responser.setMessage("Failed to add domain");
         return Responser.send("Failed to add domain");
       }
-  
+
       // Add default DNS records for the new domain
       const dnsRecords = [
         {
@@ -69,14 +78,17 @@ export default class DomainAddService {
           ttl: 300,
         }
       ];
-  
+
       const dnsInsertResult = await DNSCollectionClient.insertMany(dnsRecords);
+
+      console.log(`[SERVICE] DNS records insert result: ${dnsInsertResult.acknowledged}`);
+
       if (!dnsInsertResult.acknowledged) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
         Responser.setMessage("Failed to add DNS records");
         return Responser.send("Failed to add DNS records");
       }
-  
+
       return Responser.send({ domainId: insertResult.insertedId, dnsRecordIds: dnsInsertResult.insertedIds });
     }
 
