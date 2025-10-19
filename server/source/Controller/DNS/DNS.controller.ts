@@ -89,7 +89,8 @@ export default class DnsController {
 
   // Delete a DNS record by ID
   public static async delete(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id, domainName } = request.query as { id: string, domainName: string };
+    console.log(`[DELETE] Processing DNS record deletion request by user ${request.user._id}`);
+    const { id, domainName } = request.body as { id: string, domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record deleted successfully");
     const dnsDeleteService = new DnsDeleteService(reply);
 

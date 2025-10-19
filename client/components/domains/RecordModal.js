@@ -297,8 +297,57 @@ export default function RecordModal({ domain, onClose }) {
     setEditingRecord(null);
   };
 
-  const handleDeleteRecord = (id) => {
-    setRecords(prev => prev.filter(record => record.id !== id));
+  const handleDeleteRecord = async (recordId) => {
+    // Confirm deletion
+    if (!window.confirm('Are you sure you want to delete this DNS record? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const authToken = localStorage.getItem('nexoral_auth_token');
+      if (!authToken) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(getApiUrl('DELETE_DNS'), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: recordId,
+          domainName: domain.name
+        })
+      });
+
+      // Handle specific error responses
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        // Handle 404 Not Found
+        if (response.status === 404) {
+          setError('DNS record not found. It may have been already deleted.');
+          // Refresh records to sync with server
+          await fetchDnsRecords();
+          return;
+        }
+
+        throw new Error(errorData.message || 'Failed to delete DNS record');
+      }
+
+      // Success - refresh the records list
+      await fetchDnsRecords();
+
+    } catch (err) {
+      setError(`Failed to delete record: ${err.message}`);
+      console.error('Error deleting DNS record:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getRecordTypeColor = (type) => {
