@@ -8,9 +8,10 @@ import DnsAddService from "../../Services/DNS/Add_DNS.service";
 import DnsListService from "../../Services/DNS/DNS_List.service";
 import DnsUpdateService from "../../Services/DNS/DNS_Update.service";
 import DnsDeleteService from "../../Services/DNS/DNS_Delete.service";
+import RequestControllerHelper from "../../helper/Request_Controller.helper";
 
-// In-flight request tracking to prevent duplicate processing
-const inFlightRequests = new Map<string, Promise<void>>();
+// Singleton instance for request deduplication
+const requestHelper = new RequestControllerHelper();
 
 export default class DnsController {
   constructor() { }
@@ -22,39 +23,30 @@ export default class DnsController {
     // Create a unique key for this request to prevent duplicate processing
     const requestKey = `${request.user._id}:${DomainName}:${name}:${value}`;
 
-    // Check if this request is already being processed
-    if (inFlightRequests.has(requestKey)) {
-      console.log(`[DEDUP] Duplicate DNS record request detected for ${requestKey}, waiting for existing request...`);
-      // Wait for the in-flight request to complete
-      await inFlightRequests.get(requestKey);
-      return;
-    }
-
-    console.log(`[CREATE] Processing DNS record creation request for ${name} in domain ${DomainName} by user ${request.user._id}`);
-
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "DNS record created successfully");
     const dnsAddService = new DnsAddService(reply);
 
-    // Create the promise for this request
-    const requestPromise = (async () => {
-      try {
-        await dnsAddService.addDnsRecord(DomainName, name, type, value, ttl, request.user);
-      } catch (error) {
-        Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
-        Responser.setMessage("Error adding DNS record");
-        return Responser.send("An error occurred while adding the DNS record");
-      } finally {
-        // Remove from in-flight requests after completion
-        inFlightRequests.delete(requestKey);
-        console.log(`[CLEANUP] Removed in-flight DNS record request for ${requestKey}`);
+    // Execute with deduplication logic
+    await requestHelper.executeWithDeduplication(
+      requestKey,
+      async () => {
+        try {
+          await dnsAddService.addDnsRecord(DomainName, name, type, value, ttl, request.user);
+        } catch (error) {
+          Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
+          Responser.setMessage("Error adding DNS record");
+          return Responser.send("An error occurred while adding the DNS record");
+        }
+      },
+      (key) => {
+        console.log(`[DEDUP] Duplicate DNS record request detected for ${key}, waiting for existing request...`);
+      },
+      (key) => {
+        console.log(`[CLEANUP] Removed in-flight DNS record request for ${key}`);
       }
-    })();
+    );
 
-    // Store the promise
-    inFlightRequests.set(requestKey, requestPromise);
-
-    // Wait for completion
-    await requestPromise;
+    console.log(`[CREATE] Processing DNS record creation request for ${name} in domain ${DomainName} by user ${request.user._id}`);
   }
 
   // Get all DNS records for a domain
