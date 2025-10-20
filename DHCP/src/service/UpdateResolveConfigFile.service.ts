@@ -35,10 +35,8 @@ export default class UpdateResolveConfigFileService {
         updatedData = updatedData.replace(/^\s*search\s+\S+/gm, `search ${this.IP}`);
       }
 
-      // Step 4: Write to temporary file first (atomic write)
-      const tempPath = `${this.configPath}.tmp`;
-      await fs.writeFile(tempPath, updatedData, "utf-8");
-      await fs.rename(tempPath, this.configPath);
+      // Write the updated data back to the original file
+      await fs.writeFile(this.configPath, updatedData, "utf-8");
 
       console.log("✅ Resolve config file updated successfully!");
     } catch (error) {
