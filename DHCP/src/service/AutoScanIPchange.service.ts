@@ -2,7 +2,7 @@ import { Socket } from "node:net";
 import os from "os";
 import { Retry } from "outers";
 import { createMessage } from "../config/parser.broker";
-
+import UpdateResolveConfigFileService from "./UpdateResolveConfigFile.service";
 
 export default class IP_SCAN {
   private CURRENT_IP: string = "";
@@ -23,6 +23,8 @@ export default class IP_SCAN {
         console.log(`IP Change Detected: ${this.PREVIOUS_IP} -> ${this.CURRENT_IP}`);
         this.PREVIOUS_IP = this.CURRENT_IP;
           this.socket.write(createMessage({ type: "message", targetService: "NexoralDNS", event: "INVOKE_IP_FETCH" }));
+          // Update resolve config file
+        new UpdateResolveConfigFileService(this.CURRENT_IP).updateConfig();
       }
     }, 10, true)
   }
