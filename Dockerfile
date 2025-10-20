@@ -63,5 +63,5 @@ ENV NODE_ENV=production
 EXPOSE 53/udp 53/tcp
 
 # Start PM2 (client + server) and run DNS service
-ENTRYPOINT ["sh", "-lc", "cd /app && pm2 start ecosystem.config.js && exec \"$@\""]
+ENTRYPOINT ["sh", "-lc", "cd /app && sudo pm2 start ecosystem.config.js && exec \"$@\""]
 CMD ["sudo", "node", "./Web/lib/cluster/Cluster.js"]

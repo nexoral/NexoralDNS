@@ -1,6 +1,6 @@
 {
   "name": "nexoral dns server",
-  "version": "2.4.13-stable",
+  "version": "2.4.14-stable",
   "description": "this server is responsible for managing the all records that are custom build for the all networks",
   "keywords": [
     "server"
