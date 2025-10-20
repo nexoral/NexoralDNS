@@ -56,6 +56,9 @@ RUN npm install -g pm2
 # Allow ping to run without root
 RUN setcap cap_net_raw+ep /bin/ping
 
+# Allow node to bind to low ports
+RUN sudo setcap cap_net_bind_service,cap_dac_override+ep $(which node)
+
 # Set production mode
 ENV NODE_ENV=production
 

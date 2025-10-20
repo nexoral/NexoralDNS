@@ -27,6 +27,8 @@ services:
     container_name: nexoraldns
     restart: always
     network_mode: "host" # 👈 host mode so it can bind to port 53
+    cap_add:
+      - NET_ADMIN         # needed to change network configs
     environment:
       - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns # 👈 connect via localhost (because host mode)
       - REDIS_URI=redis://127.0.0.1:6379 # 👈 connect to Redis via localhost
