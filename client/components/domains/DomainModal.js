@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Button from '../ui/Button';
 import InputField from '../ui/InputField';
 import useAuthStore from '../../stores/authStore';
@@ -20,10 +20,16 @@ export default function DomainModal({ onClose, onSave }) {
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { token } = useAuthStore();
+  const submissionInProgressRef = useRef(false);
 
   // Fix hydration issues
   useEffect(() => {
     setMounted(true);
+
+    // Cleanup function to reset submission state on unmount
+    return () => {
+      submissionInProgressRef.current = false;
+    };
   }, []);
 
   const validateIP = (ip, type) => {
@@ -41,6 +47,11 @@ export default function DomainModal({ onClose, onSave }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Prevent duplicate submissions using both state and ref
+    if (isSubmitting || submissionInProgressRef.current) {
+      return;
+    }
 
     // Form validation
     const newErrors = {};
@@ -68,7 +79,9 @@ export default function DomainModal({ onClose, onSave }) {
         IpAddress: formData.defaultRecord.value
       };
 
+      // Set both state and ref to prevent duplicate submissions
       setIsSubmitting(true);
+      submissionInProgressRef.current = true;
 
       try {
         const authToken = token || localStorage.getItem('nexoral_auth_token');
@@ -109,6 +122,7 @@ export default function DomainModal({ onClose, onSave }) {
         setErrors({ api: 'Network error. Please check your connection and try again.' });
       } finally {
         setIsSubmitting(false);
+        submissionInProgressRef.current = false;
       }
     }
   };
@@ -165,7 +179,10 @@ export default function DomainModal({ onClose, onSave }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className={`p-6 space-y-4 ${isSubmitting ? 'pointer-events-none opacity-75' : ''}`}
+        >
           {/* Display API error if any */}
           {errors.api && (
             <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">

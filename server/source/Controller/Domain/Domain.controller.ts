@@ -8,7 +8,10 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
 import DomainListService from "../../Services/Domain/Domain_List.service";
 import DomainRemoveService from "../../Services/Domain/Remove_Domain.service";
+import RequestControllerHelper from "../../helper/Request_Controller.helper";
 
+// Singleton instance for request deduplication
+const requestHelper = new RequestControllerHelper();
 
 export default class DomainController {
   constructor() { }
@@ -16,15 +19,34 @@ export default class DomainController {
   // Add a new domain record
   public static async create(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const { type, DomainName, IpAddress } = request.body;
+
+    // Create a unique key for this request to prevent duplicate processing
+    const requestKey = `${request.user._id}:${DomainName}:${IpAddress}`;
+
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "Domain created successfully");
     const domainAddService = new DomainAddService(reply);
-    try {
-      await domainAddService.addDomain(DomainName, type, IpAddress, request.user);
-    } catch (error) {
-      Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
-      Responser.setMessage("Error adding domain");
-      return Responser.send("An error occurred while adding the domain");
-    }
+
+    // Execute with deduplication logic
+    await requestHelper.executeWithDeduplication(
+      requestKey,
+      async () => {
+        try {
+          await domainAddService.addDomain(DomainName, type, IpAddress, request.user);
+        } catch (error) {
+          Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
+          Responser.setMessage("Error adding domain");
+          return Responser.send("An error occurred while adding the domain");
+        }
+      },
+      (key) => {
+        console.log(`[DEDUP] Duplicate request detected for ${key}, waiting for existing request...`);
+      },
+      (key) => {
+        console.log(`[CLEANUP] Removed in-flight request for ${key}`);
+      }
+    );
+
+    console.log(`[CREATE] Processing domain creation request for ${DomainName} by user ${request.user._id}`);
   }
 
   // List all domains for the authenticated user

@@ -12,9 +12,6 @@ export interface DomainOptions extends FastifyPluginOptions { }
 
 export default async function domainRouter(fastify: FastifyInstance, _options: DomainOptions): Promise<void> {
 
-  // add preHandler middleware if needed
-  fastify.addHook("preHandler", authGuard.isAuthenticated);
-
   // Domain Routes
   // Create a new domain
   fastify.post("/create-domain", {
@@ -55,7 +52,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
         required: ['Authorization'],
       },
     },
-    preHandler: [],
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(1)],
     handler: DomainController.list
   });
 

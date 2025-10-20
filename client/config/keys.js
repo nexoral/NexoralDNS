@@ -9,6 +9,7 @@ export const config = {
     DNS_LIST: '/api/dns/list',
     CREATE_DNS: '/api/dns/create-dns',
     UPDATE_DNS: '/api/dns/update',
+    DELETE_DNS: '/api/dns/delete',
     ZONES: '/api/dns/zones',
     STATISTICS: '/api/stats',
     SETTINGS: '/api/settings',

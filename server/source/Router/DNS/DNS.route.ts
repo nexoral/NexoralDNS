@@ -102,11 +102,11 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
   });
 
   // Delete a DNS record by ID
-  fastify.delete("/delete", {
+  fastify.put("/delete", {
     schema: {
       description: 'Delete a DNS record by its ID',
       tags: ['DNS'],
-      querystring: {
+      body: {
         type: 'object',
         properties: {
           id: { type: 'string', description: 'The ID of the DNS record' },
