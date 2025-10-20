@@ -9,7 +9,7 @@ export default class UpdateResolveConfigFileService {
 
   constructor(currentIP?: string) {
     this.configPath = path.resolve("/etc/resolv.conf");
-    this.backupPath = `${this.configPath}.backup`;
+    this.backupPath = path.resolve(`/tmp/${this.configPath}.backup`);
     this.IP = currentIP?.trim() || this.localIP;
   }
 
