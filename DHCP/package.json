@@ -6,7 +6,7 @@
   "scripts": {
     "test": "test",
     "dev": "npm run build && npm start",
-    "start": "node ./lib/config/DHCP.js",
+    "start": "sudo node ./lib/config/DHCP.js",
     "build": "tsc"
   },
   "repository": {
