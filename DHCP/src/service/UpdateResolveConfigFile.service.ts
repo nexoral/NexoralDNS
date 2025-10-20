@@ -3,13 +3,11 @@ import fs from "fs/promises";
 
 export default class UpdateResolveConfigFileService {
   private readonly configPath: string;
-  private readonly backupPath: string;
   private readonly localIP: string = "127.0.0.53";
   private readonly IP: string;
 
   constructor(currentIP?: string) {
     this.configPath = path.resolve("/etc/resolv.conf");
-    this.backupPath = path.resolve(`/tmp/${this.configPath}.backup`);
     this.IP = currentIP?.trim() || this.localIP;
   }
 
@@ -20,11 +18,6 @@ export default class UpdateResolveConfigFileService {
     try {
       // Step 1: Read existing resolv.conf
       const originalData = await fs.readFile(this.configPath, "utf-8");
-
-      // Step 2: Create backup
-      await fs.writeFile(this.backupPath, originalData, "utf-8");
-      backupCreated = true;
-      console.log("✅ Backup created at:", this.backupPath);
 
       // Step 3: Update content
       let updatedData = originalData;
@@ -51,23 +44,6 @@ export default class UpdateResolveConfigFileService {
     } catch (error) {
       console.error("❌ Error updating resolve config file:", error);
 
-      // Step 5: Rollback if backup exists
-      if (backupCreated) {
-        try {
-          const backupData = await fs.readFile(this.backupPath, "utf-8");
-          await fs.writeFile(this.configPath, backupData, "utf-8");
-          console.log("🔁 Rolled back to previous configuration.");
-        } catch (rollbackError) {
-          console.error("🚨 Rollback failed! Manual intervention required:", rollbackError);
-        }
-      }
-    } finally {
-      // Step 6: Cleanup backup if no longer needed (optional)
-      try {
-        await fs.unlink(this.backupPath);
-      } catch {
-        // Ignore if file doesn’t exist
-      }
-    }
+    } 
   }
 }
