@@ -39,4 +39,7 @@ export default function createTCPBroker() {
   });
 }
 
-createTCPBroker();
+// Run the server if this file is executed directly
+if (process.argv[1] === __filename) {
+  createTCPBroker();
+}

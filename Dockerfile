@@ -67,4 +67,4 @@ EXPOSE 53/udp 53/tcp
 
 # Start PM2 (client + server) and run DNS service
 ENTRYPOINT ["sh", "-lc", "cd /app && sudo pm2 start ecosystem.config.js && exec \"$@\""]
-CMD ["sh", "-c", "sudo node ./Web/lib/cluster/Cluster.js & sudo node ./DHCP/lib/config/DHCP.js & wait"]
+CMD ["sudo", "node", "./Scripts/combineRunner.js"]
