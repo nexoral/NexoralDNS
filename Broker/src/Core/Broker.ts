@@ -23,6 +23,7 @@ const server = net.createServer((socket) => {
     if (messageObject.type ==="register") {
       addClient(String(messageObject?.service), Number(socket.remotePort), socket);
       console.log(`Service Registered: ${messageObject.service} from port ${socket.remotePort}`);
+      socket.write(createMessage({ type: "response", status: "success", message: `Service ${messageObject.service} registered successfully` }));
     } else if (messageObject.type === "message") {
       const targetSocket = getClient(String(messageObject.targetService));
       if (targetSocket) {
