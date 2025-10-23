@@ -26,6 +26,7 @@ services:
     image: ghcr.io/nexoral/nexoraldns:latest
     container_name: nexoraldns
     restart: always
+    privileged: true               # 👈 gives full host-level privileges
     network_mode: "host" # 👈 host mode so it can bind to port 53
     cap_add:
       - NET_ADMIN         # needed to change network configs
