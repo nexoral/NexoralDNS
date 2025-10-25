@@ -19,7 +19,8 @@ export const config = {
     REFRESH_DEVICE_LIST: '/api/dhcp/refresh-connected-ips',
     CREATE_DOMAIN: '/api/domains/create-domain',
     DELETE_DOMAIN: '/api/domains/delete',
-    SERVICE_INFO: '/api/service-info'
+    SERVICE_INFO: '/api/service-info',
+    TOGGLE_SERVICE: '/api/settings/toggle-service'
   },
 
   // Application Configuration
