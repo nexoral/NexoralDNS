@@ -1,24 +1,64 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import Button from '../../../components/ui/Button';
+import useAuthStore from '../../../stores/authStore';
+import { getApiUrl } from '../../../config/keys';
 
 export default function SettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
   const [dnsServiceStatus, setDnsServiceStatus] = useState('running');
   const [isLoading, setIsLoading] = useState(false);
+  const { token } = useAuthStore();
 
   // DNS Server Configuration
-  const [serverConfig] = useState({
-    serverIP: '192.168.1.9',
+  const [serverConfig, setServerConfig] = useState({
+    serverIP: 'Loading...',
     dnsPort: 53,
-    uptime: '7 days, 14 hours',
-    version: '1.0.0',
-    lastRestart: '2024-01-15 10:30:00'
+    version: 'Loading...',
+    webInterfaceHost: 'Loading...',
+    webInterfacePort: 4000
   });
+
+  // Fetch service info from API
+  useEffect(() => {
+    const fetchServiceInfo = async () => {
+      try {
+        const authToken = token || localStorage.getItem('nexoral_auth_token');
+
+        const response = await fetch(getApiUrl('SERVICE_INFO'), {
+          method: 'GET',
+          headers: {
+            'Authorization': `${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch service info');
+        }
+
+        const result = await response.json();
+
+        if (result.statusCode === 200 && result.data) {
+          setServerConfig({
+            serverIP: result.data.serverIP,
+            dnsPort: result.data.DNS_Port,
+            version: result.data.serverVersion,
+            webInterfaceHost: result.data.WebInterface.Host,
+            webInterfacePort: result.data.WebInterface.Port
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching service info:', error);
+      }
+    };
+
+    fetchServiceInfo();
+  }, [token]);
 
   const handleServiceAction = async (action) => {
     setIsLoading(true);
@@ -115,14 +155,11 @@ export default function SettingsPage() {
                   <span className="text-sm text-slate-900">{serverConfig.version}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-slate-100">
-                  <span className="text-sm font-medium text-slate-600">Uptime</span>
-                  <span className="text-sm text-slate-900">{serverConfig.uptime}</span>
-                </div>
-
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-sm font-medium text-slate-600">Last Restart</span>
-                  <span className="text-sm text-slate-900">{serverConfig.lastRestart}</span>
+                  <span className="text-sm font-medium text-slate-600">Web Interface</span>
+                  <span className="text-sm text-slate-900 font-mono bg-slate-100 px-2 py-1 rounded">
+                    {serverConfig.webInterfaceHost}:{serverConfig.webInterfacePort}
+                  </span>
                 </div>
               </div>
             </div>
@@ -337,7 +374,7 @@ export default function SettingsPage() {
                       <p><strong>DNS Port:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">{serverConfig.dnsPort}</span></p>
                     </div>
                     <div>
-                      <p><strong>Web Interface:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">http://localhost:4000</span></p>
+                      <p><strong>Web Interface:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">http://{serverConfig.webInterfaceHost}:{serverConfig.webInterfacePort}</span></p>
                       <p><strong>Status:</strong> <span className="text-green-600 font-semibold">Active & Running</span></p>
                     </div>
                   </div>

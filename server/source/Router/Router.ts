@@ -42,6 +42,17 @@ export default async function mainRouter(
     }
   });
 
+  fastify.get("/service-info", {
+    schema: {
+      description: 'Get runtime service information about the NexoralDNS server',
+      tags: ['Public'],
+    },
+    preHandler: [authGuard.isAuthenticated],
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
+      return PublicInfoController.getServiceInfo(reply);
+    }
+  });
+
 
   // Health check route
   fastify.get("/health", {
