@@ -8,12 +8,21 @@ const totalUsableCpus = Math.max(1, Math.floor(numCPUs * 0.75)); // Use at least
 Console.green(`Starting DNS server in cluster mode with ${totalUsableCpus} workers...`);
 
 
-// Fork workers if primary
-if (cluster.isPrimary) {
-  for (let i = 0; i < totalUsableCpus; i++) {
-    cluster.fork();
+const startCluster = async () => {
+  // Fork workers if primary
+  if (cluster.isPrimary) {
+    for (let i = 0; i < totalUsableCpus; i++) {
+      cluster.fork();
+    }
+  } else {
+    // Workers can share any UDP connection
+    handler();
   }
-} else {
-  // Workers can share any UDP connection
-  handler();
 }
+
+// Run the server if this file is executed directly
+if (process.argv[1] === __filename) {
+  startCluster();
+}
+
+export default startCluster;
