@@ -9,6 +9,11 @@ type PackageInterface = {
   license: string;
 };
 
+// keys import
+import { DB_DEFAULT_CONFIGS } from "../../core/key";
+// db connections
+import { getCollectionClient } from "../../Database/mongodb.db";
+import { ObjectId } from "mongodb";
 
 /**
  * Service class providing information about the application.
@@ -65,10 +70,16 @@ export default class InfoService {
    */
   static async getServiceInfo(): Promise<object> {
     const serverIP = getLocalIPRange("any");
+    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    if (!dbClient) {
+      throw new Error("Database connection error.");
+    }
+    const serviceData = await dbClient.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
 
     const finalObject = {
       serverIP: serverIP.ip,
       DNS_Port: 53,
+      serviceStatus: serviceData?.Service_Status,
       serverVersion: (await InfoService.getInfo()).NexoralDNS_Version,
       WebInterface: {
         Host: serverIP.ip,

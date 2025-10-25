@@ -13,6 +13,7 @@ import authGuard from "../Middlewares/authGuard.middleware";
 import domainRouter from "./Domains/Domains.route";
 import DHCPRouter from "./DHCP/DHCP.route";
 import dnsRouter from "./DNS/DNS.route";
+import SettingsRouter from "./Settings/settings.route";
 
 
 // Extended options interface to include NexoralDNS instance
@@ -78,6 +79,7 @@ export default async function mainRouter(
   fastify.register(domainRouter, { prefix: "/domains" });
   fastify.register(dnsRouter, { prefix: "/dns" });
   fastify.register(DHCPRouter, { prefix: "/dhcp" });
+  fastify.register(SettingsRouter, {prefix: "/settings"})
 
 
   // Handle 404 Not Found
