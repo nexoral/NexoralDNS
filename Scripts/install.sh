@@ -426,7 +426,22 @@ if [[ "$1" == "remove" ]]; then
     print_status "Cleaning up Docker volumes..."
     sudo docker volume rm nexoraldns_mongodb_data 2>/dev/null || true
     print_success "Docker volumes cleaned."
-    
+
+    # Remove firewall rules if UFW is enabled
+    if command -v ufw &> /dev/null; then
+      if sudo ufw status | grep -q "Status: active"; then
+        print_status "Removing firewall rules..."
+        for port in 53 4000 4773; do
+          if sudo ufw delete allow $port > /dev/null 2>&1; then
+            print_success "Port $port rule removed from UFW"
+          fi
+        done
+        if sudo ufw reload > /dev/null 2>&1; then
+          print_success "UFW firewall rules updated"
+        fi
+      fi
+    fi
+
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${NC}                    ${BOLD}${GREEN}Uninstallation Complete!${NC}                  ${GREEN}║${NC}"
@@ -623,6 +638,35 @@ echo -e "${CYAN}║${NC}        ${BLUE}This script will install and configure Do
 echo -e "${CYAN}║${NC}        ${BLUE}and deploy the NexoralDNS server automatically${NC}        ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+print_status "Checking and configuring firewall..."
+
+# Check if UFW is enabled and allow required ports
+if command -v ufw &> /dev/null; then
+  if sudo ufw status | grep -q "Status: active"; then
+    print_status "UFW firewall is active. Configuring ports..."
+
+    # Allow required ports
+    for port in 53 4000 4773; do
+      if sudo ufw allow $port > /dev/null 2>&1; then
+        print_success "Port $port allowed in UFW"
+      else
+        print_warning "Failed to allow port $port in UFW"
+      fi
+    done
+
+    # Reload UFW to apply changes
+    if sudo ufw reload > /dev/null 2>&1; then
+      print_success "UFW firewall rules updated"
+    fi
+  else
+    print_status "UFW is installed but not active"
+  fi
+else
+  print_status "UFW firewall not installed"
+fi
+
 echo ""
 
 print_status "Checking Docker installation..."
