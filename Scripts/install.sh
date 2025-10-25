@@ -334,6 +334,37 @@ if [ -f /etc/os-release ]; then
     print_success "✓ Supported distribution detected: $PRETTY_NAME"
 fi
 
+# Check system resources
+print_status "Checking system resources..."
+
+# Check available RAM (minimum 4GB required)
+TOTAL_RAM_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
+MIN_RAM_GB=4
+
+if [ "$TOTAL_RAM_GB" -lt "$MIN_RAM_GB" ]; then
+    print_error "Insufficient RAM detected: ${TOTAL_RAM_GB}GB available"
+    print_status "Minimum required: ${MIN_RAM_GB}GB RAM"
+    print_warning "NexoralDNS requires at least ${MIN_RAM_GB}GB of available RAM to run properly."
+    exit 1
+fi
+
+print_success "✓ RAM check passed: ${TOTAL_RAM_GB}GB available"
+
+# Check available storage (minimum 10GB required)
+AVAILABLE_STORAGE_KB=$(df "$HOME" | awk 'NR==2 {print $4}')
+AVAILABLE_STORAGE_GB=$((AVAILABLE_STORAGE_KB / 1024 / 1024))
+MIN_STORAGE_GB=10
+
+if [ "$AVAILABLE_STORAGE_GB" -lt "$MIN_STORAGE_GB" ]; then
+    print_error "Insufficient storage space: ${AVAILABLE_STORAGE_GB}GB available"
+    print_status "Minimum required: ${MIN_STORAGE_GB}GB free storage"
+    print_warning "NexoralDNS requires at least ${MIN_STORAGE_GB}GB of free storage space."
+    exit 1
+fi
+
+print_success "✓ Storage check passed: ${AVAILABLE_STORAGE_GB}GB available"
+
 echo ""
 
 # Check for remove argument
