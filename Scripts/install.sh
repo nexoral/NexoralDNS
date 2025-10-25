@@ -334,6 +334,37 @@ if [ -f /etc/os-release ]; then
     print_success "✓ Supported distribution detected: $PRETTY_NAME"
 fi
 
+# Check system resources
+print_status "Checking system resources..."
+
+# Check available RAM (minimum 4GB required)
+TOTAL_RAM_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
+MIN_RAM_GB=4
+
+if [ "$TOTAL_RAM_GB" -lt "$MIN_RAM_GB" ]; then
+    print_error "Insufficient RAM detected: ${TOTAL_RAM_GB}GB available"
+    print_status "Minimum required: ${MIN_RAM_GB}GB RAM"
+    print_warning "NexoralDNS requires at least ${MIN_RAM_GB}GB of available RAM to run properly."
+    exit 1
+fi
+
+print_success "✓ RAM check passed: ${TOTAL_RAM_GB}GB available"
+
+# Check available storage (minimum 10GB required)
+AVAILABLE_STORAGE_KB=$(df "$HOME" | awk 'NR==2 {print $4}')
+AVAILABLE_STORAGE_GB=$((AVAILABLE_STORAGE_KB / 1024 / 1024))
+MIN_STORAGE_GB=10
+
+if [ "$AVAILABLE_STORAGE_GB" -lt "$MIN_STORAGE_GB" ]; then
+    print_error "Insufficient storage space: ${AVAILABLE_STORAGE_GB}GB available"
+    print_status "Minimum required: ${MIN_STORAGE_GB}GB free storage"
+    print_warning "NexoralDNS requires at least ${MIN_STORAGE_GB}GB of free storage space."
+    exit 1
+fi
+
+print_success "✓ Storage check passed: ${AVAILABLE_STORAGE_GB}GB available"
+
 echo ""
 
 # Check for remove argument
@@ -395,7 +426,22 @@ if [[ "$1" == "remove" ]]; then
     print_status "Cleaning up Docker volumes..."
     sudo docker volume rm nexoraldns_mongodb_data 2>/dev/null || true
     print_success "Docker volumes cleaned."
-    
+
+    # Remove firewall rules if UFW is enabled
+    if command -v ufw &> /dev/null; then
+      if sudo ufw status | grep -q "Status: active"; then
+        print_status "Removing firewall rules..."
+        for port in 53 4000 4773; do
+          if sudo ufw delete allow $port > /dev/null 2>&1; then
+            print_success "Port $port rule removed from UFW"
+          fi
+        done
+        if sudo ufw reload > /dev/null 2>&1; then
+          print_success "UFW firewall rules updated"
+        fi
+      fi
+    fi
+
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${NC}                    ${BOLD}${GREEN}Uninstallation Complete!${NC}                  ${GREEN}║${NC}"
@@ -592,6 +638,35 @@ echo -e "${CYAN}║${NC}        ${BLUE}This script will install and configure Do
 echo -e "${CYAN}║${NC}        ${BLUE}and deploy the NexoralDNS server automatically${NC}        ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+print_status "Checking and configuring firewall..."
+
+# Check if UFW is enabled and allow required ports
+if command -v ufw &> /dev/null; then
+  if sudo ufw status | grep -q "Status: active"; then
+    print_status "UFW firewall is active. Configuring ports..."
+
+    # Allow required ports
+    for port in 53 4000 4773; do
+      if sudo ufw allow $port > /dev/null 2>&1; then
+        print_success "Port $port allowed in UFW"
+      else
+        print_warning "Failed to allow port $port in UFW"
+      fi
+    done
+
+    # Reload UFW to apply changes
+    if sudo ufw reload > /dev/null 2>&1; then
+      print_success "UFW firewall rules updated"
+    fi
+  else
+    print_status "UFW is installed but not active"
+  fi
+else
+  print_status "UFW firewall not installed"
+fi
+
 echo ""
 
 print_status "Checking Docker installation..."
