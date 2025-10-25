@@ -46,6 +46,13 @@ export default async function mainRouter(
     schema: {
       description: 'Get runtime service information about the NexoralDNS server',
       tags: ['Public'],
+      headers: {
+        type: 'object',
+        properties: {
+          Authorization: { type: 'string' },
+        },
+        required: ['Authorization'],
+      },
     },
     preHandler: [authGuard.isAuthenticated],
     handler: async (request: FastifyRequest, reply: FastifyReply) => {
