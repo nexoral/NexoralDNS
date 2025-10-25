@@ -1,46 +1,92 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import Button from '../../../components/ui/Button';
+import useAuthStore from '../../../stores/authStore';
+import { getApiUrl } from '../../../config/keys';
 
 export default function SettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
-  const [dnsServiceStatus, setDnsServiceStatus] = useState('running');
   const [isLoading, setIsLoading] = useState(false);
+  const { token } = useAuthStore();
 
   // DNS Server Configuration
-  const [serverConfig] = useState({
-    serverIP: '192.168.1.9',
+  const [serverConfig, setServerConfig] = useState({
+    serverIP: 'Loading...',
     dnsPort: 53,
-    uptime: '7 days, 14 hours',
-    version: '1.0.0',
-    lastRestart: '2024-01-15 10:30:00'
+    version: 'Loading...',
+    webInterfaceHost: 'Loading...',
+    webInterfacePort: 4000,
+    serviceStatus: 'loading'
   });
 
-  const handleServiceAction = async (action) => {
-    setIsLoading(true);
+  // Fetch service info from API
+  const fetchServiceInfo = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const authToken = token || localStorage.getItem('nexoral_auth_token');
 
-      if (action === 'stop') {
-        setDnsServiceStatus('stopped');
-        alert('DNS service stopped successfully');
-      } else if (action === 'start') {
-        setDnsServiceStatus('running');
-        alert('DNS service started successfully');
-      } else if (action === 'restart') {
-        setDnsServiceStatus('restarting');
-        setTimeout(() => {
-          setDnsServiceStatus('running');
-          alert('DNS service restarted successfully');
-        }, 3000);
+      const response = await fetch(getApiUrl('SERVICE_INFO'), {
+        method: 'GET',
+        headers: {
+          'Authorization': `${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch service info');
+      }
+
+      const result = await response.json();
+
+      if (result.statusCode === 200 && result.data) {
+        setServerConfig({
+          serverIP: result.data.serverIP,
+          dnsPort: result.data.DNS_Port,
+          version: result.data.serverVersion,
+          webInterfaceHost: result.data.WebInterface.Host,
+          webInterfacePort: result.data.WebInterface.Port,
+          serviceStatus: result.data.serviceStatus || 'inactive'
+        });
       }
     } catch (error) {
-      alert('Service action failed: ' + error.message);
+      console.error('Error fetching service info:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchServiceInfo();
+  }, [token]);
+
+  const handleServiceToggle = async () => {
+    setIsLoading(true);
+    try {
+      const authToken = token || localStorage.getItem('nexoral_auth_token');
+
+      const response = await fetch(getApiUrl('TOGGLE_SERVICE'), {
+        method: 'GET',
+        headers: {
+          'Authorization': `${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle service');
+      }
+
+      const result = await response.json();
+
+      if (result.statusCode === 200) {
+        // Fetch updated service info immediately after toggle
+        await fetchServiceInfo();
+        alert(`DNS service ${result.data?.serviceStatus === 'active' ? 'started' : 'stopped'} successfully`);
+      }
+    } catch (error) {
+      alert('Service toggle failed: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -48,23 +94,32 @@ export default function SettingsPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'running': return 'bg-green-100 text-green-800 border-green-200';
-      case 'stopped': return 'bg-red-100 text-red-800 border-red-200';
-      case 'restarting': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'inactive': return 'bg-red-100 text-red-800 border-red-200';
+      case 'loading': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'running':
+      case 'active':
         return <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>;
-      case 'stopped':
+      case 'inactive':
         return <div className="w-2 h-2 bg-red-500 rounded-full"></div>;
-      case 'restarting':
+      case 'loading':
         return <div className="w-2 h-2 bg-yellow-500 rounded-full animate-spin"></div>;
       default:
         return <div className="w-2 h-2 bg-gray-500 rounded-full"></div>;
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'active': return 'Running';
+      case 'inactive': return 'Stopped';
+      case 'loading': return 'Loading...';
+      default: return 'Unknown';
     }
   };
 
@@ -115,14 +170,11 @@ export default function SettingsPage() {
                   <span className="text-sm text-slate-900">{serverConfig.version}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-slate-100">
-                  <span className="text-sm font-medium text-slate-600">Uptime</span>
-                  <span className="text-sm text-slate-900">{serverConfig.uptime}</span>
-                </div>
-
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-sm font-medium text-slate-600">Last Restart</span>
-                  <span className="text-sm text-slate-900">{serverConfig.lastRestart}</span>
+                  <span className="text-sm font-medium text-slate-600">Web Interface</span>
+                  <span className="text-sm text-slate-900 font-mono bg-slate-100 px-2 py-1 rounded">
+                    {serverConfig.webInterfaceHost}:{serverConfig.webInterfacePort}
+                  </span>
                 </div>
               </div>
             </div>
@@ -141,9 +193,9 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between mb-4">
                     <span className="font-medium text-slate-800">DNS Service Status</span>
                     <div className="flex items-center space-x-2">
-                      {getStatusIcon(dnsServiceStatus)}
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(dnsServiceStatus)}`}>
-                        {dnsServiceStatus.charAt(0).toUpperCase() + dnsServiceStatus.slice(1)}
+                      {getStatusIcon(serverConfig.serviceStatus)}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(serverConfig.serviceStatus)}`}>
+                        {getStatusText(serverConfig.serviceStatus)}
                       </span>
                     </div>
                   </div>
@@ -154,31 +206,20 @@ export default function SettingsPage() {
 
                   {/* Service Control Buttons */}
                   <div className="flex flex-wrap gap-3">
-                    {dnsServiceStatus === 'running' && (
-                      <>
-                        <Button
-                          onClick={() => handleServiceAction('stop')}
-                          isLoading={isLoading}
-                          disabled={isLoading}
-                          className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
-                        >
-                          {isLoading ? 'Stopping...' : '⏹️ Stop Service'}
-                        </Button>
-                        <Button
-                          onClick={() => handleServiceAction('restart')}
-                          variant="secondary"
-                          isLoading={isLoading}
-                          disabled={isLoading}
-                          className="bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100"
-                        >
-                          {isLoading ? 'Restarting...' : '🔄 Restart Service'}
-                        </Button>
-                      </>
+                    {serverConfig.serviceStatus === 'active' && (
+                      <Button
+                        onClick={handleServiceToggle}
+                        isLoading={isLoading}
+                        disabled={isLoading}
+                        className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
+                      >
+                        {isLoading ? 'Stopping...' : '⏹️ Stop Service'}
+                      </Button>
                     )}
 
-                    {dnsServiceStatus === 'stopped' && (
+                    {serverConfig.serviceStatus === 'inactive' && (
                       <Button
-                        onClick={() => handleServiceAction('start')}
+                        onClick={handleServiceToggle}
                         isLoading={isLoading}
                         disabled={isLoading}
                         className="bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
@@ -187,19 +228,19 @@ export default function SettingsPage() {
                       </Button>
                     )}
 
-                    {dnsServiceStatus === 'restarting' && (
+                    {serverConfig.serviceStatus === 'loading' && (
                       <div className="flex items-center space-x-2 text-yellow-600 bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200">
                         <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <span className="text-sm font-medium">Service is restarting...</span>
+                        <span className="text-sm font-medium">Loading service status...</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Service Status Messages */}
-                {dnsServiceStatus === 'stopped' && (
+                {serverConfig.serviceStatus === 'inactive' && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-start space-x-2">
                       <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +256,7 @@ export default function SettingsPage() {
                   </div>
                 )}
 
-                {dnsServiceStatus === 'running' && (
+                {serverConfig.serviceStatus === 'active' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-start space-x-2">
                       <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,7 +281,7 @@ export default function SettingsPage() {
                     <div>
                       <p className="text-sm font-medium text-yellow-800">⚠️ Service Control Warning</p>
                       <p className="text-sm text-yellow-700 mt-1">
-                        Stopping or restarting the DNS service will temporarily interrupt DNS resolution for all connected clients. Make sure to inform users before performing these actions.
+                        Stopping the DNS service will temporarily interrupt DNS resolution for all connected clients. Make sure to inform users before performing this action.
                       </p>
                     </div>
                   </div>
@@ -337,7 +378,7 @@ export default function SettingsPage() {
                       <p><strong>DNS Port:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">{serverConfig.dnsPort}</span></p>
                     </div>
                     <div>
-                      <p><strong>Web Interface:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">http://localhost:4000</span></p>
+                      <p><strong>Web Interface:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">http://{serverConfig.webInterfaceHost}:{serverConfig.webInterfacePort}</span></p>
                       <p><strong>Status:</strong> <span className="text-green-600 font-semibold">Active & Running</span></p>
                     </div>
                   </div>

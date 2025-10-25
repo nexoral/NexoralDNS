@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import { AuthorInfo } from "../../core/key";
+import getLocalIPRange from "../../utilities/GetWLANIP.utls";
 // Interfaces
 type PackageInterface = {
   name: string;
@@ -8,6 +9,11 @@ type PackageInterface = {
   license: string;
 };
 
+// keys import
+import { DB_DEFAULT_CONFIGS } from "../../core/key";
+// db connections
+import { getCollectionClient } from "../../Database/mongodb.db";
+import { ObjectId } from "mongodb";
 
 /**
  * Service class providing information about the application.
@@ -43,5 +49,44 @@ export default class InfoService {
       License: PackageFile.license,
       AuthorDetails: AuthorInfo,
     };
+  }
+
+  /**
+   * Retrieves basic runtime information for the DNS service.
+   *
+   * This asynchronous static method determines the local server IP (via getLocalIPRange("any"))
+   * and obtains the current NexoralDNS version (via InfoService.getInfo()). It returns a plain
+   * object describing the server IP, the DNS port and the server version.
+   *
+   * @async
+   * @static
+   * @returns Promise<object> A promise that resolves to an object with the following shape:
+   * - serverIP: string | undefined — the selected local IP address (from getLocalIPRange().ip)
+   * - DNS_Port: number — the DNS port (defaults to 53)
+   * - serverVersion: string — the NexoralDNS version string from InfoService.getInfo()
+   *
+   * @throws If getLocalIPRange or InfoService.getInfo() rejects, the returned promise will reject
+   *         with the underlying error.
+   */
+  static async getServiceInfo(): Promise<object> {
+    const serverIP = getLocalIPRange("any");
+    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    if (!dbClient) {
+      throw new Error("Database connection error.");
+    }
+    const serviceData = await dbClient.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
+
+    const finalObject = {
+      serverIP: serverIP.ip,
+      DNS_Port: 53,
+      serviceStatus: serviceData?.Service_Status,
+      serverVersion: (await InfoService.getInfo()).NexoralDNS_Version,
+      WebInterface: {
+        Host: serverIP.ip,
+        Port: 4000
+      }
+    }
+
+    return finalObject;
   }
 }

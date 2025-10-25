@@ -32,22 +32,23 @@ export default class DnsUpdateService {
       return Responser.send("Currently unable to connect to database");
     }
 
-    const existingDNS = await DNSCollectionClient.find({ _id: new ObjectId(id) }).toArray();
-    const existingName = await DNSCollectionClient.find({ name: name }).toArray();
-    const existingValue = await DNSCollectionClient.find({ value: value }).toArray();
-
-    
-    if (existingValue.length > 0) {
-      Responser.setStatusCode(StatusCodes.CONFLICT);
-      Responser.setMessage("Value already in use");
-      return Responser.send("Value already in use by another domain");
-    }
-    else if (existingDNS.length === 0) {
+    const existingDNS = await DNSCollectionClient.findOne({ _id: new ObjectId(id) });
+    if (!existingDNS) {
       Responser.setStatusCode(StatusCodes.NOT_FOUND);
       Responser.setMessage("DNS record not found");
       return Responser.send("DNS record not found");
     }
-    else {  
+    for (const dnskey in existingDNS) {
+      if (dnskey === 'value' && existingDNS[dnskey] !== value) {
+        const existingValue = await DNSCollectionClient.find({ value: value }).toArray();
+        if (existingValue.length > 1) {
+          Responser.setStatusCode(StatusCodes.CONFLICT);
+          Responser.setMessage("value already in use");
+          return Responser.send("Value already in use by another domain");
+        }
+      }
+    }
+    if (existingDNS) {
       // prepare update object
       const updateObject: any = {};
       if (name) updateObject.name = name;

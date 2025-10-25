@@ -17,6 +17,13 @@ export default class PublicInfoController {
     );
   }
 
+  static async getServiceInfo (reply: FastifyReply): Promise<any> {
+    const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS Service Info");
+    return FastifyResponse.send(
+      await InfoService.getServiceInfo(),
+    );
+  }
+
   static async getHealth(reply: FastifyReply): Promise<any> {
     const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS is healthy");
     return FastifyResponse.send(

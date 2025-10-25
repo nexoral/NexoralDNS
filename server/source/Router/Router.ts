@@ -13,6 +13,7 @@ import authGuard from "../Middlewares/authGuard.middleware";
 import domainRouter from "./Domains/Domains.route";
 import DHCPRouter from "./DHCP/DHCP.route";
 import dnsRouter from "./DNS/DNS.route";
+import SettingsRouter from "./Settings/settings.route";
 
 
 // Extended options interface to include NexoralDNS instance
@@ -42,6 +43,24 @@ export default async function mainRouter(
     }
   });
 
+  fastify.get("/service-info", {
+    schema: {
+      description: 'Get runtime service information about the NexoralDNS server',
+      tags: ['Public'],
+      headers: {
+        type: 'object',
+        properties: {
+          Authorization: { type: 'string' },
+        },
+        required: ['Authorization'],
+      },
+    },
+    preHandler: [authGuard.isAuthenticated],
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
+      return PublicInfoController.getServiceInfo(reply);
+    }
+  });
+
 
   // Health check route
   fastify.get("/health", {
@@ -60,6 +79,7 @@ export default async function mainRouter(
   fastify.register(domainRouter, { prefix: "/domains" });
   fastify.register(dnsRouter, { prefix: "/dns" });
   fastify.register(DHCPRouter, { prefix: "/dhcp" });
+  fastify.register(SettingsRouter, {prefix: "/settings"})
 
 
   // Handle 404 Not Found
