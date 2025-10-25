@@ -1,6 +1,8 @@
 export const config = {
   // API Configuration
-  API_BASE_URL: 'http://localhost:4773',
+  API_BASE_URL: process.env.NODE_ENV === 'development'
+    ? 'http://localhost:4773'
+    : window.location.origin,
   API_ENDPOINTS: {
     LOGIN: '/api/auth/login',
     VERIFY_TOKEN: '/api/auth/verify',
