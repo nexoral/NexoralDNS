@@ -166,9 +166,6 @@ sudo docker compose up -d
 ---
 
 ## 📋 System Requirements
-
-## 📋 System Requirements
-
 - **Operating System:** Linux Debian/Ubuntu
 - **Memory:** Minimum 1GB RAM (Docker will be installed and requires additional memory)
 - **Storage:** Minimum 4GB free space
