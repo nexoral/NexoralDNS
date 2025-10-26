@@ -3,6 +3,7 @@ import { Console } from "outers"
 
 // Utility to get local IP address
 import getLocalIP from "../utilities/GetWLANIP.utls";
+import IP_SCAN from "../utilities/AutoIP_SCAN.utls";
 
 // DNS forwarder service
 import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
@@ -49,6 +50,25 @@ export default class DNS {
 
     // Run on 5353 (non-root). Use 53 if root/admin
     this.server.bind(53, getLocalIP("any"));
+
+    // Start IP address scanning with callback to update server reference
+    const ipScanner = new IP_SCAN(getLocalIP("any") , this.server, (newSocket) => {
+      // Update server reference and re-attach event listeners
+      this.server = newSocket;
+      this.IO = new InputOutputHandler(this.server);
+      
+      // Re-attach event listeners for the new socket
+      this.listen();
+      this.listenError();
+      
+      // Log successful rebinding
+      setTimeout(() => {
+        const address = this.server.address();
+        Console.green(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker: ${process.pid}`);
+      }, 100);
+    });
+    ipScanner.scan();
+
     return this;
   }
 

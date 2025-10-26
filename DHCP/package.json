@@ -1,6 +1,6 @@
 {
   "name": "dhcp",
-  "version": "2.4.17-stable",
+  "version": "2.4.19-stable",
   "description": "this is the service to control all DHCP Related Works",
   "main": "DHCP.js",
   "scripts": {
