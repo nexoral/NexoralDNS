@@ -23,6 +23,9 @@ export default function createTCPBroker() {
         console.log(`No handler found for event: ${messageObject.event}`);
       }
     }
+    else if (messageObject.type === "response") {
+      console.log("Received response:", messageObject);
+    }
   });
 
   server.on("end", () => {
