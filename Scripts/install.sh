@@ -609,6 +609,24 @@ if [[ "$1" == "update" ]]; then
     exit 0
   else
     print_status "Local version ($local_version) is up-to-date or newer than remote ($remote_version). No update performed."
+
+    # Get the DHCP IP address
+    print_status "Detecting network configuration..."
+    DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
+    if [ -z "$DHCP_IP" ]; then
+        DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+    fi
+
+    # Revert system resolver to point to this server
+    if [ -n "$DHCP_IP" ]; then
+      set_resolv_nameserver "$DHCP_IP"
+    else
+      print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
+    fi
+
+    # Disable systemd-resolved since we're using NexoralDNS
+    disable_systemd_resolved_if_enabled
+
     exit 0
   fi
 fi
