@@ -26,6 +26,9 @@ services:
     image: ghcr.io/nexoral/nexoraldns:latest
     container_name: nexoraldns
     restart: always
+    volumes:
+      - /etc/resolv.conf:/etc/resolv.conf # 👈 use host's DNS resolvers
+    privileged: true               # 👈 gives full host-level privileges
     network_mode: "host" # 👈 host mode so it can bind to port 53
     cap_add:
       - NET_ADMIN         # needed to change network configs
