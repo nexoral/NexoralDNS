@@ -337,10 +337,10 @@ fi
 # Check system resources
 print_status "Checking system resources..."
 
-# Check available RAM (minimum 4GB required)
+# Check available RAM (minimum 2GB required)
 TOTAL_RAM_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
 TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
-MIN_RAM_GB=4
+MIN_RAM_GB=2
 
 if [ "$TOTAL_RAM_GB" -lt "$MIN_RAM_GB" ]; then
     print_error "Insufficient RAM detected: ${TOTAL_RAM_GB}GB available"
