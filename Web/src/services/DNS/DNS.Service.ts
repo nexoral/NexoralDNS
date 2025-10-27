@@ -20,10 +20,12 @@ import MongoConnector from "../../Database/mongodb.db";
 export default class DNS {
   private server: dgram.Socket;
   private IO: InputOutputHandler;
+  private startRulesService : StartRulesService;
 
   constructor() {
     this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket with address reuse
     this.IO = new InputOutputHandler(this.server);
+    this.startRulesService = new StartRulesService(this.IO, this.server);
   }
 
   /**
@@ -84,8 +86,7 @@ export default class DNS {
    */
   public listen(): this {
     this.server.on("message", async (msg, rinfo) => {
-      const startRulesService = new StartRulesService(this.IO, this.server);
-      await startRulesService.execute(msg, rinfo);
+      await this.startRulesService.execute(msg, rinfo);
     });
     return this;
   }
