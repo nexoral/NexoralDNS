@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  FiMenu, FiBell, FiChevronDown, FiUser,
+  FiMenu, FiChevronDown, FiUser,
   FiSettings, FiHelpCircle, FiLogOut
 } from 'react-icons/fi';
 import useAuthStore from '../../stores/authStore';
@@ -27,10 +27,8 @@ const parseJwt = (token) => {
 
 export default function Header({ onMenuClick, sidebarOpen }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [displayName, setDisplayName] = useState('User');
   const dropdownRef = useRef(null);
-  const notificationsRef = useRef(null);
   const router = useRouter();
 
   // Get user data and logout function from auth store
@@ -105,9 +103,6 @@ export default function Header({ onMenuClick, sidebarOpen }) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
       }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-        setNotificationsOpen(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -152,37 +147,8 @@ export default function Header({ onMenuClick, sidebarOpen }) {
           </div>
         </div>
 
-        {/* Right Side - Notifications and User Dropdown */}
-        <div className="flex items-center space-x-4">
-          {/* Notifications */}
-          <div className="relative" ref={notificationsRef}>
-            <button
-              onClick={() => setNotificationsOpen(!notificationsOpen)}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none p-1 relative"
-            >
-              <FiBell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-
-            {/* Notifications Dropdown */}
-            {notificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 again-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                <div className="px-4 py-2 border-b border-gray-200">
-                  <p className="text-sm font-semibold text-gray-700">Notifications</p>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {/* Notification Items would go here */}
-                  <div className="px-4 py-3 hover:bg-gray-50">
-                    <p className="text-sm text-gray-600">No new notifications</p>
-                  </div>
-                </div>
-                <div className="px-4 py-2 border-t border-gray-200">
-                  <a href="#" className="text-xs text-blue-600 hover:text-blue-800">View all notifications</a>
-                </div>
-              </div>
-            )}
-          </div>
-
+        {/* Right Side - User Dropdown */}
+        <div className="flex items-center">
           {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
@@ -191,10 +157,7 @@ export default function Header({ onMenuClick, sidebarOpen }) {
               aria-expanded={dropdownOpen}
               aria-haspopup="true"
             >
-              <div className="h-8 w-8 rounded-full bg-blue-500 text-white flex items-center justify-center">
-                <span className="text-sm font-medium">{displayName.charAt(0).toUpperCase()}</span>
-              </div>
-              <div className="hidden md:block text-left">
+              <div className="text-left">
                 <span className="block text-sm font-medium">{displayName}</span>
               </div>
               <FiChevronDown className="h-4 w-4 text-gray-500" />
