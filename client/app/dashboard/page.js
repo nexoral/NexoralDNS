@@ -5,8 +5,6 @@ import Sidebar from '../../components/dashboard/Sidebar';
 import Header from '../../components/dashboard/Header';
 import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
-import RecentActivity from '../../components/dashboard/RecentActivity';
-import SystemOverview from '../../components/dashboard/SystemOverview';
 import NetworkOverview from '../../components/dashboard/NetworkOverview';
 import useAuthStore from '../../stores/authStore';
 
@@ -84,11 +82,6 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <QuickActions actions={quickActions} />
 
-          {/* Main Dashboard Widgets */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RecentActivity />
-            <SystemOverview />
-          </div>
         </main>
       </div>
 

@@ -1,17 +1,14 @@
 import dgram from "node:dgram";
 import { Console } from "outers"
+import StartRulesService from "../Start/Rules.service";
 
 // Utility to get local IP address
-import getLocalIP from "../utilities/GetWLANIP.utls";
-import IP_SCAN from "../utilities/AutoIP_SCAN.utls";
-
-// DNS forwarder service
-import GlobalDNSforwarder from "./GlobalDNSforwarder.service";
+import getLocalIP from "../../utilities/GetWLANIP.utls";
+import IP_SCAN from "../../utilities/AutoIP_SCAN.utls";
 
 // Input/Output handler for UDP messages
-import InputOutputHandler from "../utilities/IO.utls";
-import MongoConnector from "../Database/mongodb.db";
-import { DomainDBPoolService } from "./DB_Pool.service";
+import InputOutputHandler from "../../utilities/IO.utls";
+import MongoConnector from "../../Database/mongodb.db";
 
 
 /**
@@ -52,15 +49,15 @@ export default class DNS {
     this.server.bind(53, getLocalIP("any"));
 
     // Start IP address scanning with callback to update server reference
-    const ipScanner = new IP_SCAN(getLocalIP("any") , this.server, (newSocket) => {
+    const ipScanner = new IP_SCAN(getLocalIP("any"), this.server, (newSocket) => {
       // Update server reference and re-attach event listeners
       this.server = newSocket;
       this.IO = new InputOutputHandler(this.server);
-      
+
       // Re-attach event listeners for the new socket
       this.listen();
       this.listenError();
-      
+
       // Log successful rebinding
       setTimeout(() => {
         const address = this.server.address();
@@ -87,37 +84,8 @@ export default class DNS {
    */
   public listen(): this {
     this.server.on("message", async (msg, rinfo) => {
-      // Parse query name
-      const queryName: string = this.IO.parseQueryName(msg);
-      const queryType: string = this.IO.parseQueryType(msg);
-      const record = await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
-      if (queryName === record?.name) {
-        Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.ttl} from database with the help of worker: ${process.pid}`);
-        // Use buildSendAnswer method from utilities
-        const response = this.IO.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
-        if (!response) {
-          Console.red(`Failed to respond to ${queryName}`);
-        }
-      } else {
-        // Forward to Global DNS for non-matching domains
-        try {
-          const forwardedResponse = await GlobalDNSforwarder(msg, queryName, 10); // Set custom TTL to 10 seconds
-          if (forwardedResponse) {
-            const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
-            if (!resp) {
-              Console.red(`Failed to forward ${queryName} to Global DNS`);
-            }
-          }
-        } catch (error) {
-          Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
-        }
-
-        // Use buildSendAnswer with no matching domain (will return empty answer)
-        const response = this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0");
-        if (!response) {
-          Console.red(`Failed to respond to ${queryName}`);
-        }
-      }
+      const startRulesService = new StartRulesService(this.IO, this.server);
+      await startRulesService.execute(msg, rinfo);
     });
     return this;
   }
