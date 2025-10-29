@@ -8,6 +8,9 @@ const totalUsableCpus = Math.max(1, Math.floor(numCPUs * 0.75)); // Use at least
 Console.green(`Starting DNS server in cluster mode with ${totalUsableCpus} workers...`);
 
 
+// Configure cluster for better UDP load balancing
+cluster.schedulingPolicy = cluster.SCHED_RR; // Round-robin
+
 const startCluster = async () => {
   // Fork workers if primary
   if (cluster.isPrimary) {
