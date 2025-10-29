@@ -1,5 +1,5 @@
 // Handle incoming DNS queries and respond accordingly
-import DNS from "../services/DNS.Service";
+import DNS from "../services/DNS/DNS.Service";
 
 export default async function handler() {
   // Initialize and start the DNS server
