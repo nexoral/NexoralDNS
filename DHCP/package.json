@@ -5,7 +5,7 @@
   "main": "DHCP.js",
   "scripts": {
     "test": "test",
-    "dev": "npm run build && npm start",
+    "dev": "npm run build && sudo node ./lib/config/DHCP.js",
     "start": "node ./lib/config/DHCP.js",
     "build": "tsc"
   },
