@@ -265,13 +265,10 @@ export default async function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.Remot
    */
   async function tryBatch(): Promise<Buffer | null> {
     while (availableDNS.length > 0) {
-      // Random batch size between 3 and 5 (or whatever is left)
-      const minBatch = 3;
-      const maxBatch = Math.min(
-        Math.floor(Math.random() * availableDNS.length) + minBatch,
-        availableDNS.length
-      );
-      const batchSize = Math.max(minBatch, maxBatch);
+      // Random batch size between 2 and 5 (or whatever is left)
+      const minBatch: number = 2;
+      const maxBatch: number = 3;
+      const batchSize: number = Math.floor(Math.random() * (maxBatch - minBatch + 1)) + minBatch;
 
       // Get a batch of DNS servers
       const batch = availableDNS.splice(0, batchSize);
@@ -290,7 +287,7 @@ export default async function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.Remot
         const result = await Promise.race(promises);
 
         if (result.success) {
-          Console.green(`[SUCCESS] Got response for ${queryName} from ${result.server.name} (${result.server.ip}) at ${result.server.location} | Worker PID: ${process.pid}`);
+          Console.green(`[SUCCESS] Got fastest response for ${queryName} from ${result.server.name} (${result.server.ip}) at ${result.server.location} | Worker PID: ${process.pid}`);
           return result.response;
         }
 
@@ -302,7 +299,7 @@ export default async function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.Remot
         const successResult = allResults.find((r): r is { success: true; server: { ip: string; name: string; location: string }; response: Buffer } => r.success);
 
         if (successResult) {
-          Console.green(`[SUCCESS] Got response for ${queryName} from ${successResult.server.name} (${successResult.server.ip}) at ${successResult.server.location} | Worker PID: ${process.pid}`);
+          Console.green(`[SUCCESS] Got late response for ${queryName} from ${successResult.server.name} (${successResult.server.ip}) at ${successResult.server.location} | Worker PID: ${process.pid}`);
           return successResult.response;
         }
 
