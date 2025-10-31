@@ -117,9 +117,21 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
   { ip: "196.25.1.9", name: "SAIX DNS", location: "South Africa" },
   { ip: "197.242.144.2", name: "Afrihost DNS", location: "South Africa (Cape Town)" },
   { ip: "168.210.2.2", name: "Telkom SA DNS", location: "South Africa" },
-  { ip: "102.132.97.97", name: "Vodacom DNS", location: "South Africa" }
+  { ip: "102.132.97.97", name: "Vodacom DNS", location: "South Africa" },
+
+  // Public DNS Servers in New Zealand
+  { ip: "202.174.112.1", name: "Vodafone DNS", location: "New Zealand" },
+  { ip: "202.174.112.2", name: "Vodafone DNS", location: "New Zealand" },
+  { ip: "103.250.96.1", name: "Spark DNS", location: "New Zealand" },
+  { ip: "103.250.96.2", name: "Spark DNS", location: "New Zealand" },
 
 
+  // Public DNS servers in Hong Kong
+  { ip: "223.5.5.5", name: "AliDNS", location: "Hong Kong" },
+
+  // Public DNS servers in South Korea
+  { ip: "223.130.195.195", name: "Korea Telecom DNS", location: "South Korea" },
+  { ip: "168.126.63.1", name: "Naver DNS", location: "South Korea" }
 ];
 
 /**
