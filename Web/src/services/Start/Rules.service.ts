@@ -34,6 +34,7 @@ export default class StartRulesService {
     const queryName: string = this.IO.parseQueryName(msg);
     const queryType: string = this.IO.parseQueryType(msg);
     const serviceConfig = await serviceCollection.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
+   
     if (!serviceConfig) {
       Console.red("Service configuration not found in the database.");
       return;
@@ -55,7 +56,7 @@ export default class StartRulesService {
     } else {
       // Forward to Global DNS for non-matching domains
       try {
-        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, 10); // Set custom TTL to 10 seconds
+        const forwardedResponse = await GlobalDNSforwarder(msg, rinfo, queryName, this.IO, 10); // Set custom TTL to 10 seconds
         if (forwardedResponse) {
           const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {

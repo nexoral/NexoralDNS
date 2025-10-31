@@ -448,7 +448,7 @@ export default function RecordModal({ domain, onClose }) {
                   value={newRecord.ttl}
                   onChange={(e) => setNewRecord(prev => ({ ...prev, ttl: parseInt(e.target.value) }))}
                   className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  min="60"
+                  min="1"
                   max="86400"
                   required
                 />
