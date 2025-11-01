@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "dgram";
 import { Console } from "outers"
 import InputOutputHandler from "../../utilities/IO.utls";
@@ -117,9 +118,21 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
   { ip: "196.25.1.9", name: "SAIX DNS", location: "South Africa" },
   { ip: "197.242.144.2", name: "Afrihost DNS", location: "South Africa (Cape Town)" },
   { ip: "168.210.2.2", name: "Telkom SA DNS", location: "South Africa" },
-  { ip: "102.132.97.97", name: "Vodacom DNS", location: "South Africa" }
+  { ip: "102.132.97.97", name: "Vodacom DNS", location: "South Africa" },
+
+  // Public DNS Servers in New Zealand
+  { ip: "202.174.112.1", name: "Vodafone DNS", location: "New Zealand" },
+  { ip: "202.174.112.2", name: "Vodafone DNS", location: "New Zealand" },
+  { ip: "103.250.96.1", name: "Spark DNS", location: "New Zealand" },
+  { ip: "103.250.96.2", name: "Spark DNS", location: "New Zealand" },
 
 
+  // Public DNS servers in Hong Kong
+  { ip: "223.5.5.5", name: "AliDNS", location: "Hong Kong" },
+
+  // Public DNS servers in South Korea
+  { ip: "223.130.195.195", name: "Korea Telecom DNS", location: "South Korea" },
+  { ip: "168.126.63.1", name: "Naver DNS", location: "South Korea" }
 ];
 
 /**
@@ -195,131 +208,78 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
 
 // Function to forward DNS query to Global DNS
 /**
- * Forwards a DNS query to a batch of randomly selected global DNS servers using Promise.any.
+ * Forwards a DNS query to randomly selected global DNS server.
  * The first server to respond wins, providing faster resolution times.
- *
  * @param msg - The DNS query message as a Buffer.
- * @param rinfo - Remote information about the client making the request.
+ * @param rinfo - Remote information of the requester.
  * @param queryName - The domain name being queried.
- * @param IO - Input/Output handler for building responses.
- * @param customTTL - Optional custom TTL value in seconds to override the response TTL (defaults to null, keeping original TTL).
- * @returns A Promise that resolves with the DNS response Buffer if successful, or `null` if no server responds.
- *
- * The function randomly selects a batch of 3-5 DNS servers and queries them simultaneously.
- * The first server to respond wins, providing the fastest possible resolution.
- * If all servers fail, it retries with a new batch until all servers are exhausted.
- * If customTTL is provided, all TTL values in the response will be modified to use the custom value.
+ * @param IO - An instance of InputOutputHandler for building and sending responses.
+ * @param customTTL - Optional custom TTL value to set in the response.
+ * @returns A Promise that resolves to the DNS response Buffer or null if no response is received.
  */
-export default async function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.RemoteInfo, queryName: string, IO: InputOutputHandler, customTTL: number | null = null): Promise<Buffer | null> {
-  // Create a copy of the GlobalDNS array to shuffle
-  const availableDNS = [...GlobalDNS];
+export default function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.RemoteInfo, queryName: string, IO: InputOutputHandler, customTTL: number | null = null): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    // Create a copy of the GlobalDNS array to shuffle
+    const availableDNS = [...GlobalDNS];
+    let client: dgram.Socket | null = null;
+    let timeout: NodeJS.Timeout;
 
-  // Fisher-Yates shuffle to randomize DNS servers
-  function shuffleArray<T>(array: T[]): T[] {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+    // Fisher-Yates shuffle to randomize DNS servers
+    function shuffleArray(array: any[]) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
     }
-    return array;
-  }
 
-  // Shuffle the DNS servers once
-  shuffleArray(availableDNS);
+    // Shuffle the DNS servers
+    shuffleArray(availableDNS);
 
-  /**
-   * Query a single DNS server with timeout
-   */
-  function queryDNSServer(dnsServer: { ip: string; name: string; location: string }): Promise<{ server: typeof dnsServer; response: Buffer }> {
-    return new Promise((resolve, reject) => {
-      const client = dgram.createSocket("udp4");
-      const timeout = setTimeout(() => {
-        client.close();
-        reject(new Error(`Timeout for ${dnsServer.name} (${dnsServer.ip})`));
-      }, 2000); // 2 sec timeout per server
+    function tryNext() {
+      if (availableDNS.length === 0) {
+        if (client) client.close();
+        Console.red(`No response from any DNS server for ${queryName}`);
+        IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10);
+        return resolve(null); // no response from any
+      }
+
+      // Get the next random DNS server (already shuffled)
+      const dnsIP = availableDNS.pop();
+      if (!dnsIP) {
+        IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10);
+        return resolve(null);
+      }
+      client = dgram.createSocket("udp4");
+      Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location} with TTL: ${customTTL ?? "original TTL"} With Help of Worker: ${process.pid}`);
+
+      timeout = setTimeout(() => {
+        client?.close();
+        tryNext(); // try next random DNS
+      }, 2000); // 2 sec per server
 
       client.once("message", (response) => {
         clearTimeout(timeout);
-        client.close();
+        client?.close();
 
         // Modify TTL if customTTL is provided
         if (customTTL !== null) {
           const modifiedResponse = modifyResponseTTL(response, customTTL);
-          resolve({ server: dnsServer, response: modifiedResponse });
+          resolve(modifiedResponse);
         } else {
-          resolve({ server: dnsServer, response });
+          resolve(response); // got an answer ✅
         }
       });
 
-      client.once("error", (err) => {
+      client.once("error", () => {
         clearTimeout(timeout);
-        client.close();
-        reject(err);
+        client?.close();
+        tryNext(); // try next random DNS
       });
 
-      client.send(msg, 53, dnsServer.ip);
-    });
-  }
-
-  /**
-   * Try a batch of DNS servers using Promise.race to get the fastest response
-   */
-  async function tryBatch(): Promise<Buffer | null> {
-    while (availableDNS.length > 0) {
-      // Random batch size between 2 and 5 (or whatever is left)
-      const minBatch: number = 2;
-      const maxBatch: number = 3;
-      const batchSize: number = Math.floor(Math.random() * (maxBatch - minBatch + 1)) + minBatch;
-
-      // Get a batch of DNS servers
-      const batch = availableDNS.splice(0, batchSize);
-
-      Console.yellow(`[BATCH] Querying ${batch.length} DNS servers simultaneously for ${queryName}`);
-
-      // Query all servers in the batch simultaneously with result wrapping
-      const promises = batch.map(dnsServer =>
-        queryDNSServer(dnsServer)
-          .then(result => ({ success: true as const, server: result.server, response: result.response }))
-          .catch(err => ({ success: false as const, error: err.message }))
-      );
-
-      try {
-        // Race to get the fastest response (success or failure)
-        const result = await Promise.race(promises);
-
-        if (result.success) {
-          Console.green(`[SUCCESS] Got fastest response for ${queryName} from ${result.server.name} (${result.server.ip}) at ${result.server.location} | Worker PID: ${process.pid}`);
-          return result.response;
-        }
-
-        // The fastest response was a failure, but we need to wait for all others
-        // to see if any succeed before moving to next batch
-        Console.yellow(`[RACE] Fastest server failed, checking remaining servers...`);
-
-        const allResults = await Promise.all(promises);
-        const successResult = allResults.find((r): r is { success: true; server: { ip: string; name: string; location: string }; response: Buffer } => r.success);
-
-        if (successResult) {
-          Console.green(`[SUCCESS] Got late response for ${queryName} from ${successResult.server.name} (${successResult.server.ip}) at ${successResult.server.location} | Worker PID: ${process.pid}`);
-          return successResult.response;
-        }
-
-        // All servers in this batch failed
-        Console.yellow(`[BATCH FAILED] All ${batch.length} servers in batch failed for ${queryName}, trying next batch...`);
-
-        // Continue to next batch if available
-        if (availableDNS.length > 0) {
-          continue;
-        }
-      } catch (err) {
-        Console.red(`[BATCH ERROR] Unexpected error in batch: ${err}`);
-      }
+      client.send(msg, 53, dnsIP.ip);
     }
 
-    // All servers exhausted
-    Console.red(`[EXHAUSTED] No response from any DNS server for ${queryName}`);
-    IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10);
-    return null;
-  }
-
-  return await tryBatch();
+    tryNext();
+  });
 }
