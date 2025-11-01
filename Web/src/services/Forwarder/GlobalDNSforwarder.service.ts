@@ -121,6 +121,7 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, custo
     const availableDNS = [...GlobalDNS];
     let client: dgram.Socket | null = null;
     let timeout: NodeJS.Timeout;
+    let isClosed = false;
 
     // Fisher-Yates shuffle to randomize DNS servers
     function shuffleArray(array: any[]) {
@@ -134,9 +135,16 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, custo
     // Shuffle the DNS servers
     shuffleArray(availableDNS);
 
+    function cleanup() {
+      if (!isClosed && client) {
+        isClosed = true;
+        client.close();
+      }
+    }
+
     function tryNext() {
       if (availableDNS.length === 0) {
-        if (client) client.close();
+        cleanup();
         Console.red(`No response from any DNS server for ${queryName}`);
         return resolve(null); // no response from any
       }
@@ -146,17 +154,20 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, custo
       if (!dnsIP) {
         return resolve(null);
       }
+
+      // Reset the close flag for new socket
+      isClosed = false;
       client = dgram.createSocket("udp4");
       Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location} with TTL: ${customTTL ?? "original TTL"} With Help of Worker: ${process.pid}`);
 
       timeout = setTimeout(() => {
-        client?.close();
+        cleanup();
         tryNext(); // try next random DNS
       }, 2000); // 2 sec per server
 
       client.once("message", (response) => {
         clearTimeout(timeout);
-        client?.close();
+        cleanup();
 
         // Modify TTL if customTTL is provided
         if (customTTL !== null) {
@@ -169,7 +180,7 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, custo
 
       client.once("error", () => {
         clearTimeout(timeout);
-        client?.close();
+        cleanup();
         tryNext(); // try next random DNS
       });
 
