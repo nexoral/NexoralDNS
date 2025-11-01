@@ -1,6 +1,6 @@
 {
   "name": "client",
-  "version": "2.3.24-stable",
+  "version": "2.3.25-stable",
   "private": true,
   "scripts": {
     "dev": "next dev  -p 4000 --turbopack",
