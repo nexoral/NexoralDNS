@@ -26,12 +26,13 @@ export default class StartRulesService {
     const queryName: string = this.IO.parseQueryName(msg);
     const queryType: string = this.IO.parseQueryType(msg);
 
-
     // Add Rule Checker
     const serviceStatus: boolean = await new ServiceStatusChecker(this.IO, msg, rinfo).checkServiceStatus(queryName)
     if(!serviceStatus){
       return;
     }
+
+    Console.bright(`Processing DNS query for ${queryName} (${queryType} Record) from ${rinfo.address}:${rinfo.port} with the help of worker: ${process.pid}`);
     const record = await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
 
     if (queryName === record?.name) {

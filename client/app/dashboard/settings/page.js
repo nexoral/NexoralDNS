@@ -126,9 +126,12 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                   <span className="text-sm font-medium text-slate-600">Server IP Address</span>
-                  <span className="text-sm text-slate-900 font-mono bg-slate-100 px-2 py-1 rounded">
-                    {serverConfig.serverIP}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-sm text-slate-900 font-mono bg-slate-100 px-2 py-1 rounded">
+                      {serverConfig.serverIP}
+                    </span>
+                    <p className="text-xs text-orange-600 font-semibold mt-1">⚠️ Cloud? Use Public IP!</p>
+                  </div>
                 </div>
 
                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
@@ -263,6 +266,54 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Cloud/VM Deployment Alert - Detailed Guide */}
+          <div className="mt-6 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-400 rounded-xl shadow-lg p-5">
+            <div className="flex items-start space-x-3">
+              <svg className="w-8 h-8 text-orange-600 mt-0.5 flex-shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-orange-900 mb-2 flex items-center">
+                  ☁️ CLOUD/VM HOSTING? READ THIS FIRST!
+                </h3>
+                <div className="bg-white border-2 border-orange-300 rounded-lg p-4 mb-3">
+                  <p className="text-sm font-semibold text-orange-900 mb-2">
+                    If hosting on <strong>AWS, Azure, GCP, DigitalOcean, or any Cloud/VM</strong>:
+                  </p>
+                  <div className="space-y-2 text-sm text-orange-800">
+                    <div className="flex items-start space-x-2">
+                      <span className="text-orange-600 font-bold mt-0.5">1.</span>
+                      <p><strong>Server IP shown above ({serverConfig.serverIP}) is INTERNAL IP.</strong> Use your cloud's <strong>Public IP</strong> for DNS configuration instead!</p>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <span className="text-orange-600 font-bold mt-0.5">2.</span>
+                      <div>
+                        <p className="font-semibold mb-1">Open these ports in Network Security Group / Firewall:</p>
+                        <div className="ml-4 space-y-1 text-xs">
+                          <p>• <code className="bg-orange-100 px-2 py-0.5 rounded font-mono font-semibold">Port 53 UDP</code> - DNS queries (CRITICAL - DNS won't work without this!)</p>
+                          <p>• <code className="bg-orange-100 px-2 py-0.5 rounded font-mono font-semibold">Port 4000 TCP</code> - API Server</p>
+                          <p>• <code className="bg-orange-100 px-2 py-0.5 rounded font-mono font-semibold">Port 4773 TCP</code> - Dashboard</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <span className="text-orange-600 font-bold mt-0.5">3.</span>
+                      <p>Configure router/device DNS with your <strong>Public IP</strong>, not the internal IP shown above.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-orange-200 border border-orange-400 rounded-lg p-2 flex items-center space-x-2">
+                  <svg className="w-5 h-5 text-orange-900 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-xs font-semibold text-orange-900">
+                    Find your Public IP: Cloud Provider Dashboard → Instance/VM Details → Public IPv4 Address
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Network Configuration */}
           <div className="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
@@ -348,6 +399,7 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
                       <p><strong>DNS Server IP:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">{serverConfig.serverIP}</span></p>
+                      <p className="text-xs text-green-600 mt-1">⚠️ If on cloud: Use Public IP instead</p>
                       <p><strong>DNS Port:</strong> <span className="font-mono bg-green-100 px-2 py-1 rounded">{serverConfig.dnsPort}</span></p>
                     </div>
                     <div>
