@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import TagInput from '../ui/TagInput';
+import { isLocalNetwork } from '../../services/networkDetection';
 
 export default function BlockModal({ domain, onClose, onSave }) {
   const [blockSettings, setBlockSettings] = useState({
@@ -11,10 +12,12 @@ export default function BlockModal({ domain, onClose, onSave }) {
     reason: ''
   });
   const [mounted, setMounted] = useState(false);
+  const [isLocal, setIsLocal] = useState(false);
 
-  // Fix hydration issues
+  // Fix hydration issues and detect network
   useEffect(() => {
     setMounted(true);
+    setIsLocal(isLocalNetwork());
   }, []);
 
   const handleSubmit = (e) => {
@@ -58,20 +61,45 @@ export default function BlockModal({ domain, onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Network Detection Notice */}
+          {!isLocal && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start space-x-2">
+                <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Cloud/Public Network Detected</p>
+                  <p className="text-sm text-blue-700">
+                    You're accessing from a cloud/public network. Block type is set to "all clients" and cannot be changed.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Block Type</label>
             <select
               name="blockType"
               value={blockSettings.blockType}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-slate-900"
+              disabled={!isLocal}
+              className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-slate-900 ${
+                !isLocal ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''
+              }`}
             >
               <option value="all">Block for all clients</option>
-              <option value="specific">Block for specific IPs only</option>
+              {isLocal && <option value="specific">Block for specific IPs only</option>}
             </select>
+            {!isLocal && (
+              <p className="text-xs text-slate-500 mt-1">
+                ⚠️ IP-specific blocking is only available on local networks
+              </p>
+            )}
           </div>
 
-          {blockSettings.blockType === 'specific' && (
+          {blockSettings.blockType === 'specific' && isLocal && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Specific IP Addresses</label>
               <TagInput
@@ -79,6 +107,9 @@ export default function BlockModal({ domain, onClose, onSave }) {
                 onChange={handleIPsChange}
                 placeholder="Enter IP addresses (192.168.1.100, 10.0.0.1, ...)"
               />
+              <p className="text-xs text-slate-500 mt-1">
+                Enter local network IP addresses to block this domain for specific clients only
+              </p>
             </div>
           )}
 
