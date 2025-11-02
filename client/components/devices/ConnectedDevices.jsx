@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import useAuthStore from '../../stores/authStore';
-import config, { getApiUrl } from '../../config/keys';
 import {
   FiRefreshCw, FiInfo, FiXCircle, FiWifi, FiClock,
   FiServer, FiAlertCircle, FiGlobe, FiActivity,
   FiShield, FiGrid, FiMonitor
 } from 'react-icons/fi';
+import { api } from '../../services/api';
 
 export default function ConnectedDevices() {
   const [devices, setDevices] = useState([]);
@@ -15,27 +14,13 @@ export default function ConnectedDevices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { token } = useAuthStore();
 
   // Function to fetch the list of devices
   const fetchDevices = async () => {
     setLoading(true);
     try {
-      const authToken = token || localStorage.getItem(config.AUTH.TOKEN_KEY);
-
-      const response = await fetch(getApiUrl('LIST_OF_DEVICES'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch devices');
-      }
-
-      const result = await response.json();
+      const response = await api.getDeviceList();
+      const result = response.data;
 
       if (result.statusCode === 200) {
         setDevices(result.data.List_of_Connected_Devices_Info || []);
@@ -69,22 +54,8 @@ export default function ConnectedDevices() {
     setError(null);
 
     try {
-      const authToken = token || localStorage.getItem(config.AUTH.TOKEN_KEY);
-
-      // First call the REFRESH_DEVICE_LIST API
-      const refreshResponse = await fetch(getApiUrl('REFRESH_DEVICE_LIST'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!refreshResponse.ok) {
-        throw new Error('Failed to refresh device list');
-      }
-
-      const refreshResult = await refreshResponse.json();
+      const refreshResponse = await api.refreshDeviceList();
+      const refreshResult = refreshResponse.data;
 
       if (refreshResult.statusCode === 200 && refreshResult.data.updatedStatus) {
         // If update was successful, fetch the updated list
@@ -100,7 +71,7 @@ export default function ConnectedDevices() {
 
   useEffect(() => {
     fetchDevices();
-  }, [token]);
+  }, []);
 
   return (
     <div className="space-y-8">

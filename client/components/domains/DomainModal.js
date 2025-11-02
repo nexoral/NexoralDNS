@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Button from '../ui/Button';
 import InputField from '../ui/InputField';
-import useAuthStore from '../../stores/authStore';
-import { getApiUrl } from '../../config/keys';
+import { api } from '../../services/api';
 
 export default function DomainModal({ onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -19,7 +18,6 @@ export default function DomainModal({ onClose, onSave }) {
   const [errors, setErrors] = useState({});
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { token } = useAuthStore();
   const submissionInProgressRef = useRef(false);
 
   // Fix hydration issues
@@ -84,42 +82,29 @@ export default function DomainModal({ onClose, onSave }) {
       submissionInProgressRef.current = true;
 
       try {
-        const authToken = token || localStorage.getItem('nexoral_auth_token');
+        const response = await api.createDomain(payload);
+        const data = response.data;
 
-        const response = await fetch(getApiUrl('CREATE_DOMAIN'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${authToken}`
-          },
-          body: JSON.stringify(payload)
+        // Success case
+        onSave({
+          ...formData,
+          id: data.data?.id || Date.now().toString(),
+          createdAt: new Date().toISOString()
         });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          // Success case
-          onSave({
-            ...formData,
-            id: data.data?.id || Date.now().toString(),
-            createdAt: new Date().toISOString()
-          });
-          onClose();
-        } else {
-          // Enhanced error handling
-          if (response.status === 409) {
-            // Check message to determine the specific conflict type
-            if (data.message.toLowerCase().includes('ip address')) {
-              setErrors({ defaultRecord: `IP address "${formData.defaultRecord.value}" is already in use by another domain` });
-            } else {
-              setErrors({ name: `Domain "${formData.name}" already exists` });
-            }
-          } else {
-            setErrors({ api: data.message || 'Failed to create domain. Please try again.' });
-          }
-        }
+        onClose();
       } catch (error) {
-        setErrors({ api: 'Network error. Please check your connection and try again.' });
+        // Enhanced error handling
+        if (error.response?.status === 409) {
+          // Check message to determine the specific conflict type
+          const message = error.response?.data?.message || '';
+          if (message.toLowerCase().includes('ip address')) {
+            setErrors({ defaultRecord: `IP address "${formData.defaultRecord.value}" is already in use by another domain` });
+          } else {
+            setErrors({ name: `Domain "${formData.name}" already exists` });
+          }
+        } else {
+          setErrors({ api: error.response?.data?.message || error.message || 'Failed to create domain. Please try again.' });
+        }
       } finally {
         setIsSubmitting(false);
         submissionInProgressRef.current = false;

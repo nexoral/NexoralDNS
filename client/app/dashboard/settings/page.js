@@ -5,13 +5,12 @@ import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import Button from '../../../components/ui/Button';
 import useAuthStore from '../../../stores/authStore';
-import { getApiUrl } from '../../../config/keys';
+import { api } from '../../../services/api';
 
 export default function SettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
   const [isLoading, setIsLoading] = useState(false);
-  const { token } = useAuthStore();
 
   // DNS Server Configuration
   const [serverConfig, setServerConfig] = useState({
@@ -26,21 +25,8 @@ export default function SettingsPage() {
   // Fetch service info from API
   const fetchServiceInfo = async () => {
     try {
-      const authToken = token || localStorage.getItem('nexoral_auth_token');
-
-      const response = await fetch(getApiUrl('SERVICE_INFO'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch service info');
-      }
-
-      const result = await response.json();
+      const response = await api.getServiceInfo();
+      const result = response.data;
 
       if (result.statusCode === 200 && result.data) {
         setServerConfig({
@@ -59,26 +45,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchServiceInfo();
-  }, [token]);
+  }, []);
 
   const handleServiceToggle = async () => {
     setIsLoading(true);
     try {
-      const authToken = token || localStorage.getItem('nexoral_auth_token');
-
-      const response = await fetch(getApiUrl('TOGGLE_SERVICE'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle service');
-      }
-
-      const result = await response.json();
+      const response = await api.toggleService();
+      const result = response.data;
 
       if (result.statusCode === 200) {
         // Fetch updated service info immediately after toggle
@@ -86,7 +59,7 @@ export default function SettingsPage() {
         alert(`DNS service ${result.data?.serviceStatus === 'active' ? 'started' : 'stopped'} successfully`);
       }
     } catch (error) {
-      alert('Service toggle failed: ' + error.message);
+      alert('Service toggle failed: ' + (error.response?.data?.message || error.message));
     } finally {
       setIsLoading(false);
     }
