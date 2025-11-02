@@ -15,6 +15,11 @@ export default class ServiceStatusChecker {
     this.rinfo = rinfo
    }
 
+  /**
+   * Check if the service is active
+   * @param queryName 
+   * @returns 
+   */
   public async checkServiceStatus(queryName: string) {
     const serviceCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE)
     if (!serviceCollection) {
