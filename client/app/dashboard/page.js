@@ -7,6 +7,7 @@ import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
 import NetworkOverview from '../../components/dashboard/NetworkOverview';
 import useAuthStore from '../../stores/authStore';
+import { isLocalNetwork } from '../../services/networkDetection';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,10 +43,17 @@ export default function Dashboard() {
       description: 'View and manage connected network devices',
       icon: '📱',
       link: '/dashboard/devices',
-      count: 'View'
+      count: 'View',
+      localOnly: true
     }
     // Removed "Active Domains" card as requested
-  ];
+  ].filter(action => {
+    // Filter out local-only actions when not on local network
+    if (action.localOnly) {
+      return isLocalNetwork();
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -74,10 +82,12 @@ export default function Dashboard() {
           {/* Stats Cards */}
           <StatsCards stats={stats} />
 
-          {/* Network Overview - New Component */}
-          <div className="mb-8">
-            <NetworkOverview />
-          </div>
+          {/* Network Overview - Local Network Only */}
+          {isLocalNetwork() && (
+            <div className="mb-8">
+              <NetworkOverview />
+            </div>
+          )}
 
           {/* Quick Actions */}
           <QuickActions actions={quickActions} />
