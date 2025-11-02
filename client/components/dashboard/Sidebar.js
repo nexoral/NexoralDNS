@@ -1,40 +1,28 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import config from '../../config/keys';
-import { getEnvironmentConfig } from '../../services/detectCloudd';
+import { isLocalNetwork } from '../../services/networkDetection';
 
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0 });
-  const [isLocalNetwork, setIsLocalNetwork] = useState(false);
-  const [environmentLoaded, setEnvironmentLoaded] = useState(false);
   const itemRefs = useRef({});
-
-  // Detect environment on mount
-  useEffect(() => {
-    const detectEnvironment = async () => {
-      const envConfig = await getEnvironmentConfig();
-      setIsLocalNetwork(envConfig.isPrivate);
-      setEnvironmentLoaded(true);
-    };
-    detectEnvironment();
-  }, []);
 
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard', tooltip: 'Main Dashboard' },
     { id: 'domains', label: 'Domain Management', icon: 'domains', href: '/dashboard/domains', tooltip: 'Manage Domains & DNS' },
-    { id: 'devices', label: 'Connected Devices', icon: 'devices', href: '/dashboard/devices', tooltip: 'View Connected Devices', showOnlyLocal: true },
+    { id: 'devices', label: 'Connected Devices', icon: 'devices', href: '/dashboard/devices', tooltip: 'View Connected Devices', localOnly: true },
     { id: 'settings', label: 'Server Settings', icon: 'settings', href: '/dashboard/settings', tooltip: 'DNS Server Settings' }
   ];
 
-  // Filter menu items based on environment
+  // Filter menu items - only show "devices" if on local network
   const menuItems = allMenuItems.filter(item => {
-    if (item.showOnlyLocal) {
-      return isLocalNetwork;
+    if (item.localOnly) {
+      return isLocalNetwork();
     }
     return true;
   });
