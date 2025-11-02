@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button';
-import { config, getApiUrl } from '../../config/keys';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import { api } from '../../services/api';
 
 export default function RecordModal({ domain, onClose }) {
   const [showAddRecord, setShowAddRecord] = useState(false);
@@ -39,29 +39,8 @@ export default function RecordModal({ domain, onClose }) {
     setError(null);
 
     try {
-      const authToken = localStorage.getItem('nexoral_auth_token');
-      if (!authToken) {
-        throw new Error('Authentication token not found');
-      }
-
-      // Construct the URL for fetching DNS records
-      const baseUrl = config.API_BASE_URL;
-      const dnsListUrl = `${baseUrl}${config.API_ENDPOINTS.DNS_LIST}/${domain.name}`;
-
-      const response = await fetch(dnsListUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch DNS records');
-      }
-
-      const result = await response.json();
+      const response = await api.getDnsRecords(domain.name);
+      const result = response.data;
 
       if (result.statusCode === 200 && result.data && result.data.DNS_List) {
         // Transform API response to match expected format
@@ -127,11 +106,6 @@ export default function RecordModal({ domain, onClose }) {
       setError(null);
 
       try {
-        const authToken = localStorage.getItem('nexoral_auth_token');
-        if (!authToken) {
-          throw new Error('Authentication token not found');
-        }
-
         // Process the record name and value
         // If name is '@', use the domain name itself
         const name = newRecord.name.trim() === '@' ? '' : newRecord.name.trim();
@@ -148,45 +122,7 @@ export default function RecordModal({ domain, onClose }) {
           ttl: parseInt(newRecord.ttl)
         };
 
-        // Make API request to create DNS record
-        const response = await fetch(getApiUrl('CREATE_DNS'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `${authToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        // Handle specific error responses
-        if (!response.ok) {
-          const errorData = await response.json();
-
-          // Handle 409 Conflict - Value already in use
-          if (response.status === 409) {
-            // Create a more specific error message based on record type
-            let conflictMessage;
-            switch (newRecord.type) {
-              case 'A':
-                conflictMessage = `IP address '${value}' is already in use by another domain`;
-                break;
-              case 'AAAA':
-                conflictMessage = `IPv6 address '${value}' is already in use by another domain`;
-                break;
-              case 'CNAME':
-                conflictMessage = `Target '${value}' is already referenced by another domain`;
-                break;
-              default:
-                conflictMessage = `Value '${value}' is already in use by another domain`;
-            }
-
-            setError(`Conflict Error: ${conflictMessage}. Please use a different value.`);
-            setIsLoading(false);
-            return;
-          }
-
-          throw new Error(errorData.message || 'Failed to create DNS record');
-        }
+        await api.createDnsRecord(payload);
 
         // Reset form
         setNewRecord({ type: 'A', name: '', value: '', ttl: 3600 });
@@ -196,7 +132,31 @@ export default function RecordModal({ domain, onClose }) {
         fetchDnsRecords();
 
       } catch (err) {
-        setError(`Failed to create record: ${err.message}`);
+        // Handle 409 Conflict - Value already in use
+        if (err.response?.status === 409) {
+          const value = newRecord.value.trim() === '@' ? domain.name : newRecord.value.trim();
+          // Create a more specific error message based on record type
+          let conflictMessage;
+          switch (newRecord.type) {
+            case 'A':
+              conflictMessage = `IP address '${value}' is already in use by another domain`;
+              break;
+            case 'AAAA':
+              conflictMessage = `IPv6 address '${value}' is already in use by another domain`;
+              break;
+            case 'CNAME':
+              conflictMessage = `Target '${value}' is already referenced by another domain`;
+              break;
+            default:
+              conflictMessage = `Value '${value}' is already in use by another domain`;
+          }
+
+          setError(`Conflict Error: ${conflictMessage}. Please use a different value.`);
+          setIsLoading(false);
+          return;
+        }
+
+        setError(`Failed to create record: ${err.response?.data?.message || err.message}`);
         console.error('Error creating DNS record:', err);
         setIsLoading(false);
       }
@@ -225,11 +185,6 @@ export default function RecordModal({ domain, onClose }) {
       setError(null);
 
       try {
-        const authToken = localStorage.getItem('nexoral_auth_token');
-        if (!authToken) {
-          throw new Error('Authentication token not found');
-        }
-
         // Prepare API request payload according to schema
         const payload = {
           name: editingRecord.name.trim() === '@' ? '' : editingRecord.name.trim(),
@@ -238,44 +193,7 @@ export default function RecordModal({ domain, onClose }) {
           ttl: parseInt(editingRecord.ttl)
         };
 
-        // Make API request to update DNS record
-        const updateUrl = `${config.API_BASE_URL}${config.API_ENDPOINTS.UPDATE_DNS}/${editingRecord.id}`;
-
-        const response = await fetch(updateUrl, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `${authToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        // Handle specific error responses
-        if (!response.ok) {
-          const errorData = await response.json();
-
-          // Handle 409 Conflict
-          if (response.status === 409) {
-            if (errorData.message.toLowerCase().includes('name')) {
-              setError(`Name '${payload.name || '@'}' is already in use by another record`);
-            } else if (errorData.message.toLowerCase().includes('value')) {
-              setError(`Value '${payload.value}' is already in use by another record`);
-            } else {
-              setError(`Conflict: ${errorData.message}`);
-            }
-            setIsLoading(false);
-            return;
-          }
-
-          // Handle 404 Not Found
-          if (response.status === 404) {
-            setError('DNS record not found. It may have been deleted.');
-            setIsLoading(false);
-            return;
-          }
-
-          throw new Error(errorData.message || 'Failed to update DNS record');
-        }
+        await api.updateDnsRecord(editingRecord.id, payload);
 
         // Reset editing state
         setEditingRecord(null);
@@ -284,7 +202,28 @@ export default function RecordModal({ domain, onClose }) {
         await fetchDnsRecords();
 
       } catch (err) {
-        setError(`Failed to update record: ${err.message}`);
+        // Handle 409 Conflict
+        if (err.response?.status === 409) {
+          const errorMessage = err.response?.data?.message || '';
+          if (errorMessage.toLowerCase().includes('name')) {
+            setError(`Name '${payload.name || '@'}' is already in use by another record`);
+          } else if (errorMessage.toLowerCase().includes('value')) {
+            setError(`Value '${payload.value}' is already in use by another record`);
+          } else {
+            setError(`Conflict: ${errorMessage}`);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Handle 404 Not Found
+        if (err.response?.status === 404) {
+          setError('DNS record not found. It may have been deleted.');
+          setIsLoading(false);
+          return;
+        }
+
+        setError(`Failed to update record: ${err.response?.data?.message || err.message}`);
         console.error('Error updating DNS record:', err);
         setIsLoading(false);
       }
@@ -307,43 +246,24 @@ export default function RecordModal({ domain, onClose }) {
     setError(null);
 
     try {
-      const authToken = localStorage.getItem('nexoral_auth_token');
-      if (!authToken) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(getApiUrl('DELETE_DNS'), {
-        method: 'PUT',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: recordId,
-          domainName: domain.name
-        })
+      await api.deleteDnsRecord({
+        id: recordId,
+        domainName: domain.name
       });
-
-      // Handle specific error responses
-      if (!response.ok) {
-        const errorData = await response.json();
-
-        // Handle 404 Not Found
-        if (response.status === 404) {
-          setError('DNS record not found. It may have been already deleted.');
-          // Refresh records to sync with server
-          await fetchDnsRecords();
-          return;
-        }
-
-        throw new Error(errorData.message || 'Failed to delete DNS record');
-      }
 
       // Success - refresh the records list
       await fetchDnsRecords();
 
     } catch (err) {
-      setError(`Failed to delete record: ${err.message}`);
+      // Handle 404 Not Found
+      if (err.response?.status === 404) {
+        setError('DNS record not found. It may have been already deleted.');
+        // Refresh records to sync with server
+        await fetchDnsRecords();
+        return;
+      }
+
+      setError(`Failed to delete record: ${err.response?.data?.message || err.message}`);
       console.error('Error deleting DNS record:', err);
     } finally {
       setIsLoading(false);

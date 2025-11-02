@@ -2,33 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { FiRefreshCw, FiWifi, FiGlobe, FiServer, FiGrid, FiActivity, FiClock, FiShield } from 'react-icons/fi';
-import useAuthStore from '../../stores/authStore';
-import config, { getApiUrl } from '../../config/keys';
+import { api } from '../../services/api';
 
 export default function NetworkOverview() {
   const [networkData, setNetworkData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const { token } = useAuthStore();
 
   const fetchNetworkData = async () => {
     try {
-      const authToken = token || localStorage.getItem(config.AUTH.TOKEN_KEY);
-
-      const response = await fetch(getApiUrl('LIST_OF_DEVICES'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch network data');
-      }
-
-      const result = await response.json();
+      const response = await api.getDeviceList();
+      const result = response.data;
 
       if (result.statusCode === 200) {
         setNetworkData({
@@ -60,21 +45,8 @@ export default function NetworkOverview() {
     setError(null);
 
     try {
-      const authToken = token || localStorage.getItem(config.AUTH.TOKEN_KEY);
-
-      const refreshResponse = await fetch(getApiUrl('REFRESH_DEVICE_LIST'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!refreshResponse.ok) {
-        throw new Error('Failed to refresh device list');
-      }
-
-      const refreshResult = await refreshResponse.json();
+      const refreshResponse = await api.refreshDeviceList();
+      const refreshResult = refreshResponse.data;
 
       if (refreshResult.statusCode === 200 && refreshResult.data.updatedStatus) {
         await fetchNetworkData();
@@ -90,7 +62,7 @@ export default function NetworkOverview() {
 
   useEffect(() => {
     fetchNetworkData();
-  }, [token]);
+  }, []);
 
   if (loading && !networkData) {
     return (

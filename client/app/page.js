@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import LoginForm from '../components/auth/LoginForm';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Toast from '../components/ui/Toast';
-import config, { getApiUrl } from '../config/keys';
+import config from '../config/keys';
 import useAuthStore from '../stores/authStore';
+import { api } from '../services/api';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -45,32 +46,22 @@ export default function LoginPage() {
   const handleLogin = async (credentials) => {
     setIsLoading(true);
     try {
-      const response = await fetch(getApiUrl('LOGIN'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials)
+      const response = await api.login(credentials);
+      const responseData = response.data;
+
+      // Store auth data in Zustand
+      login({
+        token: responseData.data.token,
+        refreshToken: responseData.data.refreshToken,
+        user: responseData.data.user,
+        data: responseData.data
       });
 
-      if (response.ok) {
-        const responseData = await response.json();
-
-        // Store auth data in Zustand
-        login({
-          token: responseData.data.token,
-          refreshToken: responseData.data.refreshToken,
-          user: responseData.data.user,
-          data: responseData.data
-        });
-
-        router.push('/dashboard');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Invalid credentials');
-      }
+      router.push('/dashboard');
     } catch (error) {
       setToast({
         show: true,
-        message: error.message || 'Login failed. Please try again.',
+        message: error.response?.data?.message || error.message || 'Login failed. Please try again.',
         type: 'error'
       });
     } finally {

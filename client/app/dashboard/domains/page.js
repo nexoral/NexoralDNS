@@ -10,8 +10,8 @@ import RecordModal from '../../../components/domains/RecordModal';
 import BlockModal from '../../../components/domains/BlockModal';
 import DeleteConfirmModal from '../../../components/domains/DeleteConfirmModal';
 import useAuthStore from '../../../stores/authStore';
-import { getApiUrl, config } from '../../../config/keys';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import { api } from '../../../services/api';
 
 export default function DomainsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -25,7 +25,7 @@ export default function DomainsPage() {
   const [domains, setDomains] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
 
   // Fetch domains from API
   const fetchDomains = async () => {
@@ -33,21 +33,8 @@ export default function DomainsPage() {
     setError(null);
 
     try {
-      const authToken = token || localStorage.getItem('nexoral_auth_token');
-
-      const response = await fetch(getApiUrl('GET_ALL_DOMAINS'), {
-        method: 'GET',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch domains');
-      }
-
-      const result = await response.json();
+      const response = await api.getAllDomains();
+      const result = response.data;
 
       if (result.statusCode === 200) {
         // Transform API response to match expected format
@@ -96,41 +83,7 @@ export default function DomainsPage() {
       const domainToDelete = domains.find(domain => domain.id === id);
       if (!domainToDelete) return;
 
-      const authToken = token || localStorage.getItem('nexoral_auth_token');
-
-      // The server expects a path parameter, not a body parameter
-      const deleteUrl = `${config.API_BASE_URL}${config.API_ENDPOINTS.DELETE_DOMAIN}`;
-
-      const response = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ domainName: domainToDelete.name })
-      });
-
-      // Parse response JSON before any other operations
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch (parseError) {
-        console.error('Failed to parse response:', parseError);
-        throw new Error('Failed to parse server response');
-      }
-
-      // Check for specific error types
-      if (!response.ok) {
-        if (response.status === 404) {
-          // Handle "Domain not found" scenario
-          setError(`Domain "${domainToDelete.name}" not found or already deleted. Refreshing domain list...`);
-          // Refresh domain list since it's out of sync with the server
-          await fetchDomains();
-          return;
-        }
-
-        throw new Error(errorData.message || 'Failed to delete domain');
-      }
+      await api.deleteDomain({ domainName: domainToDelete.name });
 
       // Success message
       setError(null);
@@ -138,7 +91,16 @@ export default function DomainsPage() {
       // Refetch domains to update the list after successful deletion
       await fetchDomains();
     } catch (err) {
-      setError(`Delete failed: ${err.message}`);
+      // Check for specific error types
+      if (err.response?.status === 404) {
+        // Handle "Domain not found" scenario
+        setError(`Domain "${domainToDelete.name}" not found or already deleted. Refreshing domain list...`);
+        // Refresh domain list since it's out of sync with the server
+        await fetchDomains();
+        return;
+      }
+
+      setError(`Delete failed: ${err.response?.data?.message || err.message}`);
       console.error('Error deleting domain:', err);
     } finally {
       setIsLoading(false);

@@ -34,45 +34,57 @@ export default class DnsAddService {
       return Responser.send("Currently unable to connect to database");
     }
 
-    const existingDomain = await DomainCollectionClient.find({ domain: domain, userId: new ObjectId(user._id) }).toArray();
+    const existingDomain = await DomainCollectionClient.findOne({ domain: domain, userId: new ObjectId(user._id) });
     const existingValue = await DNSCollectionClient.find({ value: value }).toArray();
 
-    console.log(`[SERVICE] Existing domain check: ${existingDomain.length}, Existing value check: ${existingValue.length}`);
+    console.log(`[SERVICE] Existing domain check: ${existingDomain ? 1 : 0}, Existing value check: ${existingValue.length}`);
 
     if (existingValue.length > 0) {
       Responser.setStatusCode(StatusCodes.CONFLICT);
       Responser.setMessage("Value already in use");
       return Responser.send("Value already in use by another domain");
-    } else if (existingDomain.length === 0) {
+    } else if (!existingDomain) {
       Responser.setStatusCode(StatusCodes.NOT_FOUND);
       Responser.setMessage("Domain not found");
       return Responser.send("Domain not found");
     }
     else {
-      console.log(`[SERVICE] Inserting new DNS record: ${name} for domain ${domain}`);
+      console.log(`[SERVICE] Inserting new DNS record: ${name} for domain ${domain} type ${type}`);
 
-      // Add default DNS records for the new domain
-      const dnsRecords = [
-        {
-          domainId: existingDomain[0]._id,
+      const dnsRecords = [];
+      if (type == "CNAME") {
+        dnsRecords.push({
+          domainId: existingDomain._id,
           type: type,
-          name: name,
+          name: `${name}.${value}`,
           value: value,
-          ttl: 300,
-        }
-      ];
+          ttl: ttl,
+        })
+      }
+      else {
+        // Add other Records than CNAME
+        dnsRecords.push(
+          {
+            domainId: existingDomain._id,
+            type: type,
+            name: name,
+            value: value,
+            ttl: ttl,
+          })
+
+      }
 
       const dnsInsertResult = await DNSCollectionClient.insertMany(dnsRecords);
 
       console.log(`[SERVICE] DNS record insert result: ${dnsInsertResult.acknowledged}, IDs: ${JSON.stringify(dnsInsertResult.insertedIds)}`);
 
-      if (!dnsInsertResult.acknowledged) {
+      if (dnsInsertResult.insertedCount == 0) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
         Responser.setMessage("Failed to add DNS records");
         return Responser.send("Failed to add DNS records");
       }
 
-      return Responser.send({ domainId: existingDomain[0]._id, dnsRecordIds: dnsInsertResult.insertedIds });
+      return Responser.send({ domainId: existingDomain._id, dnsRecordIds: dnsInsertResult.insertedIds });
     }
 
   }

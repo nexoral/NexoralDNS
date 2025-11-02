@@ -149,6 +149,8 @@ export default async () => {
         username: DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_USERNAME,
         password: await new Bcrypt().Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PASSWORD),
         roleId: InsertedRoles.find(r => r.name === DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE)?._id,
+        passwordUpdatedAt: null,
+        createdAt: new Date(),
       });
       console.log("✅ Admin user created");
     } else {

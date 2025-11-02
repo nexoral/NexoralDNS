@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "dgram";
 import { Console } from "outers"
-import InputOutputHandler from "../../utilities/IO.utls";
 
 const GlobalDNS: { ip: string; name: string, location: string }[] = [
   // Cloudflare DNS (privacy-focused, but no filtering)
@@ -29,110 +28,6 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
   // Neustar / UltraDNS (public resolver, standard version = no filtering)
   { ip: "156.154.70.1", name: "Neustar UltraDNS (Standard)", location: "USA (Anycast)" },
   { ip: "156.154.71.1", name: "Neustar UltraDNS (Standard)", location: "USA (Anycast)" },
-
-  // Quad9 DNS (security-focused, no filtering)
-  { ip: "9.9.9.9", name: "Quad9 DNS", location: "Global (Anycast)" },
-  { ip: "149.112.112.112", name: "Quad9 DNS", location: "Global (Anycast)" },
-
-  // Public DNS servers in India
-  { ip: "103.123.226.10", name: "Public DNS", location: "Mumbai, India" },
-  { ip: "119.235.48.3", name: "Public DNS", location: "Hyderabad, India" },
-  { ip: "1.186.242.240", name: "Public DNS", location: "Mumbai, India" },
-  { ip: "1.22.212.214", name: "Public DNS", location: "Ghaziabad, India" },
-  { ip: "180.179.214.190", name: "Airtel Public DNS", location: "India (ISP)" },
-  { ip: "203.145.184.14", name: "Reliance Jio DNS", location: "India (ISP)" },
-  { ip: "202.88.149.25", name: "Tata Communications DNS", location: "India (ISP)" },
-  { ip: "218.248.255.194", name: "BSNL Public DNS", location: "India (ISP)" },
-  { ip: "103.14.30.121", name: "PowerDNS India", location: "Pune, India" },
-  { ip: "182.19.95.34", name: "Spectra ISP DNS", location: "Delhi, India" },
-
-  // Public DNS servers in the UK
-  { ip: "185.121.177.177", name: "OpenNIC (UK Node)", location: "London, UK" },
-  { ip: "51.38.83.141", name: "FreeDNS UK", location: "Manchester, UK" },
-  { ip: "194.168.4.100", name: "Virgin Media DNS", location: "UK (ISP)" },
-  { ip: "212.58.213.217", name: "BBC R&D DNS Test", location: "London, UK" },
-
-  // Public DNS servers in Germany
-  { ip: "84.200.69.80", name: "DNS.Watch", location: "Germany (Anycast)" },
-  { ip: "84.200.70.40", name: "DNS.Watch", location: "Germany (Anycast)" },
-  { ip: "194.150.168.168", name: "CyberGhost DNS", location: "Germany (VPN provider)" },
-  { ip: "193.29.206.206", name: "Digitalcourage DNS", location: "Bielefeld, Germany" },
-
-  // Public DNS servers in Japan
-  { ip: "203.80.96.10", name: "Japan Internet Exchange (JPIX)", location: "Tokyo, Japan" },
-  { ip: "202.12.27.33", name: "IIJ Public DNS", location: "Tokyo, Japan" },
-  { ip: "203.80.96.9", name: "KDDI DNS", location: "Tokyo, Japan" },
-  { ip: "210.196.3.183", name: "Sony Global DNS", location: "Tokyo, Japan" },
-
-  // Public DNS servers in Singapore
-  { ip: "165.21.83.88", name: "SingNet DNS", location: "Singapore (ISP)" },
-  { ip: "165.21.100.88", name: "SingNet DNS", location: "Singapore (ISP)" },
-  { ip: "103.6.87.8", name: "StarHub DNS", location: "Singapore (ISP)" },
-  { ip: "103.6.87.9", name: "StarHub DNS", location: "Singapore (ISP)" },
-
-  // Public DNS servers in Russia
-  { ip: "77.88.8.8", name: "Yandex DNS (Basic)", location: "Russia (Anycast)" },
-  { ip: "77.88.8.1", name: "Yandex DNS (Basic)", location: "Russia (Anycast)" },
-  { ip: "95.173.136.71", name: "OpenNIC (RU Node)", location: "Moscow, Russia" },
-  { ip: "31.172.133.253", name: "FreeDNS (RU Node)", location: "St. Petersburg, Russia" },
-
-
-  // Public DNS servers in Australia
-  { ip: "203.50.2.71", name: "Telstra DNS", location: "Sydney, Australia" },
-  { ip: "203.50.2.73", name: "Telstra DNS", location: "Melbourne, Australia" },
-  { ip: "202.142.142.142", name: "TPG DNS", location: "Sydney, Australia" },
-  { ip: "202.45.64.1", name: "AARNET DNS", location: "Australia (Academic Network)" },
-
-  // Public DNS servers in Brazil
-  { ip: "200.160.0.8", name: "NIC.br DNS", location: "São Paulo, Brazil" },
-  { ip: "200.189.40.8", name: "Claro DNS", location: "Rio de Janeiro, Brazil" },
-  { ip: "201.48.105.11", name: "Oi Telecom DNS", location: "Brasília, Brazil" },
-  { ip: "177.207.192.1", name: "Vivo ISP DNS", location: "Brazil (ISP)" },
-
-
-  // Public DNS servers in Canada
-  { ip: "198.27.74.100", name: "OVH DNS", location: "Beauharnois, Canada" },
-  { ip: "192.99.19.100", name: "OVH DNS", location: "Montreal, Canada" },
-  { ip: "198.50.135.100", name: "Vultr DNS", location: "Toronto, Canada" },
-  { ip: "104.247.0.1", name: "DigitalOcean DNS", location: "Toronto, Canada" },
-
-  // Public DNS servers in France
-  { ip: "80.67.169.12", name: "FDN DNS", location: "France (Paris)" },
-  { ip: "80.67.169.40", name: "FDN DNS", location: "France (Paris)" },
-  { ip: "212.85.158.6", name: "Free Telecom DNS", location: "France" },
-  { ip: "194.177.32.5", name: "Orange France DNS", location: "France" },
-
-  // Public DNS servers in the Italy
-  { ip: "85.37.17.51", name: "Fastweb DNS", location: "Italy" },
-  { ip: "62.211.69.150", name: "Telecom Italia DNS", location: "Italy (Rome)" },
-  { ip: "151.99.125.1", name: "Wind Tre DNS", location: "Italy" },
-  { ip: "80.211.55.102", name: "OpenNIC (IT Node)", location: "Italy (Milan)" },
-
-  // Public DNS servers in the Dubai
-  { ip: "213.42.20.20", name: "Etisalat DNS", location: "UAE (Dubai)" },
-  { ip: "195.229.241.222", name: "du Telecom DNS", location: "UAE (Dubai)" },
-  { ip: "45.90.28.0", name: "NextDNS (Middle East Node)", location: "UAE (Dubai)" },
-
-  // Public DNS servers in South Africa
-  { ip: "196.43.34.190", name: "Internet Solutions DNS", location: "South Africa (Johannesburg)" },
-  { ip: "196.25.1.9", name: "SAIX DNS", location: "South Africa" },
-  { ip: "197.242.144.2", name: "Afrihost DNS", location: "South Africa (Cape Town)" },
-  { ip: "168.210.2.2", name: "Telkom SA DNS", location: "South Africa" },
-  { ip: "102.132.97.97", name: "Vodacom DNS", location: "South Africa" },
-
-  // Public DNS Servers in New Zealand
-  { ip: "202.174.112.1", name: "Vodafone DNS", location: "New Zealand" },
-  { ip: "202.174.112.2", name: "Vodafone DNS", location: "New Zealand" },
-  { ip: "103.250.96.1", name: "Spark DNS", location: "New Zealand" },
-  { ip: "103.250.96.2", name: "Spark DNS", location: "New Zealand" },
-
-
-  // Public DNS servers in Hong Kong
-  { ip: "223.5.5.5", name: "AliDNS", location: "Hong Kong" },
-
-  // Public DNS servers in South Korea
-  { ip: "223.130.195.195", name: "Korea Telecom DNS", location: "South Korea" },
-  { ip: "168.126.63.1", name: "Naver DNS", location: "South Korea" }
 ];
 
 /**
@@ -208,21 +103,25 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
 
 // Function to forward DNS query to Global DNS
 /**
- * Forwards a DNS query to randomly selected global DNS server.
- * The first server to respond wins, providing faster resolution times.
+ * Forwards a DNS query to a list of global DNS servers in random order until a response is received or all servers fail to respond.
+ *
  * @param msg - The DNS query message as a Buffer.
- * @param rinfo - Remote information of the requester.
  * @param queryName - The domain name being queried.
- * @param IO - An instance of InputOutputHandler for building and sending responses.
- * @param customTTL - Optional custom TTL value to set in the response.
- * @returns A Promise that resolves to the DNS response Buffer or null if no response is received.
+ * @param customTTL - Optional custom TTL value in seconds to override the response TTL (defaults to null, keeping original TTL).
+ * @returns A Promise that resolves with the DNS response Buffer if successful, or `null` if no server responds.
+ *
+ * The function randomly selects DNS servers from the `GlobalDNS` array, waiting up to 2 seconds for a response from each.
+ * If a server does not respond or an error occurs, it proceeds to another randomly selected server.
+ * The process continues until a response is received or all servers have been tried.
+ * If customTTL is provided, all TTL values in the response will be modified to use the custom value.
  */
-export default function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.RemoteInfo, queryName: string, IO: InputOutputHandler, customTTL: number | null = null): Promise<Buffer | null> {
+export default function GlobalDNSforwarder(msg: Buffer, queryName: string, customTTL: number | null = null): Promise<Buffer | null> {
   return new Promise((resolve) => {
     // Create a copy of the GlobalDNS array to shuffle
     const availableDNS = [...GlobalDNS];
     let client: dgram.Socket | null = null;
     let timeout: NodeJS.Timeout;
+    let isClosed = false;
 
     // Fisher-Yates shuffle to randomize DNS servers
     function shuffleArray(array: any[]) {
@@ -236,31 +135,39 @@ export default function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.RemoteInfo,
     // Shuffle the DNS servers
     shuffleArray(availableDNS);
 
+    function cleanup() {
+      if (!isClosed && client) {
+        isClosed = true;
+        client.close();
+      }
+    }
+
     function tryNext() {
       if (availableDNS.length === 0) {
-        if (client) client.close();
+        cleanup();
         Console.red(`No response from any DNS server for ${queryName}`);
-        IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10);
         return resolve(null); // no response from any
       }
 
       // Get the next random DNS server (already shuffled)
       const dnsIP = availableDNS.pop();
       if (!dnsIP) {
-        IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10);
         return resolve(null);
       }
+
+      // Reset the close flag for new socket
+      isClosed = false;
       client = dgram.createSocket("udp4");
       Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location} with TTL: ${customTTL ?? "original TTL"} With Help of Worker: ${process.pid}`);
 
       timeout = setTimeout(() => {
-        client?.close();
+        cleanup();
         tryNext(); // try next random DNS
       }, 2000); // 2 sec per server
 
       client.once("message", (response) => {
         clearTimeout(timeout);
-        client?.close();
+        cleanup();
 
         // Modify TTL if customTTL is provided
         if (customTTL !== null) {
@@ -273,7 +180,7 @@ export default function GlobalDNSforwarder(msg: Buffer, rinfo: dgram.RemoteInfo,
 
       client.once("error", () => {
         clearTimeout(timeout);
-        client?.close();
+        cleanup();
         tryNext(); // try next random DNS
       });
 
