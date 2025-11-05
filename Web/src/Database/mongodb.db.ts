@@ -36,10 +36,9 @@ export default async () => {
   const mongoURL = process.env.MONGO_URI || "mongodb://localhost:27017";
   const client = new MongoClient(mongoURL);
   try {
-    await client.connect();
-    Console.green("Connected to MongoDB successfully.");
-
     if (!connections.has(mongoURL)) {
+      await client.connect();
+      Console.green("Connected to MongoDB successfully.");
       connections.set(mongoURL, client);
     } else {
       return connections.get(mongoURL) as MongoClient;
