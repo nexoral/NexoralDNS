@@ -3,6 +3,7 @@ import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import InputOutputHandler from "../../utilities/IO.utls";
 import dgram from "dgram";
+import RedisCache from "../../Redis/Redis.cache";
 
 export default class ServiceStatusChecker {
   private readonly IO: InputOutputHandler;
@@ -18,9 +19,24 @@ export default class ServiceStatusChecker {
   /**
    * Check if the service is active
    * @param queryName 
-   * @returns 
+   * @returns boolean
    */
   public async checkServiceStatus(queryName: string) {
+    // Check Redis Cache first
+    const serviceStatusCache = await RedisCache.getServiceStatusBoolean("dns-server");
+
+    // If cache exists, use it
+    if (serviceStatusCache !== null) {
+      if (!serviceStatusCache) {
+        Console.red("Service is inactive (from cache). DNS query processing is halted.");
+        this.IO.buildSendAnswer(this.msg, this.rinfo, queryName, "0.0.0.0", 5); // Respond with NXDOMAIN
+        return false;
+      }
+      else {
+        return true;
+      }
+    }
+
     const serviceCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE)
     if (!serviceCollection) {
       Console.red("Service collection not found in the database.");
@@ -38,9 +54,11 @@ export default class ServiceStatusChecker {
     if (serviceConfig.Service_Status !== "active") {
       Console.red("Service is inactive. DNS query processing is halted.");
       this.IO.buildSendAnswer(this.msg, this.rinfo, queryName, "0.0.0.0", 5); // Respond with NXDOMAIN
+      await RedisCache.maintainServiceStatus("dns-server", false);
       return false;
     }
     else {
+      await RedisCache.maintainServiceStatus("dns-server", true);
       return true;
     }
   }
