@@ -2,6 +2,11 @@ services:
   mongodb:
     image: mongo:latest
     container_name: mongo
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
     volumes:
       - mongodb_data:/data/db
@@ -14,6 +19,11 @@ services:
     image: redis:latest
     container_name: redis
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "6379:6379" # 👈 exposed to host so nexoraldns can reach it on localhost
     networks:
@@ -26,6 +36,11 @@ services:
     image: ghcr.io/nexoral/nexoraldns:latest
     container_name: nexoraldns
     restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - /etc/resolv.conf:/etc/resolv.conf # 👈 use host's DNS resolvers
     privileged: true               # 👈 gives full host-level privileges
