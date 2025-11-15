@@ -6,6 +6,8 @@ import GlobalDNSforwarder from "../Forwarder/GlobalDNSforwarder.service";
 
 // Rules Services
 import ServiceStatusChecker from "./ServiceStatusChecker.service";
+import RedisCache from "../../Redis/Redis.cache";
+import CacheKeys from "../../Redis/CacheKeys.cache";
 
 export default class StartRulesService {
   private IO: InputOutputHandler;
@@ -33,9 +35,26 @@ export default class StartRulesService {
     }
 
     Console.bright(`Processing DNS query for ${queryName} (${queryType} Record) from ${rinfo.address}:${rinfo.port} with the help of worker: ${process.pid}`);
-    const record = await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
+    
+    // Taking Record From Cache
+    let record;
+    const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`)
+    if (RecordFromCache === null){
+      record = RecordFromCache;
+    }
+    else {
+      const NewRecordFromDB = await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
 
-    if (queryName === record?.name) {
+      if (NewRecordFromDB){
+        // If Cache Fail then take from MongoDB
+        record = NewRecordFromDB;
+  
+        // Add the new Document to the Cache with Domain's Default TTL
+        RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl)
+      }
+    }
+    
+    if (record && queryName === record?.name) {
       Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.ttl} from database with the help of worker: ${process.pid}`);
       // Use buildSendAnswer method from utilities
       const response = this.IO.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);

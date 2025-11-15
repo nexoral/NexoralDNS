@@ -3,7 +3,10 @@ import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import InputOutputHandler from "../../utilities/IO.utls";
 import dgram from "dgram";
+
+// Cache Settings
 import RedisCache from "../../Redis/Redis.cache";
+import CacheKeys from "../../Redis/CacheKeys.cache";
 
 export default class ServiceStatusChecker {
   private readonly IO: InputOutputHandler;
@@ -23,7 +26,7 @@ export default class ServiceStatusChecker {
    */
   public async checkServiceStatus(queryName: string) {
     // Check Redis Cache first
-    const serviceStatusCache = await RedisCache.getServiceStatusBoolean("dns-server");
+    const serviceStatusCache = await RedisCache.get(CacheKeys.Service_Status);
 
     // If cache exists, use it
     if (serviceStatusCache !== null) {
@@ -54,11 +57,11 @@ export default class ServiceStatusChecker {
     if (serviceConfig.Service_Status !== "active") {
       Console.red("Service is inactive. DNS query processing is halted.");
       this.IO.buildSendAnswer(this.msg, this.rinfo, queryName, "0.0.0.0", 5); // Respond with NXDOMAIN
-      await RedisCache.maintainServiceStatus("dns-server", false);
+      await RedisCache.set(CacheKeys.Service_Status, false);
       return false;
     }
     else {
-      await RedisCache.maintainServiceStatus("dns-server", true);
+      await RedisCache.set(CacheKeys.Service_Status, true);
       return true;
     }
   }
