@@ -39,13 +39,15 @@ export default class StartRulesService {
     // Taking Record From Cache
     let record;
     const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`)
-    if (RecordFromCache === null){
+    if (RecordFromCache !== null){
+      Console.bright(`Got Response from Cache System`, RecordFromCache)
       record = RecordFromCache;
     }
     else {
       const NewRecordFromDB = await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
-
+      
       if (NewRecordFromDB){
+        Console.bright(`Getting Data from DB`, NewRecordFromDB)
         // If Cache Fail then take from MongoDB
         record = NewRecordFromDB;
   
@@ -54,7 +56,7 @@ export default class StartRulesService {
       }
     }
     
-    if (record && queryName === record?.name) {
+    if (queryName === record?.name) {
       Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.ttl} from database with the help of worker: ${process.pid}`);
       // Use buildSendAnswer method from utilities
       const response = this.IO.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
