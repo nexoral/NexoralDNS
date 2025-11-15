@@ -9,7 +9,7 @@ import { Console } from 'outers';
 
  * Redis Cache Service with Connection Pooling
 
- * Provides high-performance caching for DNS queries
+ * Provides high-performance generic key-value caching
 
  */
 
@@ -293,7 +293,7 @@ class RedisCacheService {
 
   // ============================================
 
-  // DNS CACHING METHODS
+  // GENERIC CRUD METHODS
 
   // ============================================
 
@@ -301,249 +301,34 @@ class RedisCacheService {
 
   /**
 
-   * Cache full DNS response (binary packet)
+   * Set a key-value pair with optional TTL
+  @example ttl=60 Default
 
    */
 
-  async cacheResponse(queryType: string, domain: string, response: Buffer, ttl: number): Promise<void> {
+  async set(key: string, value: any, ttl=60): Promise<void> {
 
     try {
 
       if (!this.client) await this.connect();
 
-      const key = `response:${queryType}:${domain.toLowerCase()}`;
+      const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
 
-      await this.client!.setEx(key, ttl, response);
 
-    } catch (error) {
 
-      Console.yellow(`⚠️  Failed to cache response for ${domain}:`, error);
+      if (ttl) {
 
-    }
+        await this.client!.setEx(key, ttl, serializedValue);
 
-  }
+      } else {
 
-
-
-  /**
-
-   * Get cached DNS response
-
-   */
-
-  async getCachedResponse(queryType: string, domain: string): Promise<Buffer | null> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      const key = `response:${queryType}:${domain.toLowerCase()}`;
-
-      const cached = await this.client!.get(key);
-
-      return cached ? Buffer.from(cached) : null;
-
-    } catch (error) {
-
-      Console.yellow(`⚠️  Failed to get cached response for ${domain}:`, error);
-
-      return null;
-
-    }
-
-  }
-
-
-
-  /**
-
-   * Cache DNS record (JSON)
-
-   */
-
-  async cacheDNSRecord(domain: string, record: any, ttl: number): Promise<void> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      const key = `dns:${domain.toLowerCase()}`;
-
-      await this.client!.setEx(key, ttl, JSON.stringify(record));
-
-    } catch (error) {
-
-      Console.yellow(`⚠️  Failed to cache DNS record for ${domain}:`, error);
-
-    }
-
-  }
-
-
-
-  /**
-
-   * Get cached DNS record
-
-   */
-
-  async getDNSRecord(domain: string): Promise<any> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      const key = `dns:${domain.toLowerCase()}`;
-
-      const cached = await this.client!.get(key);
-
-      return cached ? JSON.parse(cached) : null;
-
-    } catch (error) {
-
-      Console.yellow(`⚠️  Failed to get cached DNS record for ${domain}:`, error);
-
-      return null;
-
-    }
-
-  }
-
-
-
-  /**
-
-   * Maintain and cache service status (boolean)
-
-   */
-
-  async maintainServiceStatus(serviceName: string, isHealthy: boolean, ttl: number = 60): Promise<void> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      const key = `service:${serviceName}:status`;
-
-      await this.client!.setEx(key, ttl, isHealthy ? 'true' : 'false');
-
-    } catch (error) {
-
-      Console.yellow(`⚠️  Failed to maintain service status for ${serviceName}:`, error);
-
-    }
-
-  }
-
-
-
-  /**
-
-   * Get service status (boolean)
-
-   */
-
-  async getServiceStatusBoolean(serviceName: string): Promise<boolean | null> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      const key = `service:${serviceName}:status`;
-
-      const cached = await this.client!.get(key);
-
-      return cached === 'true' ? true : cached === 'false' ? false : null;
-
-    } catch (error) {
-
-      Console.yellow(`⚠️  Failed to get service status for ${serviceName}:`, error);
-
-      return null;
-
-    }
-
-  }
-
-
-
-  /**
-
-   * Cache service status (legacy - simple string)
-
-   */
-
-  async cacheServiceStatus(status: string, ttl: number = 60): Promise<void> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      await this.client!.setEx('service:status', ttl, status);
-
-    } catch (error) {
-
-      Console.yellow('⚠️  Failed to cache service status:', error);
-
-    }
-
-  }
-
-
-
-  /**
-
-   * Get cached service status (legacy - simple string)
-
-   */
-
-  async getServiceStatus(): Promise<string | null> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      return await this.client!.get('service:status');
-
-    } catch (error) {
-
-      Console.yellow('⚠️  Failed to get service status:', error);
-
-      return null;
-
-    }
-
-  }
-
-
-
-  /**
-
-   * Invalidate domain cache
-
-   */
-
-  async invalidateDomain(domain: string): Promise<void> {
-
-    try {
-
-      if (!this.client) await this.connect();
-
-      const pattern = `*${domain.toLowerCase()}*`;
-
-      const keys = await this.client!.keys(pattern);
-
-      if (keys.length > 0) {
-
-        await this.client!.del(keys);
-
-        Console.bright(`🗑️  Invalidated ${keys.length} cache entries for ${domain}`);
+        await this.client!.set(key, serializedValue);
 
       }
 
     } catch (error) {
 
-      Console.yellow(`⚠️  Failed to invalidate cache for ${domain}:`, error);
+      Console.yellow(`⚠️  Failed to set key ${key}:`, error);
 
     }
 
@@ -553,21 +338,193 @@ class RedisCacheService {
 
   /**
 
-   * Invalidate service status cache
+   * Get a value by key
 
    */
 
-  async invalidateServiceStatus(): Promise<void> {
+  async get<T = any>(key: string): Promise<T | null> {
 
     try {
 
       if (!this.client) await this.connect();
 
-      await this.client!.del('service:status');
+      const cached = await this.client!.get(key);
+
+
+
+      if (!cached) return null;
+
+
+
+      // Try to parse as JSON, if fails return as string
+
+      try {
+
+        return JSON.parse(cached);
+
+      } catch {
+
+        return cached as T;
+
+      }
 
     } catch (error) {
 
-      Console.yellow('⚠️  Failed to invalidate service status:', error);
+      Console.yellow(`⚠️  Failed to get key ${key}:`, error);
+
+      return null;
+
+    }
+
+  }
+
+
+
+  /**
+
+   * Delete a key
+
+   */
+
+  async delete(key: string): Promise<boolean> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const result = await this.client!.del(key);
+
+      return result > 0;
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to delete key ${key}:`, error);
+
+      return false;
+
+    }
+
+  }
+
+
+
+  /**
+
+   * Check if a key exists
+
+   */
+
+  async exists(key: string): Promise<boolean> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const result = await this.client!.exists(key);
+
+      return result > 0;
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to check existence of key ${key}:`, error);
+
+      return false;
+
+    }
+
+  }
+
+
+
+  /**
+
+   * Delete keys matching a pattern
+
+   */
+
+  async invalidate(pattern: string): Promise<number> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const keys = await this.client!.keys(pattern);
+
+
+
+      if (keys.length > 0) {
+
+        await this.client!.del(keys);
+
+        Console.bright(`🗑️  Invalidated ${keys.length} cache entries matching pattern: ${pattern}`);
+
+        return keys.length;
+
+      }
+
+
+
+      return 0;
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to invalidate pattern ${pattern}:`, error);
+
+      return 0;
+
+    }
+
+  }
+
+
+
+  /**
+
+   * Get TTL (time to live) for a key in seconds
+
+   */
+
+  async getTTL(key: string): Promise<number> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      return await this.client!.ttl(key);
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to get TTL for key ${key}:`, error);
+
+      return -1;
+
+    }
+
+  }
+
+
+
+  /**
+
+   * Set expiration time for a key
+
+   */
+
+  async expire(key: string, seconds: number): Promise<number> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const result = await this.client!.expire(key, seconds);
+
+      return result;
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to set expiration for key ${key}:`, error);
+
+      return 0;
 
     }
 

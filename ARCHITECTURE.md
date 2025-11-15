@@ -1,4 +1,4 @@
-# NexoralDNS Architecture Documentation
+# NexoralDNS Complete Architecture Documentation
 
 ## 📖 Table of Contents
 1. [System Overview](#system-overview)
