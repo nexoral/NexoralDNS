@@ -108,9 +108,7 @@ export default class StartRulesService {
         const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 10, rinfo); // Set custom TTL to 10 seconds
         if (forwardedResponse) {
           const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
-          if (!resp) {
-           
-           
+          if (!resp) {         
             // Add to Analytics
             AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
             RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
@@ -132,7 +130,6 @@ export default class StartRulesService {
         RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
         Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
-        this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10);
       }
     }
   }

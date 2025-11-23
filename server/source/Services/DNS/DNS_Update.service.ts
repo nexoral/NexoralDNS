@@ -83,7 +83,7 @@ export default class DnsUpdateService {
         return Responser.send("Failed to update DNS record");
       }
 
-      RedisCache.invalidate(`${CacheKeys.Domain_DNS_Record}:${DnsDetails.name}`)
+      RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${DnsDetails.name}`)
       return Responser.send({ dnsRecordIds: dnsUpdateResult.upsertedId });
     }
 

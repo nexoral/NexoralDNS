@@ -82,7 +82,7 @@ export default class DnsUpdateService {
         }
 
         Responser.setMessage("DNS record and associated domain deleted successfully");
-        RedisCache.invalidate(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
+        RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
         return Responser.send({ deletedDNSCount: deleteResult.deletedCount, deletedDomainCount: domainDeleteResult.deletedCount });
       }
 
@@ -95,7 +95,7 @@ export default class DnsUpdateService {
       }
 
       Responser.setMessage("DNS record deleted successfully");
-      RedisCache.invalidate(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
+      RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
       return Responser.send({ deletedCount: deleteResult.deletedCount });
     }
 
