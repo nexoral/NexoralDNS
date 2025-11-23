@@ -9,6 +9,8 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
+import CacheKeys from "../../Redis/CacheKeys.cache";
+import RedisCache from "../../Redis/Redis.cache";
 
 
 export default class DnsUpdateService {
@@ -55,6 +57,14 @@ export default class DnsUpdateService {
       if (type) updateObject.type = type;
       if (value) updateObject.value = value;
       if (ttl) updateObject.ttl = ttl;
+
+      const DnsDetails = await DNSCollectionClient.findOne({ _id: new ObjectId(id )})
+
+      if (!DnsDetails){
+        Responser.setStatusCode(StatusCodes.NOT_FOUND);
+        Responser.setMessage("DNS record not found");
+        return Responser.send("DNS record not found");
+      }
       
       const dnsUpdateResult = await DNSCollectionClient.updateOne(
         { _id: new ObjectId(id) },
@@ -73,6 +83,7 @@ export default class DnsUpdateService {
         return Responser.send("Failed to update DNS record");
       }
 
+      RedisCache.invalidate(`${CacheKeys.Domain_DNS_Record}:${DnsDetails.name}`)
       return Responser.send({ dnsRecordIds: dnsUpdateResult.upsertedId });
     }
 

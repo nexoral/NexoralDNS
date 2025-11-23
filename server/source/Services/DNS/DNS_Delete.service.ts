@@ -9,6 +9,8 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
+import RedisCache from "../../Redis/Redis.cache";
+import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class DnsUpdateService {
@@ -80,6 +82,7 @@ export default class DnsUpdateService {
         }
 
         Responser.setMessage("DNS record and associated domain deleted successfully");
+        RedisCache.invalidate(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
         return Responser.send({ deletedDNSCount: deleteResult.deletedCount, deletedDomainCount: domainDeleteResult.deletedCount });
       }
 
@@ -92,6 +95,7 @@ export default class DnsUpdateService {
       }
 
       Responser.setMessage("DNS record deleted successfully");
+      RedisCache.invalidate(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
       return Responser.send({ deletedCount: deleteResult.deletedCount });
     }
 
