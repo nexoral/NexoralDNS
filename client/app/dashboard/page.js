@@ -7,6 +7,8 @@ import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
 import NetworkOverview from '../../components/dashboard/NetworkOverview';
 import RecentLogs from '../../components/dashboard/RecentLogs';
+import DNSQueryChart from '../../components/dashboard/DNSQueryChart';
+import TopServersChart from '../../components/dashboard/TopServersChart';
 import useAuthStore from '../../stores/authStore';
 import { isLocalNetwork } from '../../services/networkDetection';
 import { api } from '../../services/api';
@@ -21,11 +23,20 @@ export default function Dashboard() {
     totalQueries: 0,
     totalDomains: 0,
     activeDomains: 0,
-    totalDNSRecords: 0
+    totalDNSRecords: 0,
+    totalForwardedQueries: 0,
+    totalSuccessQueries: 0,
+    totalFailedQueries: 0,
+    forwardedPercentage: 0,
+    successPercentage: 0,
+    failedPercentage: 0
   });
 
   // Recent DNS logs
   const [recentLogs, setRecentLogs] = useState([]);
+
+  // Full analytics data for charts
+  const [analyticsData, setAnalyticsData] = useState(null);
 
   // Fetch dashboard analytics on component mount
   useEffect(() => {
@@ -42,17 +53,26 @@ export default function Dashboard() {
       const response = await api.getDashboardAnalytics();
 
       if (response.data.statusCode === 200 && response.data.data) {
-        const analyticsData = response.data.data;
+        const data = response.data.data;
+
+        // Store full analytics data for charts
+        setAnalyticsData(data);
 
         setStats({
-          totalQueries: analyticsData.TotalLast24HourDNSqueries || 0,
-          totalDomains: analyticsData.totalDomains || 0,
-          activeDomains: analyticsData.totalActiveDomains || 0,
-          totalDNSRecords: analyticsData.totalDNSRecords || 0
+          totalQueries: data.TotalLast24HourDNSqueries || 0,
+          totalDomains: data.totalDomains || 0,
+          activeDomains: data.totalActiveDomains || 0,
+          totalDNSRecords: data.totalDNSRecords || 0,
+          totalForwardedQueries: data.totalForwardedDNS_Queries || 0,
+          totalSuccessQueries: data.totalSuccessDNS_Queries || 0,
+          totalFailedQueries: data.totalFailedDNS_Queries || 0,
+          forwardedPercentage: data.Percentages?.totalGlobalRequestForwardedPercentage || 0,
+          successPercentage: data.Percentages?.totalSuccessPercentage || 0,
+          failedPercentage: data.Percentages?.totalFailurePercentage || 0
         });
 
         // Set recent logs
-        setRecentLogs(analyticsData.LatestLogs || []);
+        setRecentLogs(data.LatestLogs || []);
       }
 
       setIsLoading(false);
@@ -134,6 +154,15 @@ export default function Dashboard() {
             <>
               {/* Stats Cards */}
               <StatsCards stats={stats} />
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* DNS Query Distribution Chart */}
+                <DNSQueryChart analytics={analyticsData} />
+
+                {/* Top Global DNS Servers Chart */}
+                <TopServersChart topServers={analyticsData?.TopGlobalServer || []} />
+              </div>
             </>
           )}
 
