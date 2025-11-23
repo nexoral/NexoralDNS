@@ -4,10 +4,10 @@ import fastifyCors from "@fastify/cors";
 import { CORS_CONFIG, ServerKeys } from "./key";
 import mainRouter from "../Router/Router";
 import MongoConnector from "../Database/mongodb.db";
-import { IpConnectionCronJob } from "../CronJob/Connected_IP_fetcher.cron";
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import createTCPBroker from "../Broker/TCP.broker";
+import startCronJob from "../CronJob/CronJob";
 
 
 export default function FastifyServer() {
@@ -82,7 +82,7 @@ export default function FastifyServer() {
       );
       // Initialize TCP Broker Client
       createTCPBroker();
-      IpConnectionCronJob()
+      startCronJob()
     } catch (err) {
       NexoralServer.log.error(err);
       process.exit(1);

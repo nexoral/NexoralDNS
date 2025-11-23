@@ -5,25 +5,18 @@ enum CacheKeys {
   DnsQueryDetailsStore = "DNS_QUERY"
 }
 
-export function dnsQueryDetailsKey(suffix?: number | string) {
-  const now = new Date();
+export enum QueueKeys {
+  DNS_Analytics = "DNS_analytcs"
+}
 
-  // Format YYYY-MM-DD
-  const dateStr = now.toISOString().split("T")[0];
+export enum DNS_QUERY_STATUS_KEYS {
+  FROM_DB = "FROM DB",
+  FROM_CACHE = "FROM REDIS CACHE",
+  RESOLVED = "RESOLVED",
+  NOT_FOUND = "DOMAIN NOT FOUND",
+  FORWARDED = "DNS REQUESTED FORWARDED",
+  FAILED = "FAILED TO PROCESS"
 
-  // Build Redis key
-  const QUERY =
-    suffix !== undefined
-      ? `DNS_QUERY:${dateStr}:${suffix}`
-      : `DNS_QUERY:${dateStr}`;
-
-  // Calculate TTL until next midnight (12:00 AM)
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0); // today 24:00 = tomorrow 00:00
-
-  const TTL = Math.floor((midnight.getTime() - now.getTime()) / 1000); // in seconds
-
-  return { QUERY, TTL };
 }
 
 export default CacheKeys;

@@ -103,7 +103,7 @@ export default async () => {
     await permissionsCol.createIndex({ code: 1 }, { unique: true });
     await rolesCol.createIndex({ code: 1 }, { unique: true }); // Ensure unique role codes
     await usersCol.createIndex({ username: 1 }, { unique: true }); // Ensure unique usernames
-    await DnsAnalyticsCol.createIndex({domainName: 1, TodayDate: 1}, {unique: true});
+    await DnsAnalyticsCol.createIndex({domainName: 1, TodayDate: 1});
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();
