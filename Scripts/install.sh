@@ -242,7 +242,7 @@ pull_required_images() {
         ;;
       *nexoraldns*|*nexoral* )
         print_status "Installing NexoralDNS..."
-        if sudo docker pull "$img" 2>&1 | grep -E 'Pulling|Downloading|Extracting|Pull complete' | sed 's/^/    /'; then
+        if sudo docker pull "$img" > /dev/null 2>&1; then
           print_success "NexoralDNS image pulled."
         else
           print_warning "Failed to pull NexoralDNS image (continue anyway)"

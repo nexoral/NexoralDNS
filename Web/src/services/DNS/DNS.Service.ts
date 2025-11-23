@@ -23,7 +23,7 @@ export default class DNS {
   private startRulesService : StartRulesService;
 
   constructor() {
-    this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket with address reuse
+    this.server = dgram.createSocket({ type: "udp6", reuseAddr: true, ipv6Only: false }); // Create a dual-stack UDP socket (IPv4 + IPv6)
     this.IO = new InputOutputHandler(this.server);
     this.startRulesService = new StartRulesService(this.IO, this.server);
   }
