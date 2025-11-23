@@ -2,13 +2,13 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
+import RequestControllerHelper from "../../helper/Request_Controller.helper";
 
 // service import
 import DnsAddService from "../../Services/DNS/Add_DNS.service";
 import DnsListService from "../../Services/DNS/DNS_List.service";
 import DnsUpdateService from "../../Services/DNS/DNS_Update.service";
 import DnsDeleteService from "../../Services/DNS/DNS_Delete.service";
-import RequestControllerHelper from "../../helper/Request_Controller.helper";
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
