@@ -20,7 +20,8 @@ export const config = {
     CREATE_DOMAIN: '/api/domains/create-domain',
     DELETE_DOMAIN: '/api/domains/delete',
     SERVICE_INFO: '/api/service-info',
-    TOGGLE_SERVICE: '/api/settings/toggle-service'
+    TOGGLE_SERVICE: '/api/settings/toggle-service',
+    GET_DASHBOARD_ANALYTICS: '/api/analytics/get-dashboard-data'
   },
 
   // Application Configuration

@@ -8,6 +8,8 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
+import RedisCache from "../../Redis/Redis.cache";
+import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class DomainRemoveService {
@@ -56,6 +58,7 @@ export default class DomainRemoveService {
       return Responser.send("Failed to delete domain");
     }
 
+    RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${existingDomain.domain}`)
     return Responser.send({
       message: "Domain and associated DNS records removed successfully",
       deletedDomain: existingDomain.domain,

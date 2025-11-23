@@ -69,6 +69,19 @@ export default function RecordModal({ domain, onClose }) {
 
   const recordTypes = ['A', 'AAAA', 'CNAME'];
 
+  // Filter available record types based on existing records
+  const getAvailableRecordTypes = () => {
+    // Check if an A record already exists
+    const hasARecord = records.some(record => record.type === 'A');
+
+    // If A record exists, hide A and AAAA from dropdown
+    if (hasARecord) {
+      return recordTypes.filter(type => type !== 'A' && type !== 'AAAA');
+    }
+
+    return recordTypes;
+  };
+
   const validateRecord = (record = null) => {
     const errors = {};
     const recordToValidate = record || editingRecord || newRecord;
@@ -98,6 +111,14 @@ export default function RecordModal({ domain, onClose }) {
 
   const handleAddRecord = async (e) => {
     e.preventDefault();
+
+    // Additional validation: Prevent adding A or AAAA if A record exists
+    const hasARecord = records.some(record => record.type === 'A');
+    if (hasARecord && (newRecord.type === 'A' || newRecord.type === 'AAAA')) {
+      alert('Cannot add A or AAAA record. An A record already exists for this domain.\nPlease delete the existing A record first if you want to add a different one.');
+      return;
+    }
+
     const errors = validateRecord();
 
     if (Object.keys(errors).length === 0) {
@@ -125,7 +146,9 @@ export default function RecordModal({ domain, onClose }) {
         await api.createDnsRecord(payload);
 
         // Reset form
-        setNewRecord({ type: 'A', name: '', value: '', ttl: 3600 });
+        // Set default type based on available types
+        const availableTypes = getAvailableRecordTypes();
+        setNewRecord({ type: availableTypes[0] || 'CNAME', name: '', value: '', ttl: 3600 });
         setShowAddRecord(false);
 
         // Refresh records from API to get updated list with server-generated IDs
@@ -320,9 +343,19 @@ export default function RecordModal({ domain, onClose }) {
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-slate-800">DNS Records (A, AAAA, CNAME only)</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800">DNS Records (A, AAAA, CNAME only)</h3>
+              {records.some(record => record.type === 'A') && (
+                <p className="text-xs text-orange-600 mt-1">⚠️ A record exists - A and AAAA types are disabled</p>
+              )}
+            </div>
             <Button
-              onClick={() => setShowAddRecord(true)}
+              onClick={() => {
+                // Set default type to first available when opening add form
+                const availableTypes = getAvailableRecordTypes();
+                setNewRecord({ type: availableTypes[0] || 'CNAME', name: '', value: '', ttl: 3600 });
+                setShowAddRecord(true);
+              }}
               variant="primary"
               size="sm"
             >
@@ -339,7 +372,7 @@ export default function RecordModal({ domain, onClose }) {
                   onChange={(e) => setNewRecord(prev => ({ ...prev, type: e.target.value, value: '' }))}
                   className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  {recordTypes.map(type => (
+                  {getAvailableRecordTypes().map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
@@ -399,10 +432,17 @@ export default function RecordModal({ domain, onClose }) {
                   value={editingRecord.type}
                   onChange={(e) => setEditingRecord(prev => ({ ...prev, type: e.target.value, value: '' }))}
                   className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  disabled={editingRecord.type === 'A'}
                 >
-                  {recordTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
+                  {editingRecord.type === 'A' ? (
+                    // If editing an A record, keep it as A (can't change to AAAA)
+                    <option value="A">A</option>
+                  ) : (
+                    // For other types, show available types (excluding A and AAAA if A exists)
+                    getAvailableRecordTypes().map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))
+                  )}
                 </select>
 
                 <input

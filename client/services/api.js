@@ -58,6 +58,10 @@ export const api = {
   // DNS Zones
   getZones: () =>
     apiClient.get(getApiUrl('ZONES')),
+
+  // Analytics
+  getDashboardAnalytics: () =>
+    apiClient.get(getApiUrl('GET_DASHBOARD_ANALYTICS')),
 };
 
 export default api;

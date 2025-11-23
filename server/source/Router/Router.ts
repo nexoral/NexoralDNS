@@ -14,6 +14,7 @@ import domainRouter from "./Domains/Domains.route";
 import DHCPRouter from "./DHCP/DHCP.route";
 import dnsRouter from "./DNS/DNS.route";
 import SettingsRouter from "./Settings/settings.route";
+import AnalyticsRouter from "./Analytics/Analytics.route";
 
 
 // Extended options interface to include NexoralDNS instance
@@ -80,6 +81,7 @@ export default async function mainRouter(
   fastify.register(dnsRouter, { prefix: "/dns" });
   fastify.register(DHCPRouter, { prefix: "/dhcp" });
   fastify.register(SettingsRouter, {prefix: "/settings"})
+  fastify.register(AnalyticsRouter, {prefix: "/analytics"})
 
 
   // Handle 404 Not Found
