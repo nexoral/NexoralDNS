@@ -218,7 +218,7 @@ version_compare() {
 
 # Pull required images from registry before stopping system services (so DNS works during pull)
 pull_required_images() {
-  local images=("mongo:latest" "redis:latest" "ghcr.io/nexoral/nexoraldns:latest")
+  local images=("mongo:latest" "redis:latest" "rabbitmq:management" "ghcr.io/nexoral/nexoraldns:latest")
   local img
   print_status "Pulling required Docker images before stopping DNS..."
   for img in "${images[@]}"; do
@@ -238,6 +238,14 @@ pull_required_images() {
           print_success "Redis configured."
         else
           print_warning "Failed to configure Redis (continue anyway)"
+        fi
+        ;;
+      rabbitmq:*)
+        print_status "Configuring RabbitMQ..."
+        if sudo docker pull "$img" > /dev/null 2>&1; then
+          print_success "RabbitMQ configured."
+        else
+          print_warning "Failed to configure RabbitMQ (continue anyway)"
         fi
         ;;
       *nexoraldns*|*nexoral* )
@@ -413,6 +421,7 @@ if [[ "$1" == "remove" ]]; then
     sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
     sudo docker rmi mongo:latest 2>/dev/null || true
     sudo docker rmi redis:latest 2>/dev/null || true
+    sudo docker rmi rabbitmq:management 2>/dev/null || true
     print_success "Docker images removed."
     
     print_status "Removing NexoralDNS directory..."
@@ -425,6 +434,8 @@ if [[ "$1" == "remove" ]]; then
     
     print_status "Cleaning up Docker volumes..."
     sudo docker volume rm nexoraldns_mongodb_data 2>/dev/null || true
+    sudo docker volume rm nexoraldns_redis_data 2>/dev/null || true
+    sudo docker volume rm nexoraldns_rabbitmq_data 2>/dev/null || true
     print_success "Docker volumes cleaned."
 
     # Remove firewall rules if UFW is enabled

@@ -22,6 +22,7 @@
     "typescript-eslint": "^8.43.0"
   },
   "dependencies": {
+    "amqplib": "^0.10.9",
     "outers": "^8.6.9",
     "redis": "^5.9.0"
   }

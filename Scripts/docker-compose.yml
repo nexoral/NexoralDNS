@@ -32,6 +32,23 @@ services:
     volumes:
       - redis_data:/data
 
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5672:5672"   # 👈 AMQP port exposed to host
+      - "15672:15672" # 👈 Management UI port
+    networks:
+      - nexoral_network # 👈 keep RabbitMQ in bridge network for safety/port isolation
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
   nexoraldns:
     image: ghcr.io/nexoral/nexoraldns:latest
     container_name: nexoraldns
@@ -40,6 +57,8 @@ services:
       mongodb:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - /etc/resolv.conf:/etc/resolv.conf # 👈 use host's DNS resolvers
@@ -58,3 +77,4 @@ networks:
 volumes:
   mongodb_data:
   redis_data:
+  rabbitmq_data:
