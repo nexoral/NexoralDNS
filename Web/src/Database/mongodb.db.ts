@@ -60,6 +60,9 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DOMAINS, domainsCol);
     const dnsRecordsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS, dnsRecordsCol);
+    const DnsAnalyticsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.ANALYTICS, DnsAnalyticsCol);
+    
   } catch (error) {
     Console.red("Failed to connect to MongoDB:", error);
     throw error;

@@ -53,6 +53,7 @@ type DBConfigType = {
     DNS_RECORDS: string;
     LOGS: string;
     RULES: string;
+    ANALYTICS: string;
   };
   DefaultValues: {
     DEFAULT_ADMIN_USERNAME: string;
@@ -76,7 +77,7 @@ type DBConfigType = {
       Last_Synced_At: Date | null;
       Total_Connected_Devices_To_Router: number;
       List_of_Connected_Devices_Info: any[];
-    }
+    };
   };
 };
 
@@ -91,7 +92,8 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
     DOMAINS: "domains",
     DNS_RECORDS: "dns_records",
     LOGS: "logs",
-    RULES: "rules"
+    RULES: "rules",
+    ANALYTICS: "analytics"
   },
   DefaultValues: {
     DEFAULT_ADMIN_USERNAME: "admin",

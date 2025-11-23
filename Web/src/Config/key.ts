@@ -16,6 +16,7 @@ type DBConfigType = {
     DNS_RECORDS: string;
     LOGS: string;
     RULES: string;
+    ANALYTICS: string;
   };
   DefaultValues: {
     DEFAULT_ADMIN_USERNAME: string;
@@ -54,7 +55,8 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
     DOMAINS: "domains",
     DNS_RECORDS: "dns_records",
     LOGS: "logs",
-    RULES: "rules"
+    RULES: "rules",
+    ANALYTICS: "analytics"
   },
   DefaultValues: {
     DEFAULT_ADMIN_USERNAME: "admin",
