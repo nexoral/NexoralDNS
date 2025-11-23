@@ -50,7 +50,7 @@ export default function FastifyServer() {
       info: {
         title: 'NexoralDNS API',
         description: 'Full API documentation for NexoralDNS Server',
-        version: '1.0.0',
+        version: '1.0.1',
       },
       consumes: ['application/json'],
       produces: ['application/json'],
