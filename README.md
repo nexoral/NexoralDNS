@@ -50,6 +50,34 @@ curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/ins
 
 ---
 
+## ⚠️ **IMPORTANT WARNING - LAN USE ONLY**
+
+**🚨 DO NOT HOST THIS ON THE CLOUD OR PUBLIC INTERNET 🚨**
+
+NexoralDNS is **STRICTLY** designed for **Local Area Network (LAN)** use only.
+
+**Why you should NEVER use this on cloud/public hosting:**
+
+- ⛔ **DNS Spoofing Detection:** Your ISP will detect this as DNS spoofing activity
+- 🔒 **Automatic Blocking:** ISPs will automatically block your DNS server
+- 🔀 **Traffic Redirection:** All DNS traffic will be forcibly routed to your ISP's DNS servers
+- 💔 **Service Disruption:** Your service will become completely non-functional
+- ⚖️ **Potential Legal Issues:** May violate ISP terms of service
+
+**✅ Correct Usage:**
+- Install on a local machine within your LAN (home/office network)
+- Configure your local router to use this DNS server
+- Use only for internal network traffic and custom domain resolution
+
+**❌ Incorrect Usage:**
+- Hosting on cloud platforms (AWS, Azure, Google Cloud, DigitalOcean, etc.)
+- Using as a public DNS resolver
+- Exposing port 53 to the public internet
+
+**This warning applies to all deployment scenarios. Always ensure NexoralDNS remains within your private network boundaries.**
+
+---
+
 ## 🎯 What is NexoralDNS?
 
 NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your network's DNS infrastructure. It provides comprehensive DNS management, monitoring, and custom domain resolution for your entire Local Area Network (LAN).
