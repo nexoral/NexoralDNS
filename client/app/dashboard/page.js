@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../components/dashboard/Sidebar';
 import Header from '../../components/dashboard/Header';
 import StatsCards from '../../components/dashboard/StatsCards';
@@ -8,20 +8,53 @@ import QuickActions from '../../components/dashboard/QuickActions';
 import NetworkOverview from '../../components/dashboard/NetworkOverview';
 import useAuthStore from '../../stores/authStore';
 import { isLocalNetwork } from '../../services/networkDetection';
+import { api } from '../../services/api';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Simplified dummy data for essential features only
+  // Real analytics data from API
   const [stats, setStats] = useState({
-    totalQueries: 152847,
-    queriesChange: '+12.5%',
-    managedDomains: 24,
-    domainsChange: '+3',
-    systemHealth: '99.5%',
-    healthChange: '+0.1%'
+    totalQueries: 0,
+    totalDomains: 0,
+    activeDomains: 0,
+    totalDNSRecords: 0
   });
+
+  // Fetch dashboard analytics on component mount
+  useEffect(() => {
+    fetchDashboardAnalytics();
+
+    // Refresh analytics every 30 seconds
+    const interval = setInterval(fetchDashboardAnalytics, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchDashboardAnalytics = async () => {
+    try {
+      const response = await api.getDashboardAnalytics();
+
+      if (response.data.statusCode === 200 && response.data.data) {
+        const analyticsData = response.data.data;
+
+        setStats({
+          totalQueries: analyticsData.TotalLast24HourDNSqueries || 0,
+          totalDomains: analyticsData.totalDomains || 0,
+          activeDomains: analyticsData.totalActiveDomains || 0,
+          totalDNSRecords: analyticsData.totalDNSRecords || 0
+        });
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch dashboard analytics:', error);
+      setIsLoading(false);
+      // Keep showing default values on error
+    }
+  };
 
   const quickActions = [
     {
@@ -29,7 +62,7 @@ export default function Dashboard() {
       description: 'Add and configure domains & DNS records',
       icon: '🌐',
       link: '/dashboard/domains',
-      count: stats.managedDomains
+      count: stats.totalDomains
     },
     {
       title: 'Server Settings',
@@ -79,8 +112,23 @@ export default function Dashboard() {
             <p className="text-slate-600">Manage your DNS infrastructure efficiently.</p>
           </div>
 
-          {/* Stats Cards */}
-          <StatsCards stats={stats} />
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-pulse">
+                  <div className="h-4 bg-slate-200 rounded w-1/2 mb-4"></div>
+                  <div className="h-8 bg-slate-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-slate-200 rounded w-1/3"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Stats Cards */}
+              <StatsCards stats={stats} />
+            </>
+          )}
 
           {/* Network Overview - Local Network Only */}
           {isLocalNetwork() && (
