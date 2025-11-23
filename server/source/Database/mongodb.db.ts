@@ -95,12 +95,15 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DOMAINS, domainsCol);
     const dnsRecordsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS, dnsRecordsCol);
+    const DnsAnalyticsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.ANALYTICS, DnsAnalyticsCol);
 
     // create Indexes
     await serviceCol.createIndex({ Service_Status: 1 }, { unique: true });
     await permissionsCol.createIndex({ code: 1 }, { unique: true });
     await rolesCol.createIndex({ code: 1 }, { unique: true }); // Ensure unique role codes
     await usersCol.createIndex({ username: 1 }, { unique: true }); // Ensure unique usernames
+    await DnsAnalyticsCol.createIndex({domainName: 1, TodayDate: 1});
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();

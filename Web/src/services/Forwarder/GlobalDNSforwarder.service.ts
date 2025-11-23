@@ -2,6 +2,10 @@
 import dgram from "dgram";
 import { Console } from "outers"
 
+// RabbitMQ
+import { DNS_QUERY_STATUS_KEYS, QueueKeys } from "../../Redis/CacheKeys.cache";
+import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
+
 const GlobalDNS: { ip: string; name: string, location: string }[] = [
   // Cloudflare DNS (privacy-focused, but no filtering)
   { ip: "1.1.1.1", name: "Cloudflare DNS", location: "Global (Anycast)" },
@@ -115,7 +119,7 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
  * The process continues until a response is received or all servers have been tried.
  * If customTTL is provided, all TTL values in the response will be modified to use the custom value.
  */
-export default function GlobalDNSforwarder(msg: Buffer, queryName: string, customTTL: number | null = null): Promise<Buffer | null> {
+export default function GlobalDNSforwarder(msg: Buffer, queryName: string, queryType: string, customTTL: number | null = null): Promise<Buffer | null> {
   return new Promise((resolve) => {
     // Create a copy of the GlobalDNS array to shuffle
     const availableDNS = [...GlobalDNS];
@@ -168,6 +172,29 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, custo
       client.once("message", (response) => {
         clearTimeout(timeout);
         cleanup();
+
+
+        // Add to Analytics
+        // Analytics Payload
+        const AnalyticsMSgPayload: {
+          queryName: string,
+          queryType: string,
+          timestamp: number,
+          Status: string,
+          From: string
+        } = {
+          queryName: queryName,
+          queryType: queryType,
+          timestamp: Date.now(),
+          Status: "",
+          From: ""
+        }
+
+        // Add to Analytics
+        AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FORWARDED;
+        AnalyticsMSgPayload.From = dnsIP.name;
+          RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+
 
         // Modify TTL if customTTL is provided
         if (customTTL !== null) {
