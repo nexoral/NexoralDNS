@@ -37,11 +37,13 @@ export default class StartRulesService {
       queryName: string,
       queryType: string,
       timestamp: number,
+      SourceIP: string,
       Status: string,
       From: string
     } = {
       queryName: queryName,
       queryType: queryType,
+      SourceIP: rinfo.address,
       timestamp: Date.now(),
       Status: "",
       From: ""
@@ -103,7 +105,7 @@ export default class StartRulesService {
     } else {
       // Forward to Global DNS for non-matching domains
       try {
-        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 10); // Set custom TTL to 10 seconds
+        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 10, rinfo); // Set custom TTL to 10 seconds
         if (forwardedResponse) {
           const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {

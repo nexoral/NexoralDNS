@@ -6,6 +6,7 @@ import Header from '../../components/dashboard/Header';
 import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
 import NetworkOverview from '../../components/dashboard/NetworkOverview';
+import RecentLogs from '../../components/dashboard/RecentLogs';
 import useAuthStore from '../../stores/authStore';
 import { isLocalNetwork } from '../../services/networkDetection';
 import { api } from '../../services/api';
@@ -22,6 +23,9 @@ export default function Dashboard() {
     activeDomains: 0,
     totalDNSRecords: 0
   });
+
+  // Recent DNS logs
+  const [recentLogs, setRecentLogs] = useState([]);
 
   // Fetch dashboard analytics on component mount
   useEffect(() => {
@@ -46,6 +50,9 @@ export default function Dashboard() {
           activeDomains: analyticsData.totalActiveDomains || 0,
           totalDNSRecords: analyticsData.totalDNSRecords || 0
         });
+
+        // Set recent logs
+        setRecentLogs(analyticsData.LatestLogs || []);
       }
 
       setIsLoading(false);
@@ -139,6 +146,11 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <QuickActions actions={quickActions} />
+
+          {/* Recent DNS Logs */}
+          <div className="mb-8">
+            <RecentLogs logs={recentLogs} />
+          </div>
 
         </main>
       </div>

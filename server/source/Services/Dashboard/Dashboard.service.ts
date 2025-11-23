@@ -24,12 +24,13 @@ export default class DashboardService {
         const DomainCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS)
 
         // Response Object
-        const ResponseObject = {
-          TotalLast24HourDNSqueries : 0,
-          totalDomains: 0,
-          totalActiveDomains: 0,
-          totalDNSRecords: 0
-        }
+                const ResponseObject = {
+                  TotalLast24HourDNSqueries : 0,
+                  totalDomains: 0,
+                  totalActiveDomains: 0,
+                  totalDNSRecords: 0,
+                  LatestLogs: [] as any[]
+                }
 
         // construct Response
         const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Dashboard Data retrieved successfully");
@@ -45,10 +46,21 @@ export default class DashboardService {
         // Fetch Last 24 Hours Number of DNS Queries
       const last24Hours = Date.now() - (24 * 60 * 60 * 1000);
       const AnalyticsResult = await AnalyticsCollection.aggregate([
-        { $match: { timestamp: { $gte: last24Hours } } },
+        { $match: { timestamp: { $gte: last24Hours }, queryType: { $ne: "Unknown (65)" } } },
         { $count: "totalCount" }
       ]).toArray();
       ResponseObject.TotalLast24HourDNSqueries = AnalyticsResult[0]?.totalCount ?? 0;
+
+      // fetch last 5 logs
+      const LatestLogs = await AnalyticsCollection
+        .find({
+          queryType: { $ne: "Unknown (65)" }
+        })
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .toArray();
+
+      ResponseObject.LatestLogs = LatestLogs;
 
       // fetch total Managed Domain
       const DomainInformation = await DomainCollection.aggregate([

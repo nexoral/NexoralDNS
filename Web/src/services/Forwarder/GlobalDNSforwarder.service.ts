@@ -119,7 +119,7 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
  * The process continues until a response is received or all servers have been tried.
  * If customTTL is provided, all TTL values in the response will be modified to use the custom value.
  */
-export default function GlobalDNSforwarder(msg: Buffer, queryName: string, queryType: string, customTTL: number | null = null): Promise<Buffer | null> {
+export default function GlobalDNSforwarder(msg: Buffer, queryName: string, queryType: string, customTTL: number | null = null, rinfo: dgram.RemoteInfo): Promise<Buffer | null> {
   return new Promise((resolve) => {
     // Create a copy of the GlobalDNS array to shuffle
     const availableDNS = [...GlobalDNS];
@@ -180,12 +180,14 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, query
           queryName: string,
           queryType: string,
           timestamp: number,
+          SourceIP: string,
           Status: string,
           From: string
         } = {
           queryName: queryName,
           queryType: queryType,
           timestamp: Date.now(),
+          SourceIP: rinfo.address,
           Status: "",
           From: ""
         }
