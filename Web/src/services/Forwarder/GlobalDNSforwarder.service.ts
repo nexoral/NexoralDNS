@@ -3,8 +3,10 @@ import dgram from "dgram";
 import { Console } from "outers"
 
 // RabbitMQ
-import { DNS_QUERY_STATUS_KEYS, QueueKeys } from "../../Redis/CacheKeys.cache";
+import CacheKeys, { DNS_QUERY_STATUS_KEYS, QueueKeys } from "../../Redis/CacheKeys.cache";
 import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
+import RedisCache from "../../Redis/Redis.cache";
+import InputOutputHandler from "../../utilities/IO.utls";
 
 const GlobalDNS: { ip: string; name: string, location: string }[] = [
   // Cloudflare DNS (privacy-focused, but no filtering)
@@ -120,6 +122,7 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
  * If customTTL is provided, all TTL values in the response will be modified to use the custom value.
  */
 export default function GlobalDNSforwarder(msg: Buffer, queryName: string, queryType: string, customTTL: number | null = null, rinfo: dgram.RemoteInfo, start: number): Promise<Buffer | null> {
+  const ioHandler = new InputOutputHandler(null as any);
   return new Promise((resolve) => {
     // Create a copy of the GlobalDNS array to shuffle
     const availableDNS = [...GlobalDNS];
@@ -202,7 +205,11 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, query
         AnalyticsMSgPayload.duration = duration;
           RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
-
+        // Parse and cache the DNS response
+        const parsedRecord = ioHandler.parseDNSResponse(response, queryType);
+        if (parsedRecord) {
+          RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, parsedRecord, customTTL ?? parsedRecord.ttl);
+        }
         // Modify TTL if customTTL is provided
         if (customTTL !== null) {
           const modifiedResponse = modifyResponseTTL(response, customTTL);

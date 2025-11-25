@@ -120,7 +120,7 @@ export default class StartRulesService {
     } else {
       // Forward to Global DNS for non-matching domains
       try {
-        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 10, rinfo, start); // Set custom TTL to 10 seconds
+        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 30, rinfo, start); // Set custom TTL to 30 seconds
         if (forwardedResponse) {
           const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {         
