@@ -228,8 +228,9 @@ export default class DashboardService {
     const avgDocsTimeDuration = await AnalyticsCollection.aggregate([
       {
         $match: {
-          timestamp: { $gte: last24Hours }, Status: {
-            $in: [
+          timestamp: { $gte: last24Hours },
+          Status: {
+            $nin: [
               "DOMAIN NOT FOUND",
               "FAILED TO PROCESS",
               "SERVICE_DOWN"
