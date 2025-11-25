@@ -29,14 +29,15 @@ export default class DashboardService {
       totalDNSRecords: 0,
       LatestLogs: [] as any[],
       totalFailedDNS_Queries: 0,
-      totalSuccessDNS_Queries:0,
-      totalForwardedDNS_Queries:0,
+      totalSuccessDNS_Queries: 0,
+      totalForwardedDNS_Queries: 0,
       Percentages: {
         totalFailurePercentage: 0,
         totalSuccessPercentage: 0,
         totalGlobalRequestForwardedPercentage: 0,
       },
-      TopGlobalServer: [] as any[]
+      TopGlobalServer: [] as any[],
+      avgResponseTimeDuration: 0
 
     }
 
@@ -173,7 +174,7 @@ export default class DashboardService {
       Number((((RequestDetailsCount[0].forwarded ?? 0) / ResponseObject.TotalLast24HourDNSqueries) * 100).toFixed(2));
 
 
-      // get Top Global Forwarder Data also 
+    // get Top Global Forwarder Data also 
     const GroupTopGlobalServerData = await AnalyticsCollection.aggregate([
       {
         $match: {
@@ -222,6 +223,30 @@ export default class DashboardService {
       { $sort: { percentage: -1 } }
     ]).toArray();
     ResponseObject.TopGlobalServer = GroupTopGlobalServerData;
+
+
+    const avgDocsTimeDuration = await AnalyticsCollection.aggregate([
+      {
+        $match: {
+          timestamp: { $gte: last24Hours }, Status: {
+            $in: [
+              "DOMAIN NOT FOUND",
+              "FAILED TO PROCESS",
+              "SERVICE_DOWN"
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          avgDuration: { $avg: "$duration" }
+        }
+      }
+    ]).toArray();
+
+    // Convert to toFixed(0)
+    ResponseObject.avgResponseTimeDuration = avgDocsTimeDuration[0]?.avgDuration?.toFixed(0);
 
 
     // Return the response
