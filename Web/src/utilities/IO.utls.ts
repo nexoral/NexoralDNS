@@ -143,12 +143,12 @@ export default class InputOutputHandler {
 
   /**
    * Parses the query type from a DNS message buffer.
-   * 
+   *
    * This method extracts the QTYPE field from a DNS message by:
    * 1. Skipping the header (12 bytes)
    * 2. Navigating through the QNAME field (domain name with length prefixes)
    * 3. Reading the 16-bit QTYPE value
-   * 
+   *
    * @param msg - A Buffer containing the DNS message to parse
    * @returns A string representation of the query type (e.g., "A", "NS", "CNAME", etc.)
    *          or "Unknown (qtype)" for unrecognized types
@@ -181,6 +181,91 @@ export default class InputOutputHandler {
         return "AAAA";
       default:
         return `Unknown (${qtype})`;
+    }
+  }
+
+  /**
+   * Parses DNS response to extract record information for caching.
+   *
+   * This method extracts the first answer record from a DNS response including:
+   * - Record type (A, AAAA, etc.)
+   * - Domain name
+   * - Record value (IP address)
+   * - TTL (Time To Live)
+   *
+   * @param response - The DNS response buffer.
+   * @param queryType - The query type string (A, AAAA, etc.).
+   * @returns Parsed DNS record object or null if parsing fails or no answers exist.
+   */
+  public parseDNSResponse(response: Buffer, queryType: string): { type: string; name: string; value: string; ttl: number } | null {
+    try {
+      let offset = 12;
+
+      // Skip question section
+      const qdcount = response.readUInt16BE(4);
+      for (let i = 0; i < qdcount; i++) {
+        while (offset < response.length && response[offset] !== 0) {
+          if ((response[offset] & 0xC0) === 0xC0) {
+            offset += 2;
+            break;
+          }
+          offset += response[offset] + 1;
+        }
+        if (response[offset] === 0) offset++;
+        offset += 4; // Skip QTYPE and QCLASS
+      }
+
+      // Check if there are answers
+      const ancount = response.readUInt16BE(6);
+      if (ancount === 0) return null;
+
+      // Parse answer section - extract domain name
+      const name = this.parseQueryName(response, offset);
+
+      // Skip name field
+      if ((response[offset] & 0xC0) === 0xC0) {
+        offset += 2;
+      } else {
+        while (offset < response.length && response[offset] !== 0) {
+          offset += response[offset] + 1;
+        }
+        offset++;
+      }
+
+      // Read TYPE and CLASS
+      const type = response.readUInt16BE(offset);
+      offset += 4; // Skip TYPE and CLASS
+
+      // Read TTL
+      const ttl = response.readUInt32BE(offset);
+      offset += 4;
+
+      // Read RDLENGTH
+      const rdlength = response.readUInt16BE(offset);
+      offset += 2;
+
+      // Extract value based on type
+      let value = "";
+      if (type === 1 && rdlength === 4) { // A record
+        value = `${response[offset]}.${response[offset + 1]}.${response[offset + 2]}.${response[offset + 3]}`;
+      } else if (type === 28 && rdlength === 16) { // AAAA record
+        const parts = [];
+        for (let i = 0; i < 8; i++) {
+          parts.push(response.readUInt16BE(offset + i * 2).toString(16));
+        }
+        value = parts.join(":");
+      }
+
+      if (!value) return null;
+
+      return {
+        type: queryType,
+        name: name,
+        value: value,
+        ttl: ttl
+      };
+    } catch (error) {
+      return null;
     }
   }
 }
