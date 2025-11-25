@@ -1,0 +1,82 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongo
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017" # 👈 exposed to host so nexoraldns can reach it on localhost
+    networks:
+      - nexoral_network # 👈 keep Mongo in bridge network for safety/port isolation
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "6379:6379" # 👈 exposed to host so nexoraldns can reach it on localhost
+    networks:
+      - nexoral_network # 👈 keep Redis in bridge network for safety/port isolation
+    command: redis-server --appendonly yes # 👈 enable persistence
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5672:5672"   # 👈 AMQP port exposed to host
+      - "15672:15672" # 👈 Management UI port
+    networks:
+      - nexoral_network # 👈 keep RabbitMQ in bridge network for safety/port isolation
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  nexoraldns:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: nexoraldns
+    restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - /etc/resolv.conf:/etc/resolv.conf # 👈 use host's DNS resolvers
+    privileged: true               # 👈 gives full host-level privileges
+    network_mode: "host" # 👈 host mode so it can bind to port 53
+    cap_add:
+      - NET_ADMIN         # needed to change network configs
+    environment:
+      - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns # 👈 connect via localhost (because host mode)
+      - REDIS_URI=redis://127.0.0.1:6379 # 👈 connect to Redis via localhost
+
+networks:
+  nexoral_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data:
+  rabbitmq_data:
