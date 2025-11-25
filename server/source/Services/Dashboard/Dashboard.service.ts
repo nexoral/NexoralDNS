@@ -36,7 +36,8 @@ export default class DashboardService {
         totalSuccessPercentage: 0,
         totalGlobalRequestForwardedPercentage: 0,
       },
-      TopGlobalServer: [] as any[]
+      TopGlobalServer: [] as any[],
+      avgResponseTimeDuration: 0
 
     }
 
@@ -222,6 +223,19 @@ export default class DashboardService {
       { $sort: { percentage: -1 } }
     ]).toArray();
     ResponseObject.TopGlobalServer = GroupTopGlobalServerData;
+
+
+    const avgDocsTimeDuration = await AnalyticsCollection.aggregate([
+      {
+        $group: {
+          _id: null,
+          avgDuration: { $avg: "$duration" }
+        }
+      }
+    ]).toArray();
+
+    // Convert to toFixed(0)
+    ResponseObject.avgResponseTimeDuration = avgDocsTimeDuration[0]?.avgDuration?.toFixed(0);
 
 
     // Return the response

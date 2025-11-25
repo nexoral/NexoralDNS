@@ -23,6 +23,9 @@ export default class StartRulesService {
   }
 
   public async execute(msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo): Promise<void| boolean> {
+    // Start Performance Timer
+    const start = performance.now();
+
     if (!msg || !rinfo) {
       Console.red("Invalid message or remote info received.");
       return;
@@ -39,14 +42,16 @@ export default class StartRulesService {
       timestamp: number,
       SourceIP: string,
       Status: string,
-      From: string
+      From: string,
+      duration: number
     } = {
       queryName: queryName,
       queryType: queryType,
       SourceIP: rinfo.address,
       timestamp: Date.now(),
       Status: "",
-      From: ""
+      From: "",
+      duration: 0
     }
     
 
@@ -56,6 +61,9 @@ export default class StartRulesService {
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
+      const end = performance.now();
+      const duration = end - start; // in milliseconds
+      AnalyticsMSgPayload.duration = duration;
       RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
       return;
@@ -90,6 +98,9 @@ export default class StartRulesService {
       
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.RESOLVED;
+      const end = performance.now();
+      const duration = end - start; // in milliseconds
+      AnalyticsMSgPayload.duration = duration;
       RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, {persistent: true, priority: 10})
       
       // Use buildSendAnswer method from utilities
@@ -99,6 +110,9 @@ export default class StartRulesService {
 
         // Add to Analytics
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
+        const end = performance.now();
+        const duration = end - start; // in milliseconds
+        AnalyticsMSgPayload.duration = duration;
         RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
         Console.red(`Failed to respond to ${queryName}`);
@@ -106,12 +120,16 @@ export default class StartRulesService {
     } else {
       // Forward to Global DNS for non-matching domains
       try {
-        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 10, rinfo); // Set custom TTL to 10 seconds
+        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 10, rinfo, start); // Set custom TTL to 10 seconds
         if (forwardedResponse) {
           const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {         
             // Add to Analytics
             AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
+            const end = performance.now();
+            const duration = end - start; // in milliseconds
+            AnalyticsMSgPayload.duration = duration;
+
             RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
             Console.red(`Failed to forward ${queryName} to Global DNS`);
@@ -120,6 +138,10 @@ export default class StartRulesService {
         else {
           // Add to Analytics
           AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
+          const end = performance.now();
+          const duration = end - start; // in milliseconds
+          AnalyticsMSgPayload.duration = duration;
+
           RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
           Console.red(`No response received from Global DNS for ${queryName}`);
@@ -128,6 +150,9 @@ export default class StartRulesService {
       } catch (error) {
         // Add to Analytics
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
+        const end = performance.now();
+        const duration = end - start; // in milliseconds
+        AnalyticsMSgPayload.duration = duration;
         RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
         Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
