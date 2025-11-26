@@ -82,7 +82,7 @@ type DBConfigType = {
 };
 
 export const DB_DEFAULT_CONFIGS: DBConfigType = {
-  HOST: process.env.MONGO_URI || "mongodb://80.225.220.194:27017",
+  HOST: process.env.MONGO_URI || "mongodb://localhost:27017",
   DB_NAME: "nexoral_db",
   Collections: {
     USERS: "users",

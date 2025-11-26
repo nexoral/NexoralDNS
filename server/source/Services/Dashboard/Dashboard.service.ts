@@ -3,11 +3,6 @@ import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import RedisCache from "../../Redis/Redis.cache";
 
-
-// keys import
-import { DB_DEFAULT_CONFIGS } from "../../core/key";
-// db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 import { getDashboardDataStats } from "../../CronJob/DashboardAnalytics.cron";
 
