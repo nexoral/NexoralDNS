@@ -125,11 +125,13 @@ export async function getDashboardDataStats(): Promise<object> {
 
     TopGlobalServer: topForwarders,
 
-    avgResponseTimeDuration: avgDurationRaw[0]?.avg?.toFixed(0) ?? "0"
+    avgResponseTimeDuration: avgDurationRaw[0]?.avg?.toFixed(0) ?? "0",
+
+    computedAt: Date.now() // Timestamp when base stats were computed
   };
 
-  // Set in Cache
-  await RedisCache.set(CacheKeys.DashboardAnaliticalData, response, 20);
+  // Set in Cache (10 min TTL to ensure overlap with cron)
+  await RedisCache.set(CacheKeys.DashboardAnaliticalData, response, 600);
 
   return response;
 }
@@ -137,7 +139,7 @@ export async function getDashboardDataStats(): Promise<object> {
 
 // Export the Cron Job to Cron Controller
 export const DashboardAnaliticalStatCronJob = () => {
-  Retry.Hours(async () => {
+  Retry.Seconds(async () => {
     await getDashboardDataStats();
-  }, 15, true);
+  }, 290, true);
 }
