@@ -139,5 +139,5 @@ export async function getDashboardDataStats(): Promise<object> {
 export const DashboardAnaliticalStatCronJob = () => {
   Retry.Hours(async () => {
     await getDashboardDataStats();
-  }, 20, true);
+  }, 15, true);
 }
