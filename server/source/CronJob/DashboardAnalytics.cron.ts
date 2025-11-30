@@ -30,6 +30,7 @@ export async function getDashboardDataStats(): Promise<object> {
       { $match: { timestamp: { $gte: last24 }, queryType: { $ne: "Unknown (65)" } } },
       { $count: "count" }
     ]).toArray(),
+    
 
     // Last 10 DNS logs (include all properties you showed)
     Analytics.find(
@@ -131,7 +132,7 @@ export async function getDashboardDataStats(): Promise<object> {
   };
 
   // Set in Cache (10 min TTL to ensure overlap with cron)
-  await RedisCache.set(CacheKeys.DashboardAnaliticalData, response, 600);
+  await RedisCache.set(CacheKeys.DashboardAnaliticalData, response, 1800);
 
   return response;
 }
@@ -141,5 +142,5 @@ export async function getDashboardDataStats(): Promise<object> {
 export const DashboardAnaliticalStatCronJob = () => {
   Retry.Seconds(async () => {
     await getDashboardDataStats();
-  }, 290, true);
+  }, 300, true);
 }
