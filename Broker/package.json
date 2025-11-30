@@ -1,6 +1,6 @@
 {
   "name": "message-broker",
-  "version": "3.3.33-stable",
+  "version": "3.3.34-stable",
   "description": "this service is used for make a intermidate broker to help services to communicate",
   "main": "Broker.js",
   "scripts": {
