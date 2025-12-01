@@ -41,9 +41,11 @@ export default class DashboardService {
   // Calculate delta stats for data since last base computation
   private async getDeltaStats(since: number): Promise<any> {
     const Analytics = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+    const Domains = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    const DNSRecords = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
     if (!Analytics) {
-      return { count: 0, success: 0, failed: 0, forwarded: 0, latestLogs: [] };
+      return { count: 0, success: 0, failed: 0, forwarded: 0, latestLogs: [], newDomains: 0, newActiveDomains: 0, newRecords: 0 };
     }
 
     const [
@@ -51,7 +53,8 @@ export default class DashboardService {
       latestLogs,
       deltaStatus,
       deltaForwarders,
-      deltaAvgDuration
+      deltaAvgDuration,
+      domainDeltas
     ] = await Promise.all([
       // New queries count since base computation
       Analytics.aggregate([
@@ -84,7 +87,20 @@ export default class DashboardService {
       Analytics.aggregate([
         { $match: { timestamp: { $gte: since, $lte: Date.now() }, Status: { $eq: "RESOLVED" } } },
         { $group: { _id: null, avg: { $avg: "$duration" }, count: { $sum: 1 } } }
-      ]).toArray()
+      ]).toArray(),
+
+      // Domain and DNS Record deltas
+      (async () => {
+        if (!Domains || !DNSRecords) {
+          return { newDomains: 0, newActiveDomains: 0, newRecords: 0 };
+        }
+        const [totalDomains, activeDomains, records] = await Promise.all([
+          Domains.countDocuments({ createdAt: { $gte: since } }),
+          Domains.countDocuments({ createdAt: { $gte: since }, domainStatus: "active" }),
+          DNSRecords.countDocuments({ createdAt: { $gte: since } })
+        ]);
+        return { newDomains: totalDomains, newActiveDomains: activeDomains, newRecords: records };
+      })()
     ]);
 
     let success = 0, failed = 0, forwarded = 0;
@@ -103,7 +119,10 @@ export default class DashboardService {
       latestLogs,
       forwarders: deltaForwarders,
       avgDuration: deltaAvgDuration[0]?.avg ?? 0,
-      resolvedCount: deltaAvgDuration[0]?.count ?? 0
+      resolvedCount: deltaAvgDuration[0]?.count ?? 0,
+      newDomains: domainDeltas.newDomains,
+      newActiveDomains: domainDeltas.newActiveDomains,
+      newRecords: domainDeltas.newRecords
     };
   }
 
@@ -146,9 +165,9 @@ export default class DashboardService {
 
     return {
       TotalLast24HourDNSqueries: totalQueries,
-      totalDomains: base.totalDomains,
-      totalActiveDomains: base.totalActiveDomains,
-      totalDNSRecords: base.totalDNSRecords,
+      totalDomains: base.totalDomains + delta.newDomains,
+      totalActiveDomains: base.totalActiveDomains + delta.newActiveDomains,
+      totalDNSRecords: base.totalDNSRecords + delta.newRecords,
       LatestLogs: delta.latestLogs, // Always use fresh logs
       totalFailedDNS_Queries: totalFailed,
       totalSuccessDNS_Queries: totalSuccess,
