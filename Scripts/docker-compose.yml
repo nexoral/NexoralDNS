@@ -25,10 +25,17 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "6379:6379" # 👈 exposed to host so nexoraldns can reach it on localhost
+      - "6379:6379"
     networks:
-      - nexoral_network # 👈 keep Redis in bridge network for safety/port isolation
-    command: redis-server --appendonly yes # 👈 enable persistence
+      - nexoral_network
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--appendfsync", "everysec",
+      "--save", "60", "1000",
+      "--save", "300", "10",
+      "--maxmemory-policy", "allkeys-lru"
+    ]
     volumes:
       - redis_data:/data
 
@@ -69,6 +76,7 @@ services:
     environment:
       - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns # 👈 connect via localhost (because host mode)
       - REDIS_URI=redis://127.0.0.1:6379 # 👈 connect to Redis via localhost
+      - RABBITMQ_URI=amqp://127.0.0.1:5672 # 👈 connect to RabbitMQ via localhost
 
 networks:
   nexoral_network:

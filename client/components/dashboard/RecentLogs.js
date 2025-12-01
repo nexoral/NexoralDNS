@@ -21,13 +21,6 @@ export default function RecentLogs({ logs }) {
     return 'bg-gray-100 text-gray-700 border-gray-300';
   };
 
-  const getQueryTypeColor = (type) => {
-    if (type === 'A') return 'bg-purple-100 text-purple-700';
-    if (type === 'AAAA') return 'bg-indigo-100 text-indigo-700';
-    if (type.includes('Unknown')) return 'bg-gray-100 text-gray-600';
-    return 'bg-slate-100 text-slate-700';
-  };
-
   if (!logs || logs.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
@@ -66,13 +59,13 @@ export default function RecentLogs({ logs }) {
                 Domain
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 Client IP
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Duration
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 DNS Server
@@ -96,11 +89,6 @@ export default function RecentLogs({ logs }) {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getQueryTypeColor(log.queryType)}`}>
-                    {log.queryType}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -112,6 +100,14 @@ export default function RecentLogs({ logs }) {
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(log.Status)}`}>
                     {log.Status}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span className="text-sm text-slate-700">{log.duration?.toFixed(0) || '0'} ms</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -147,15 +143,19 @@ export default function RecentLogs({ logs }) {
                   <span className="font-mono">{log.SourceIP || 'N/A'}</span>
                 </div>
               </div>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ml-2 ${getQueryTypeColor(log.queryType)}`}>
-                {log.queryType}
-              </span>
             </div>
 
             <div className="space-y-2">
               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(log.Status)}`}>
                 {log.Status}
               </span>
+              <div className="flex items-center text-slate-600 text-xs">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span className="text-slate-700 font-medium">Duration:</span>
+                <span className="ml-1">{log.duration?.toFixed(0) || '0'} ms</span>
+              </div>
               <div className="flex items-center text-slate-600 text-xs">
                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
