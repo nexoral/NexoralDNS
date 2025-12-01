@@ -88,7 +88,7 @@ export async function fetchConnectedIP(): Promise<Boolean> {
           batch.push(
             pingIP(ipAddress).then((pingResult) => {
               if (pingResult) {
-                availableIPs.push({ ip: ipAddress, status: "connected", lastSeen: new Date() });
+                availableIPs.push({ ip: ipAddress, status: "connected", lastSeen: Date.now() });
                 console.log(`IP ${ipAddress} is connected.`);
               }
             })
@@ -104,9 +104,9 @@ export async function fetchConnectedIP(): Promise<Boolean> {
         Current_IP_Range: `${currentIP.minIP} - ${currentIP.maxIP}`,
         List_of_Connected_Devices_Info: availableIPs,
         Total_Connected_Devices_To_Router: availableIPs.length,
-        Connected_At: new Date(),
+        Connected_At: Date.now(),
         Next_Expected_Sync_At: new Date(Date.now() + 60 * 60 * 1000), // +1 hour
-        Last_Synced_At: new Date()
+        Last_Synced_At: Date.now()
       }
       await serviceCol?.updateOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME }, { $set: update_Fields });
       console.log(`Connected IPs updated with status: ${availableIPs.length} devices found.`);

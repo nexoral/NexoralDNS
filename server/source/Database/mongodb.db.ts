@@ -171,7 +171,7 @@ export default async () => {
         password: await new Bcrypt().Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_PASSWORD),
         roleId: InsertedRoles.find(r => r.name === DB_DEFAULT_CONFIGS.DefaultValues.DEFAULT_ADMIN_ROLE)?._id,
         passwordUpdatedAt: null,
-        createdAt: new Date(),
+        createdAt: Date.now(),
       });
       console.log("✅ Admin user created");
     } else {
@@ -185,7 +185,7 @@ export default async () => {
         SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME,
         CLOUD_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CLOUD_URL,
         apiKey: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.API_KEY),
-        createdAt: new Date(),
+        createdAt: Date.now(),
         Service_Status: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Service_Status,
         Connected_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Connected_At,
         Disconnected_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Disconnected_At,

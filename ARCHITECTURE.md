@@ -1135,7 +1135,7 @@ export default class OptimizedRulesService {
     // Check Redis
     const cachedPlan = await this.redis.getUserPlan(userId);
     if (cachedPlan) {
-      return cachedPlan.status === "active" && new Date(cachedPlan.expiresAt) > new Date();
+      return cachedPlan.status === "active" && new Date(cachedPlan.expiresAt) > Date.now();
     }
 
     // Check DB
@@ -1144,7 +1144,7 @@ export default class OptimizedRulesService {
 
     if (plan) {
       await this.redis.cacheUserPlan(userId, plan);
-      return plan.status === "active" && plan.expiresAt > new Date();
+      return plan.status === "active" && plan.expiresAt > Date.now();
     }
 
     return false;
@@ -1169,7 +1169,7 @@ export default class OptimizedRulesService {
         queryType,
         responseType,
         responseTime,
-        timestamp: new Date()
+        timestamp: Date.now()
       });
     });
   }

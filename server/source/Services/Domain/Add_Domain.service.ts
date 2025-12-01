@@ -54,8 +54,8 @@ export default class DomainAddService {
         domain: domain,
         domainStatus: "active",
         userId: new ObjectId(user._id),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: Date.now(),
+        updatedAt: Date.now()
       };
 
       const insertResult = await DomainCollectionClient.insertOne(domainDoc);
