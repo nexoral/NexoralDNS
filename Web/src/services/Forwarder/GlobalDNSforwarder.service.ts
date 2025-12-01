@@ -203,6 +203,7 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, query
         const end = performance.now();
         const duration = end - start; // in milliseconds
         AnalyticsMSgPayload.duration = duration;
+        console.log("Publised from Forward", AnalyticsMSgPayload)
           RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
         // Parse and cache the DNS response
