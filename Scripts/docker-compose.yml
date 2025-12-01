@@ -76,6 +76,7 @@ services:
     environment:
       - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns # 👈 connect via localhost (because host mode)
       - REDIS_URI=redis://127.0.0.1:6379 # 👈 connect to Redis via localhost
+      - RABBITMQ_URI=amqp://127.0.0.1:5672 # 👈 connect to RabbitMQ via localhost
 
 networks:
   nexoral_network:
