@@ -55,13 +55,12 @@ export default class DashboardService {
     ] = await Promise.all([
       // New queries count since base computation
       Analytics.aggregate([
-        { $match: { timestamp: { $gte: since, $lte: Date.now() }, queryType: { $ne: "Unknown (65)" } } },
+        { $match: { timestamp: { $gte: since, $lte: Date.now() }} },
         { $count: "count" }
       ]).toArray(),
 
       // Latest 10 logs (always fetch fresh)
       Analytics.find(
-        { queryType: { $ne: "Unknown (65)" } },
         { projection: { queryName: 1, queryType: 1, SourceIP: 1, timestamp: 1, Status: 1, From: 1, duration: 1 } }
       )
         .sort({ timestamp: -1 })
@@ -70,7 +69,7 @@ export default class DashboardService {
 
       // Delta status counts
       Analytics.aggregate([
-        { $match: { timestamp: { $gte: since, $lte: Date.now() }, queryType: { $ne: "Unknown (65)" } } },
+        { $match: { timestamp: { $gte: since, $lte: Date.now() } } },
         { $group: { _id: "$Status", count: { $sum: 1 } } }
       ]).toArray(),
 

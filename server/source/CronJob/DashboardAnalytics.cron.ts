@@ -27,14 +27,13 @@ export async function getDashboardDataStats(): Promise<object> {
 
     // Total number of queries in last 24h
     Analytics.aggregate([
-      { $match: { timestamp: { $gte: last24 }, queryType: { $ne: "Unknown (65)" } } },
+      { $match: { timestamp: { $gte: last24 } } },
       { $count: "count" }
     ]).toArray(),
     
 
     // Last 10 DNS logs (include all properties you showed)
     Analytics.find(
-      { queryType: { $ne: "Unknown (65)" } },
       { projection: { queryName: 1, queryType: 1, SourceIP: 1, timestamp: 1, Status: 1, From: 1, duration: 1 } }
     )
       .sort({ timestamp: -1 })
@@ -54,7 +53,6 @@ export async function getDashboardDataStats(): Promise<object> {
       {
         $match: {
           timestamp: { $gte: last24 },
-          queryType: { $ne: "Unknown (65)" }
         }
       },
       {
