@@ -70,6 +70,7 @@ export default class DnsAddService {
             name: name,
             value: value,
             ttl: ttl,
+            createdAt: Date.now()
           })
 
       }
