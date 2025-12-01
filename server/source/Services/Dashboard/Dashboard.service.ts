@@ -61,6 +61,7 @@ export default class DashboardService {
 
       // Latest 10 logs (always fetch fresh)
       Analytics.find(
+        {},
         { projection: { queryName: 1, queryType: 1, SourceIP: 1, timestamp: 1, Status: 1, From: 1, duration: 1 } }
       )
         .sort({ timestamp: -1 })
