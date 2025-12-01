@@ -64,6 +64,7 @@ export default class StartRulesService {
       const end = performance.now();
       const duration = end - start; // in milliseconds
       AnalyticsMSgPayload.duration = duration;
+      console.log("Publised from Service Down", AnalyticsMSgPayload)
       RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
       return;
@@ -101,6 +102,7 @@ export default class StartRulesService {
       const end = performance.now();
       const duration = end - start; // in milliseconds
       AnalyticsMSgPayload.duration = duration;
+      console.log("Publised from Resolved", AnalyticsMSgPayload)
       RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, {persistent: true, priority: 10})
       
       // Use buildSendAnswer method from utilities
@@ -113,6 +115,7 @@ export default class StartRulesService {
         const end = performance.now();
         const duration = end - start; // in milliseconds
         AnalyticsMSgPayload.duration = duration;
+        console.log("Publised from Failed Response", AnalyticsMSgPayload)
         RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
         Console.red(`Failed to respond to ${queryName}`);
@@ -129,7 +132,7 @@ export default class StartRulesService {
             const end = performance.now();
             const duration = end - start; // in milliseconds
             AnalyticsMSgPayload.duration = duration;
-
+            console.log("Publised from Failed Forward", AnalyticsMSgPayload)
             RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
             Console.red(`Failed to forward ${queryName} to Global DNS`);
@@ -141,7 +144,7 @@ export default class StartRulesService {
           const end = performance.now();
           const duration = end - start; // in milliseconds
           AnalyticsMSgPayload.duration = duration;
-
+          console.log("Publised from NORESPONSE", AnalyticsMSgPayload)
           RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
           Console.red(`No response received from Global DNS for ${queryName}`);
@@ -153,6 +156,7 @@ export default class StartRulesService {
         const end = performance.now();
         const duration = end - start; // in milliseconds
         AnalyticsMSgPayload.duration = duration;
+        console.log("Publised from Last Error", AnalyticsMSgPayload)
         RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
         Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
