@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { api } from '../../services/api';
+import { toast } from 'react-toastify';
 
 export default function RecordModal({ domain, onClose }) {
   const [showAddRecord, setShowAddRecord] = useState(false);
@@ -115,7 +116,7 @@ export default function RecordModal({ domain, onClose }) {
     // Additional validation: Prevent adding A or AAAA if A record exists
     const hasARecord = records.some(record => record.type === 'A');
     if (hasARecord && (newRecord.type === 'A' || newRecord.type === 'AAAA')) {
-      alert('Cannot add A or AAAA record. An A record already exists for this domain.\nPlease delete the existing A record first if you want to add a different one.');
+      toast.error('Cannot add A or AAAA record. An A record already exists for this domain. Please delete the existing A record first if you want to add a different one.');
       return;
     }
 
@@ -184,7 +185,7 @@ export default function RecordModal({ domain, onClose }) {
         setIsLoading(false);
       }
     } else {
-      alert(Object.values(errors).join('\n'));
+      Object.values(errors).forEach(error => toast.error(error));
     }
   };
 
@@ -251,7 +252,7 @@ export default function RecordModal({ domain, onClose }) {
         setIsLoading(false);
       }
     } else {
-      alert(Object.values(errors).join('\n'));
+      Object.values(errors).forEach(error => toast.error(error));
     }
   };
 

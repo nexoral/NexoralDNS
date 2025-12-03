@@ -56,7 +56,7 @@ export default class ServiceStatusChecker {
 
     if (serviceConfig.Service_Status !== "active") {
       Console.red("Service is inactive. DNS query processing is halted.");
-      this.IO.buildSendAnswer(this.msg, this.rinfo, queryName, "0.0.0.0", 5); // Respond with NXDOMAIN
+      this.IO.buildSendAnswer(this.msg, this.rinfo, queryName, "0.0.0.0", serviceConfig.DefaultTTL ? serviceConfig.DefaultTTL : 10); // Respond with NXDOMAIN
       await RedisCache.set(CacheKeys.Service_Status, false);
       return false;
     }
