@@ -46,6 +46,6 @@ export default class ServiceToggleService {
 
     console.log(`Service status updated to: ${newStatus}`);
 
-    return Responser.send({ Service_Status: newStatus });
+    return Responser.send({ serviceStatus: newStatus });
   }
 }

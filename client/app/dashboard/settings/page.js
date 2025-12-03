@@ -6,6 +6,7 @@ import Header from '../../../components/dashboard/Header';
 import Button from '../../../components/ui/Button';
 import useAuthStore from '../../../stores/authStore';
 import { api } from '../../../services/api';
+import { toast } from 'react-toastify';
 
 export default function SettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -56,10 +57,11 @@ export default function SettingsPage() {
       if (result.statusCode === 200) {
         // Fetch updated service info immediately after toggle
         await fetchServiceInfo();
-        alert(`DNS service ${result.data?.serviceStatus === 'active' ? 'started' : 'stopped'} successfully`);
+        const newStatus = result.data?.serviceStatus === 'active' ? 'started' : 'stopped';
+        toast.success(`DNS service ${newStatus} successfully`);
       }
     } catch (error) {
-      alert('Service toggle failed: ' + (error.response?.data?.message || error.message));
+      toast.error('Service toggle failed: ' + (error.response?.data?.message || error.message));
     } finally {
       setIsLoading(false);
     }

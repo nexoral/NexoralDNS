@@ -67,6 +67,7 @@ type DBConfigType = {
       API_KEY?: string;
       CLOUD_URL?: string;
       Service_Status: "active" | "inactive";
+        DefaultTTL: number,
       Connected_At: Date | null;
       Disconnected_At: Date | null;
       Current_WiFi_SSID: string | null;
@@ -156,6 +157,7 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       API_KEY: process.env.SERVICE_API_KEY || undefined,
       CLOUD_URL: process.env.CLOUD_URL || undefined,
       Service_Status: "active", // active, inactive
+        DefaultTTL: 10,
       Connected_At: null,
       Disconnected_At: null,
       Current_WiFi_SSID: null,

@@ -186,6 +186,7 @@ export default async () => {
         CLOUD_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CLOUD_URL,
         apiKey: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.API_KEY),
         createdAt: Date.now(),
+          DefaultTTL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.DefaultTTL,
         Service_Status: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Service_Status,
         Connected_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Connected_At,
         Disconnected_At: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Disconnected_At,

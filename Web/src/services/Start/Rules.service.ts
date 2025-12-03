@@ -64,7 +64,7 @@ export default class StartRulesService {
       const end = performance.now();
       const duration = end - start; // in milliseconds
       AnalyticsMSgPayload.duration = duration;
-      console.log("Publised from Service Down", AnalyticsMSgPayload)
+      console.log("Published from Service Down", AnalyticsMSgPayload)
       RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
       return;
