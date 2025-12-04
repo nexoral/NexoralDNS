@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
   const [isLoading, setIsLoading] = useState(false);
+  const [isTTLLoading, setIsTTLLoading] = useState(false);
+  const [defaultTTL, setDefaultTTL] = useState(10);
 
   // DNS Server Configuration
   const [serverConfig, setServerConfig] = useState({
@@ -44,8 +46,24 @@ export default function SettingsPage() {
     }
   };
 
+  // Fetch default TTL from API
+  const fetchDefaultTTL = async () => {
+    try {
+      const response = await api.getDefaultTTL();
+      const result = response.data;
+
+      if (result.statusCode === 200 && result.data) {
+        setDefaultTTL(result.data.defaultTTL);
+      }
+    } catch (error) {
+      console.error('Error fetching default TTL:', error);
+      toast.error('Failed to load Default TTL');
+    }
+  };
+
   useEffect(() => {
     fetchServiceInfo();
+    fetchDefaultTTL();
   }, []);
 
   const handleServiceToggle = async () => {
@@ -95,6 +113,34 @@ export default function SettingsPage() {
       case 'inactive': return 'Stopped';
       case 'loading': return 'Loading...';
       default: return 'Unknown';
+    }
+  };
+
+  // Handle TTL preset button click
+  const handleTTLPreset = (value) => {
+    setDefaultTTL(value);
+  };
+
+  // Handle Default TTL update
+  const handleUpdateDefaultTTL = async () => {
+    if (!defaultTTL || defaultTTL < 10 || defaultTTL > 86400) {
+      toast.error('TTL must be between 10 and 86400 seconds');
+      return;
+    }
+
+    setIsTTLLoading(true);
+    try {
+      const response = await api.updateDefaultTTL({ defaultTTL: Number(defaultTTL) });
+      const result = response.data;
+
+      if (result.statusCode === 200) {
+        toast.success(`Default TTL updated to ${defaultTTL} seconds`);
+        await fetchDefaultTTL(); // Refresh the TTL value
+      }
+    } catch (error) {
+      toast.error('Failed to update Default TTL: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsTTLLoading(false);
     }
   };
 
@@ -339,6 +385,167 @@ export default function SettingsPage() {
                       <p className="text-sm text-yellow-700 mt-1">
                         Stopping the DNS service will temporarily interrupt DNS resolution for all connected clients. Make sure to inform users before performing this action.
                       </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Default TTL Configuration */}
+          <div className="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Default TTL (Time To Live) Configuration
+            </h2>
+
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-slate-700 mb-2">
+                <strong className="text-indigo-800">🎯 Purpose:</strong> This TTL applies <strong>only</strong> to blocked domains and domain forwarder requests.
+              </p>
+              <p className="text-sm text-slate-600">
+                Low TTL ensures quick response when you unblock a domain - it will work normally almost instantly. Regular domains you create use their own TTL set at creation time.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* TTL Input Section */}
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-6 border border-indigo-100">
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="defaultTTL" className="block text-sm font-semibold text-slate-700 mb-2">
+                      Default TTL Value (seconds)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        id="defaultTTL"
+                        name="defaultTTL"
+                        value={defaultTTL}
+                        onChange={(e) => setDefaultTTL(e.target.value)}
+                        placeholder="10"
+                        min="10"
+                        max="86400"
+                        className="w-full px-4 py-3 bg-white border border-indigo-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 font-mono text-lg"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <span className="text-slate-400 text-sm font-medium">seconds</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/60 rounded-lg p-4 border border-indigo-100">
+                    <p className="text-xs text-slate-600 mb-2 font-medium">Quick TTL Presets:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleTTLPreset(10)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
+                        10 sec (10s)
+                      </button>
+                      <button
+                        onClick={() => handleTTLPreset(30)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
+                        30 sec (30s)
+                      </button>
+                      <button
+                        onClick={() => handleTTLPreset(60)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
+                        1 min (60s)
+                      </button>
+                      <button
+                        onClick={() => handleTTLPreset(300)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
+                        5 min (300s)
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleUpdateDefaultTTL}
+                    isLoading={isTTLLoading}
+                    disabled={isTTLLoading}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {isTTLLoading ? 'Updating...' : 'Update Default TTL'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* TTL Information Panel */}
+              <div className="space-y-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-red-900 mb-2">Why Low TTL for Blockages?</p>
+                      <p className="text-sm text-red-700 mb-2">
+                        Low TTL ensures <strong>more accurate and instant blockage control</strong>:
+                      </p>
+                      <ul className="text-xs text-red-700 space-y-1 ml-4">
+                        <li>• When you block a domain, it blocks quickly across all devices</li>
+                        <li>• When you unblock a domain, it resumes working almost instantly</li>
+                        <li>• Clients refresh DNS cache faster, respecting your block/unblock actions</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900 mb-2">Applies To</p>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li><strong>✓ Blocked Domains:</strong> Domains you've blocked via NexoralDNS</li>
+                        <li><strong>✓ Domain Forwarder Requests:</strong> DNS queries forwarded to upstream servers</li>
+                        <li><strong>✗ Custom Domains:</strong> These use their own TTL set when created</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-green-900 mb-2">Recommended Values</p>
+                      <ul className="text-sm text-green-700 space-y-1">
+                        <li><strong>10-30s:</strong> Maximum responsiveness for block/unblock actions</li>
+                        <li><strong>60-300s:</strong> Balanced performance and accuracy</li>
+                        <li><strong>300s+ (5 min):</strong> Lower DNS query load, slower updates</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-yellow-900 mb-2">Important Constraints</p>
+                      <ul className="text-sm text-yellow-700 space-y-1">
+                        <li><strong>Minimum TTL:</strong> 10 seconds (allows instant unblocking)</li>
+                        <li><strong>Maximum TTL:</strong> 86400 seconds (24 hours)</li>
+                        <li><strong>Note:</strong> Custom domains you create maintain their own TTL</li>
+                        <li><strong>Trade-off:</strong> Lower TTL = more queries but faster updates</li>
+                      </ul>
                     </div>
                   </div>
                 </div>

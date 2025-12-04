@@ -5,7 +5,7 @@ import { DomainDBPoolService } from "../DB/DB_Pool.service";
 import GlobalDNSforwarder from "../Forwarder/GlobalDNSforwarder.service";
 
 // Rules Services
-import ServiceStatusChecker from "./ServiceStatusChecker.service";
+import ServiceStatusChecker, { ServiceStatusResult } from "./ServiceStatusChecker.service";
 import RedisCache from "../../Redis/Redis.cache";
 import CacheKeys, { QueueKeys } from "../../Redis/CacheKeys.cache";
 
@@ -56,8 +56,8 @@ export default class StartRulesService {
     
 
     // Add Rule Checker
-    const serviceStatus: boolean = await new ServiceStatusChecker(this.IO, msg, rinfo).checkServiceStatus(queryName)
-    if(!serviceStatus){
+    const serviceStatus: ServiceStatusResult = await new ServiceStatusChecker(this.IO, msg, rinfo).checkServiceStatus(queryName)
+    if(!serviceStatus.serviceStatus){
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
@@ -66,8 +66,14 @@ export default class StartRulesService {
       AnalyticsMSgPayload.duration = duration;
       console.log("Published from Service Down", AnalyticsMSgPayload)
       RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
-
       return;
+    }
+
+    // Check Service Status Document is perfect or not
+    if (!serviceStatus.serviceConfig || serviceStatus.serviceConfig == null) {
+      serviceStatus.serviceConfig = {
+        DefaultTTL: 10
+      }
     }
 
     Console.bright(`Processing DNS query for ${queryName} (${queryType} Record) from ${rinfo.address}:${rinfo.port} with the help of worker: ${process.pid}`);
@@ -123,7 +129,7 @@ export default class StartRulesService {
     } else {
       // Forward to Global DNS for non-matching domains
       try {
-        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, 30, rinfo, start); // Set custom TTL to 30 seconds
+        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, serviceStatus.serviceConfig.DefaultTTL, rinfo, start); // Set custom TTL to 30 seconds
         if (forwardedResponse) {
           const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {         
@@ -148,7 +154,7 @@ export default class StartRulesService {
           RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
           Console.red(`No response received from Global DNS for ${queryName}`);
-          this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10);
+          this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
         }
       } catch (error) {
         // Add to Analytics
