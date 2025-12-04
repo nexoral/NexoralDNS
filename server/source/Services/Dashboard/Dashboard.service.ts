@@ -83,9 +83,11 @@ export default class DashboardService {
         { $group: { _id: "$From", count: { $sum: 1 } } }
       ]).toArray(),
 
-      // Delta avg duration
+      // Delta avg duration (last 10 logs only)
       Analytics.aggregate([
         { $match: { timestamp: { $gte: since, $lte: Date.now() }, Status: { $eq: "RESOLVED" } } },
+        { $sort: { timestamp: -1 } },  // Sort by newest first
+        { $limit: 10 },  // Take only last 10 logs
         { $group: { _id: null, avg: { $avg: "$duration" }, count: { $sum: 1 } } }
       ]).toArray(),
 

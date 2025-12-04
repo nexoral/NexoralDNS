@@ -72,7 +72,7 @@ export async function getDashboardDataStats(): Promise<object> {
       { $limit: 10 }
     ]).toArray(),
 
-    // Average duration for successful queries
+    // Average duration for successful queries (last 10 logs only)
     Analytics.aggregate([
       {
         $match: {
@@ -80,6 +80,8 @@ export async function getDashboardDataStats(): Promise<object> {
           Status: { $eq: "RESOLVED" }
         }
       },
+      { $sort: { timestamp: -1 } },  // Sort by newest first
+      { $limit: 10 },  // Take only last 10 logs
       { $group: { _id: null, avg: { $avg: "$duration" } } }
     ]).toArray()
   ]);
