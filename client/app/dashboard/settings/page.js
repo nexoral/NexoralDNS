@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
   const [isLoading, setIsLoading] = useState(false);
+  const [isTTLLoading, setIsTTLLoading] = useState(false);
+  const [defaultTTL, setDefaultTTL] = useState(10);
 
   // DNS Server Configuration
   const [serverConfig, setServerConfig] = useState({
@@ -44,8 +46,24 @@ export default function SettingsPage() {
     }
   };
 
+  // Fetch default TTL from API
+  const fetchDefaultTTL = async () => {
+    try {
+      const response = await api.getDefaultTTL();
+      const result = response.data;
+
+      if (result.statusCode === 200 && result.data) {
+        setDefaultTTL(result.data.defaultTTL);
+      }
+    } catch (error) {
+      console.error('Error fetching default TTL:', error);
+      toast.error('Failed to load Default TTL');
+    }
+  };
+
   useEffect(() => {
     fetchServiceInfo();
+    fetchDefaultTTL();
   }, []);
 
   const handleServiceToggle = async () => {
@@ -95,6 +113,34 @@ export default function SettingsPage() {
       case 'inactive': return 'Stopped';
       case 'loading': return 'Loading...';
       default: return 'Unknown';
+    }
+  };
+
+  // Handle TTL preset button click
+  const handleTTLPreset = (value) => {
+    setDefaultTTL(value);
+  };
+
+  // Handle Default TTL update
+  const handleUpdateDefaultTTL = async () => {
+    if (!defaultTTL || defaultTTL < 10 || defaultTTL > 86400) {
+      toast.error('TTL must be between 10 and 86400 seconds');
+      return;
+    }
+
+    setIsTTLLoading(true);
+    try {
+      const response = await api.updateDefaultTTL({ defaultTTL: Number(defaultTTL) });
+      const result = response.data;
+
+      if (result.statusCode === 200) {
+        toast.success(`Default TTL updated to ${defaultTTL} seconds`);
+        await fetchDefaultTTL(); // Refresh the TTL value
+      }
+    } catch (error) {
+      toast.error('Failed to update Default TTL: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsTTLLoading(false);
     }
   };
 
@@ -377,6 +423,8 @@ export default function SettingsPage() {
                         type="number"
                         id="defaultTTL"
                         name="defaultTTL"
+                        value={defaultTTL}
+                        onChange={(e) => setDefaultTTL(e.target.value)}
                         placeholder="10"
                         min="10"
                         max="86400"
@@ -391,28 +439,43 @@ export default function SettingsPage() {
                   <div className="bg-white/60 rounded-lg p-4 border border-indigo-100">
                     <p className="text-xs text-slate-600 mb-2 font-medium">Quick TTL Presets:</p>
                     <div className="flex flex-wrap gap-2">
-                      <button className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300">
+                      <button
+                        onClick={() => handleTTLPreset(10)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
                         10 sec (10s)
                       </button>
-                      <button className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300">
+                      <button
+                        onClick={() => handleTTLPreset(30)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
                         30 sec (30s)
                       </button>
-                      <button className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300">
+                      <button
+                        onClick={() => handleTTLPreset(60)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
                         1 min (60s)
                       </button>
-                      <button className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300">
+                      <button
+                        onClick={() => handleTTLPreset(300)}
+                        className="px-3 py-1.5 bg-white hover:bg-indigo-50 text-slate-700 text-xs font-medium rounded-md border border-indigo-200 transition-colors duration-200 hover:border-indigo-300"
+                      >
                         5 min (300s)
                       </button>
                     </div>
                   </div>
 
                   <Button
+                    onClick={handleUpdateDefaultTTL}
+                    isLoading={isTTLLoading}
+                    disabled={isTTLLoading}
                     className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Update Default TTL
+                    {isTTLLoading ? 'Updating...' : 'Update Default TTL'}
                   </Button>
                 </div>
               </div>

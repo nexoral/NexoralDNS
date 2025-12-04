@@ -21,7 +21,9 @@ export const config = {
     DELETE_DOMAIN: '/api/domains/delete',
     SERVICE_INFO: '/api/service-info',
     TOGGLE_SERVICE: '/api/settings/toggle-service',
-    GET_DASHBOARD_ANALYTICS: '/api/analytics/get-dashboard-data'
+    GET_DASHBOARD_ANALYTICS: '/api/analytics/get-dashboard-data',
+    GET_DEFAULT_TTL: '/api/settings/default-ttl',
+    UPDATE_DEFAULT_TTL: '/api/settings/default-ttl'
   },
 
   // Application Configuration
