@@ -14,6 +14,23 @@ export default class InputOutputHandler {
   }
 
   /**
+   * Checks if the UDP socket is currently running and ready to send messages.
+   *
+   * @returns `true` if the socket is running, `false` otherwise.
+   */
+  private isSocketRunning(): boolean {
+    try {
+      // Check if socket has been closed or destroyed by attempting to get its address
+      // If the socket is closed, this will throw an error
+      const address = this.udpInstance.address();
+      return !!address && this.udpInstance !== null && this.udpInstance !== undefined;
+    } catch {
+      // Socket is closed or not bound
+      return false;
+    }
+  }
+
+  /**
    * Builds and sends a DNS answer packet in response to a DNS query.
    *
    * This method parses the incoming DNS query message, constructs a DNS response packet,
@@ -34,58 +51,68 @@ export default class InputOutputHandler {
     ResponseIP: string = "0.0.0.0",
     ttl: number = 10
   ): boolean {
-    // Transaction ID (first 2 bytes)
-    const transactionId = msg.subarray(0, 2);
+    try {
+      // Check if socket is still running before attempting to send
+      if (!this.isSocketRunning()) {
+        return false;
+      }
 
-    // DNS header flags (response, recursion available, no error)
-    const flags = Buffer.from([0x81, 0x80]);
-    const qdcount = Buffer.from([0x00, 0x01]); // questions = 1
-    let ancount = Buffer.from([0x00, 0x01]); // answers = 1 by default
-    const nscount = Buffer.from([0x00, 0x00]);
-    const arcount = Buffer.from([0x00, 0x00]);
+      // Transaction ID (first 2 bytes)
+      const transactionId = msg.subarray(0, 2);
 
-    // Parse query name
-    let offset = 12;
-    const labels: string[] = [];
-    while (msg[offset] !== 0) {
-      const length = msg[offset];
-      labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
-      offset += length + 1;
+      // DNS header flags (response, recursion available, no error)
+      const flags = Buffer.from([0x81, 0x80]);
+      const qdcount = Buffer.from([0x00, 0x01]); // questions = 1
+      let ancount = Buffer.from([0x00, 0x01]); // answers = 1 by default
+      const nscount = Buffer.from([0x00, 0x00]);
+      const arcount = Buffer.from([0x00, 0x00]);
+
+      // Parse query name
+      let offset = 12;
+      const labels: string[] = [];
+      while (msg[offset] !== 0) {
+        const length = msg[offset];
+        labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
+        offset += length + 1;
+      }
+      const queryName = labels.join(".");
+      const question = msg.subarray(12, offset + 5); // QNAME + QTYPE + QCLASS
+
+      // Build answer
+      let answer = Buffer.alloc(0);
+      if (queryName === domain) {
+        // Name pointer (0xc00c = pointer to offset 12 where QNAME starts)
+        const name = Buffer.from([0xc0, 0x0c]);
+        const type = Buffer.from([0x00, 0x01]); // A record
+        const cls = Buffer.from([0x00, 0x01]); // IN class
+        const ttlBuffer = Buffer.alloc(4);
+        ttlBuffer.writeUInt32BE(ttl, 0);
+        const rdlength = Buffer.from([0x00, 0x04]); // IPv4 = 4 bytes
+        const rdata = Buffer.from(ResponseIP.split(".").map((octet) => parseInt(octet)));
+        answer = Buffer.concat([name, type, cls, ttlBuffer, rdlength, rdata]);
+      } else {
+        // No answer if domain doesn't match
+        ancount = Buffer.from([0x00, 0x00]);
+      }
+
+      // Construct DNS response
+      const response = Buffer.concat([
+        transactionId,
+        flags,
+        qdcount,
+        ancount,
+        nscount,
+        arcount,
+        question,
+        answer,
+      ]);
+
+      this.udpInstance.send(response, rinfo.port, rinfo.address);
+      return true;
+    } catch (error) {
+      // Socket might have been closed during send operation
+      return false;
     }
-    const queryName = labels.join(".");
-    const question = msg.subarray(12, offset + 5); // QNAME + QTYPE + QCLASS
-
-    // Build answer
-    let answer = Buffer.alloc(0);
-    if (queryName === domain) {
-      // Name pointer (0xc00c = pointer to offset 12 where QNAME starts)
-      const name = Buffer.from([0xc0, 0x0c]);
-      const type = Buffer.from([0x00, 0x01]); // A record
-      const cls = Buffer.from([0x00, 0x01]); // IN class
-      const ttlBuffer = Buffer.alloc(4);
-      ttlBuffer.writeUInt32BE(ttl, 0);
-      const rdlength = Buffer.from([0x00, 0x04]); // IPv4 = 4 bytes
-      const rdata = Buffer.from(ResponseIP.split(".").map((octet) => parseInt(octet)));
-      answer = Buffer.concat([name, type, cls, ttlBuffer, rdlength, rdata]);
-    } else {
-      // No answer if domain doesn't match
-      ancount = Buffer.from([0x00, 0x00]);
-    }
-
-    // Construct DNS response
-    const response = Buffer.concat([
-      transactionId,
-      flags,
-      qdcount,
-      ancount,
-      nscount,
-      arcount,
-      question,
-      answer,
-    ]);
-
-    this.udpInstance.send(response, rinfo.port, rinfo.address);
-    return true;
   }
 
   /**
@@ -93,11 +120,20 @@ export default class InputOutputHandler {
    *
    * @param msg - The DNS answer message as a Buffer.
    * @param rinfo - The remote client's information, including port and address.
-   * @returns `true` if the message was sent.
+   * @returns `true` if the message was sent, `false` if socket is not running.
    */
   public sendRawAnswer(msg: Buffer, rinfo: dgram.RemoteInfo): boolean {
-    this.udpInstance.send(msg, rinfo.port, rinfo.address);
-    return true;
+    try {
+      // Check if socket is still running before attempting to send
+      if (!this.isSocketRunning()) {
+        return false;
+      }
+      this.udpInstance.send(msg, rinfo.port, rinfo.address);
+      return true;
+    } catch (error) {
+      // Socket might have been closed during send operation
+      return false;
+    }
   }
 
   /**

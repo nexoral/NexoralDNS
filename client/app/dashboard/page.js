@@ -30,7 +30,8 @@ export default function Dashboard() {
     forwardedPercentage: 0,
     successPercentage: 0,
     failedPercentage: 0,
-    avgResponseTime: 0
+    avgResponseTime: 0,
+    totalRecordsConsideredForAvgDuration: 0
   });
 
   // Recent DNS logs
@@ -70,7 +71,8 @@ export default function Dashboard() {
           forwardedPercentage: data.Percentages?.totalGlobalRequestForwardedPercentage || 0,
           successPercentage: data.Percentages?.totalSuccessPercentage || 0,
           failedPercentage: data.Percentages?.totalFailurePercentage || 0,
-          avgResponseTime: data.avgResponseTimeDuration || 0
+          avgResponseTime: data.avgResponseTimeDuration || 0,
+          totalRecordsConsideredForAvgDuration: data.totalRecordsConsideredForAvgDuration || 0
         });
 
         // Set recent logs

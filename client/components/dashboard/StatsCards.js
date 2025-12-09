@@ -133,7 +133,7 @@ export default function StatsCards({ stats }) {
         {/* Average DNS Resolve Time */}
         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl shadow-sm border border-indigo-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Avg Resolve Time (24h)</h3>
+            <h3 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Avg Resolve Time</h3>
             <div className="bg-indigo-200 rounded-full p-1.5">
               <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -143,7 +143,11 @@ export default function StatsCards({ stats }) {
           <div className="text-2xl font-bold text-slate-800 mb-1">
             {stats.avgResponseTime || 0} <span className="text-lg font-semibold text-indigo-600">ms</span>
           </div>
-          <p className="text-xs text-indigo-600">Average DNS query response</p>
+          <p className="text-xs text-indigo-600">
+            {stats.totalRecordsConsideredForAvgDuration
+              ? `Based on last ${stats.totalRecordsConsideredForAvgDuration} logs`
+              : 'Average DNS query response'}
+          </p>
         </div>
       </div>
     </div>

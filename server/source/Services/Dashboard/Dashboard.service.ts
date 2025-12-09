@@ -181,6 +181,7 @@ export default class DashboardService {
       },
       TopGlobalServer: topForwarders,
       avgResponseTimeDuration: mergedAvg.toFixed(0),
+      totalRecordsConsideredForAvgDuration: 10,
       computedAt: base.computedAt,
       isRealtime: true // Flag to indicate this is real-time merged data
     };
