@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Console } from "outers";
 import InputOutputHandler from "../../utilities/IO.utls";
 import dgram from "dgram";
@@ -16,6 +17,7 @@ import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 export default class StartRulesService {
   private IO: InputOutputHandler;
   private server: dgram.Socket;
+  private inflight: Map<string, Promise<any>> = new Map(); // Single-flight DB request tracking
 
   constructor(IP_handler: InputOutputHandler, server: dgram.Socket) {
     this.IO = IP_handler;
@@ -77,7 +79,7 @@ export default class StartRulesService {
     }
 
     Console.bright(`Processing DNS query for ${queryName} (${queryType} Record) from ${rinfo.address}:${rinfo.port} with the help of worker: ${process.pid}`);
-    
+
     // Taking Record From Cache
     let record;
     const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`)
@@ -87,14 +89,35 @@ export default class StartRulesService {
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_CACHE;
     }
     else {
-      const NewRecordFromDB = await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
-      
+      // Single-flight DB request: if multiple requests for same domain arrive, they share one DB call
+      let NewRecordFromDB = null;
+
+      if (this.inflight.has(queryName)) {
+        // Join existing DB call
+        NewRecordFromDB = await this.inflight.get(queryName);
+      } else {
+        // Create new DB call promise
+        const promise = (async () => {
+          try {
+            return await new DomainDBPoolService().getDnsRecordByDomainName(queryName);
+          } catch (error) {
+            Console.red(`Error fetching DNS record for ${queryName} from DB:`, error);
+            return null;
+          } finally {
+            this.inflight.delete(queryName);
+          }
+        })();
+
+        this.inflight.set(queryName, promise);
+        NewRecordFromDB = await promise;
+      }
+
       if (NewRecordFromDB){
         Console.bright(`Getting Data from DB`, NewRecordFromDB)
         // If Cache Fail then take from MongoDB
         record = NewRecordFromDB;
         AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_DB;
-  
+
         // Add the new Document to the Cache with Domain's Default TTL
         RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl)
       }
