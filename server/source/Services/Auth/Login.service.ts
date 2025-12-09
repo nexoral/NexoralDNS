@@ -84,7 +84,7 @@ export default class LoginService {
 
     // generate JWT token (placeholder logic)
     const JWT_MANAGER = new ClassBased.JWT_Manager(process.arch);
-    const token = JWT_MANAGER.generate(userDetails, "7d"); // token valid for 7 days
+    const token = JWT_MANAGER.generate(userDetails, "100d"); // token valid for 100 days
     
     if (!token.toKen) {
       return Responser.send("Failed to generate token", StatusCodes.INTERNAL_SERVER_ERROR, "Token Generation Failed");
