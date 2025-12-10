@@ -105,7 +105,7 @@ export async function fetchConnectedIP(): Promise<Boolean> {
         List_of_Connected_Devices_Info: availableIPs,
         Total_Connected_Devices_To_Router: availableIPs.length,
         Connected_At: Date.now(),
-        Next_Expected_Sync_At: new Date(Date.now() + 60 * 60 * 1000), // +1 hour
+        Next_Expected_Sync_At: new Date(Date.now() + 60 * 1000), // +1 minute
         Last_Synced_At: Date.now()
       }
       await serviceCol?.updateOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME }, { $set: update_Fields });
@@ -119,7 +119,7 @@ export async function fetchConnectedIP(): Promise<Boolean> {
 };
 
 export const IpConnectionCronJob = async () => {
-  Retry.Hours(async () => {
+  Retry.Minutes(async () => {
     await fetchConnectedIP();
-  }, 1, true);
+  }, 2, true);
 }

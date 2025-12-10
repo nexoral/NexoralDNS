@@ -63,6 +63,15 @@ export const api = {
   getDashboardAnalytics: () =>
     apiClient.get(getApiUrl('GET_DASHBOARD_ANALYTICS')),
 
+  getLogs: (params) =>
+    apiClient.get(getApiUrl('GET_LOGS'), {
+      params,
+      validateStatus: (status) => {
+        // Treat 404 as valid response (no data found)
+        return (status >= 200 && status < 300) || status === 404;
+      }
+    }),
+
   // Default TTL Management
   getDefaultTTL: () =>
     apiClient.get(getApiUrl('GET_DEFAULT_TTL')),
