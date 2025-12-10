@@ -52,17 +52,21 @@ export default class LogsController {
     if (filters.SourceIP) query.SourceIP = filters.SourceIP
     if (filters.Status) query.Status = filters.Status
     if (filters.queryName) query.queryName = filters.queryName
-    if (filters.from && filters.to) query.timestamp = {
-      $gte: parseFloat(filters.from),
-      $lte: parseFloat(filters.to)
-    };
-    if (filters.durationFrom && filters.durationTo) {
-      query.duration = {
-        $gte: parseFloat(filters.durationFrom),
-        $lte: parseFloat(filters.durationTo)
-      };
+
+    // Handle timestamp range filters
+    if (filters.from || filters.to) {
+      query.timestamp = {};
+      if (filters.from) query.timestamp.$gte = parseFloat(filters.from);
+      if (filters.to) query.timestamp.$lte = parseFloat(filters.to);
+    }
+
+    // Handle duration range filters
+    if (filters.durationFrom || filters.durationTo) {
+      query.duration = {};
+      if (filters.durationFrom) query.duration.$gte = parseFloat(filters.durationFrom);
+      if (filters.durationTo) query.duration.$lte = parseFloat(filters.durationTo);
     }    
-    console.log("query1", query)
+    
     try {
       await LogsServices.getAnalyticalLogs(parseInt(filters.limit), parseInt(filters.page), query);
     } catch (error) {

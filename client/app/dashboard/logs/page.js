@@ -29,6 +29,23 @@ export default function LogsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [totalLogs, setTotalLogs] = useState(0);
+  const [debouncedFilters, setDebouncedFilters] = useState(filters);
+  const [isDebouncing, setIsDebouncing] = useState(false);
+
+  // Debounce filters to avoid calling API on every keystroke
+  useEffect(() => {
+    setIsDebouncing(true);
+    const timer = setTimeout(() => {
+      setDebouncedFilters(filters);
+      setCurrentPage(1); // Reset to first page when filters change
+      setIsDebouncing(false);
+    }, 500); // 500ms debounce delay
+
+    return () => {
+      clearTimeout(timer);
+      setIsDebouncing(false);
+    };
+  }, [filters]);
 
   // Fetch logs from API
   useEffect(() => {
@@ -44,22 +61,48 @@ export default function LogsPage() {
         };
 
         // Add filters only if they have values
-        if (filters.queryName) params.queryName = filters.queryName;
-        if (filters.SourceIP) params.SourceIP = filters.SourceIP;
-        if (filters.Status) params.Status = filters.Status;
-        if (filters.from) params.from = new Date(filters.from).getTime();
-        if (filters.to) params.to = new Date(filters.to).getTime();
-        if (filters.durationFrom) params.durationFrom = filters.durationFrom;
-        if (filters.durationTo) params.durationTo = filters.durationTo;
+        if (debouncedFilters.queryName) params.queryName = debouncedFilters.queryName;
+        if (debouncedFilters.SourceIP) params.SourceIP = debouncedFilters.SourceIP;
+        if (debouncedFilters.Status) params.Status = debouncedFilters.Status;
+        if (debouncedFilters.from) params.from = new Date(debouncedFilters.from).getTime();
+        if (debouncedFilters.to) params.to = new Date(debouncedFilters.to).getTime();
+        if (debouncedFilters.durationFrom) params.durationFrom = debouncedFilters.durationFrom;
+        if (debouncedFilters.durationTo) params.durationTo = debouncedFilters.durationTo;
 
         const response = await api.getLogs(params);
 
         if (response.data.statusCode === 200) {
-          setLogs(response.data.data);
-          setTotalLogs(response.data.data.length); // You might need to get total count from backend
+          const responseData = response.data.data;
+
+          // Check if data is empty array or object
+          if (Array.isArray(responseData)) {
+            setLogs(responseData);
+            setTotalLogs(0);
+          } else if (typeof responseData === 'object' && responseData !== null) {
+            // Extract totalDocument from response
+            const { totalDocument, ...logsData } = responseData;
+
+            // Convert object with numeric keys to array
+            const logsArray = Object.keys(logsData)
+              .filter(key => !isNaN(Number(key)))
+              .map(key => logsData[key]);
+
+            setLogs(logsArray);
+            setTotalLogs(totalDocument || 0);
+          } else {
+            setLogs([]);
+            setTotalLogs(0);
+          }
+        } else {
+          setError(response.data.message || 'Failed to fetch logs');
+          setLogs([]);
+          setTotalLogs(0);
         }
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch logs');
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch logs. Please try again.';
+        setError(errorMessage);
+        setLogs([]);
+        setTotalLogs(0);
         console.error('Error fetching logs:', err);
       } finally {
         setLoading(false);
@@ -67,7 +110,7 @@ export default function LogsPage() {
     };
 
     fetchLogs();
-  }, [currentPage, filters]);
+  }, [currentPage, debouncedFilters]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
@@ -76,7 +119,7 @@ export default function LogsPage() {
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
-    setCurrentPage(1); // Reset to first page when filtering
+    // Note: Page reset is handled by debounce effect
   };
 
   const handleClearFilters = () => {
@@ -130,7 +173,13 @@ export default function LogsPage() {
     return (
       <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
         <div className="flex items-center text-sm text-slate-600">
-          Showing {indexOfFirstLog + 1} to {Math.min(indexOfLastLog, totalLogs)} of {totalLogs} logs
+          {totalLogs > 0 ? (
+            <>
+              Showing {indexOfFirstLog + 1} to {Math.min(indexOfFirstLog + logs.length, totalLogs)} of {totalLogs.toLocaleString()} logs
+            </>
+          ) : (
+            'No logs to display'
+          )}
         </div>
         <div className="flex items-center space-x-2">
           <button
@@ -323,29 +372,58 @@ export default function LogsPage() {
           {/* Logs Table */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Query Logs
-                <span className="ml-3 text-sm font-normal text-slate-500">
-                  ({logs.length} {logs.length === 1 ? 'log' : 'logs'})
-                </span>
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-800 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Query Logs
+                  <span className="ml-3 text-sm font-normal text-slate-500">
+                    ({totalLogs.toLocaleString()} total)
+                  </span>
+                </h2>
+                {isDebouncing && (
+                  <span className="text-xs text-slate-500 flex items-center">
+                    <svg className="animate-spin h-4 w-4 mr-1 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Searching...
+                  </span>
+                )}
+              </div>
             </div>
 
             {loading ? (
               <div className="p-8 text-center text-slate-500">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                Loading logs...
+                <p className="text-sm">Loading logs...</p>
               </div>
             ) : error ? (
-              <div className="p-8 text-center text-red-500">
-                {error}
+              <div className="p-8 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-red-600 font-medium mb-2">Error Loading Logs</p>
+                <p className="text-sm text-slate-600">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             ) : logs.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">
-                No logs found matching your filters
+              <div className="p-8 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                </div>
+                <p className="text-slate-600 font-medium mb-2">No logs found</p>
+                <p className="text-sm text-slate-500">Try adjusting your filters or search criteria</p>
               </div>
             ) : (
               <>
