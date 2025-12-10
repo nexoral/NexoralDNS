@@ -63,6 +63,9 @@ export const api = {
   getDashboardAnalytics: () =>
     apiClient.get(getApiUrl('GET_DASHBOARD_ANALYTICS')),
 
+  getLogs: (params) =>
+    apiClient.get(getApiUrl('GET_LOGS'), { params }),
+
   // Default TTL Management
   getDefaultTTL: () =>
     apiClient.get(getApiUrl('GET_DEFAULT_TTL')),

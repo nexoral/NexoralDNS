@@ -43,6 +43,20 @@ export default async function AnalyticsRouter(fastify: FastifyInstance, _options
         },
         required: ['authorization'],
       },
+      querystring: {
+        type: 'object',
+        properties: {
+          SourceIP: { type: 'string', description: 'Filter by source IP address' },
+          queryName: { type: 'string', description: 'Filter by query name/domain' },
+          from: { type: 'number', description: 'Start timestamp (milliseconds)' },
+          to: { type: 'number', description: 'End timestamp (milliseconds)' },
+          Status: { type: 'string', description: 'Filter by DNS query status (e.g., RESOLVED, BLOCKED)' },
+          durationFrom: { type: 'number', description: 'Minimum query duration (milliseconds)' },
+          durationTo: { type: 'number', description: 'Maximum query duration (milliseconds)' },
+          limit: { type: 'number', description: 'Number of records per page', default: 10 },
+          page: { type: 'number', description: 'Page number for pagination', default: 1 },
+        },
+      },
     },
     preHandler: [authGuard.isAuthenticated],
     handler: LogsController.getLogs

@@ -7,6 +7,7 @@ import { LogsService } from "../../Services/Logs/Logs.service";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
+import { parse } from "path";
 
 
 // Singleton instance for request deduplication
@@ -21,13 +22,13 @@ export default class LogsController {
     interface requestQueryParams {
       SourceIP: string,
       queryName: string,
-      from: number,
-      to: number,
+      from: string,
+      to: string,
       Status: string,
-      durationFrom: number,
-      durationTo: number,
-      limit: number,
-      page: number,
+      durationFrom: string,
+      durationTo: string,
+      limit: string,
+      page: string,
       [key: string]: string | number; // Add index signature
     }
 
@@ -47,17 +48,28 @@ export default class LogsController {
     }
 
     // query constructor
-    const query: requestQueryParams = {} as requestQueryParams
+    const query: any = {}
     if (filters.SourceIP) query.SourceIP = filters.SourceIP
     if (filters.Status) query.Status = filters.Status
-    if (filters.from && filters.to) query.ssfw = 
-
+    if (filters.queryName) query.queryName = filters.queryName
+    if (filters.from && filters.to) query.timestamp = {
+      $gte: parseFloat(filters.from),
+      $lte: parseFloat(filters.to)
+    };
+    if (filters.durationFrom && filters.durationTo) {
+      query.duration = {
+        $gte: parseFloat(filters.durationFrom),
+        $lte: parseFloat(filters.durationTo)
+      };
+    }    
+    console.log("query1", query)
     try {
-      await LogsServices.getAnalyticalLogs(filters.limit, filters.page);
+      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), parseInt(filters.page), query);
     } catch (error) {
+      console.log(error)
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
-      Responser.setMessage("Error fetching domain list");
-      return Responser.send("An error occurred while fetching the domain list");
+      Responser.setMessage("Error fetching logs list");
+      return Responser.send("An error occurred while fetching the logs list");
     }
   }
 }

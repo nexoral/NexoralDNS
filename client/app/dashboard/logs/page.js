@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
+import api from '../../../services/api';
 
 export default function LogsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -10,111 +11,68 @@ export default function LogsPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const logsPerPage = 20;
+  const logsPerPage = 10;
 
   // Filter state
   const [filters, setFilters] = useState({
     queryName: '',
-    timestamp: '',
     SourceIP: '',
     Status: '',
-    From: ''
+    from: '',
+    to: '',
+    durationFrom: '',
+    durationTo: ''
   });
 
-  // Dummy logs data - replace with API call later
-  const [allLogs] = useState([
-    {
-      _id: '6931d193cf8734efa090af41',
-      queryName: 'default.exp-tas.com',
-      queryType: 'A',
-      timestamp: 1764872590573,
-      SourceIP: '10.85.131.216',
-      Status: 'DNS REQUEST FORWARDED',
-      From: 'Level3 DNS',
-      duration: 300.44
-    },
-    {
-      _id: '6931d193cf8734efa090af42',
-      queryName: 'google.com',
-      queryType: 'A',
-      timestamp: 1764872591000,
-      SourceIP: '192.168.1.100',
-      Status: 'RESOLVED',
-      From: 'Cloudflare DNS',
-      duration: 15.23
-    },
-    {
-      _id: '6931d193cf8734efa090af43',
-      queryName: 'example.org',
-      queryType: 'AAAA',
-      timestamp: 1764872592000,
-      SourceIP: '192.168.1.105',
-      Status: 'DNS REQUEST FORWARDED',
-      From: 'Google DNS',
-      duration: 25.67
-    },
-    {
-      _id: '6931d193cf8734efa090af44',
-      queryName: 'failed-domain.test',
-      queryType: 'A',
-      timestamp: 1764872593000,
-      SourceIP: '192.168.1.110',
-      Status: 'FAILED TO PROCESS',
-      From: '',
-      duration: 500.12
-    },
-    {
-      _id: '6931d193cf8734efa090af45',
-      queryName: 'github.com',
-      queryType: 'A',
-      timestamp: 1764872594000,
-      SourceIP: '10.85.131.220',
-      Status: 'DNS REQUEST FORWARDED',
-      From: 'Cloudflare DNS',
-      duration: 18.45
-    },
-    // Add more dummy data for pagination demo
-    ...Array.from({ length: 50 }, (_, i) => ({
-      _id: `dummy-${i}`,
-      queryName: `domain-${i}.example.com`,
-      queryType: i % 2 === 0 ? 'A' : 'AAAA',
-      timestamp: 1764872595000 + i * 1000,
-      SourceIP: `192.168.1.${100 + i}`,
-      Status: ['DNS REQUEST FORWARDED', 'RESOLVED', 'FAILED TO PROCESS'][i % 3],
-      From: ['Cloudflare DNS', 'Google DNS', 'Level3 DNS'][i % 3],
-      duration: Math.random() * 500
-    }))
-  ]);
+  // API state
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [totalLogs, setTotalLogs] = useState(0);
 
-  // Apply filters
-  const filteredLogs = allLogs.filter(log => {
-    if (filters.queryName && !log.queryName.toLowerCase().includes(filters.queryName.toLowerCase())) {
-      return false;
-    }
-    if (filters.SourceIP && !log.SourceIP.includes(filters.SourceIP)) {
-      return false;
-    }
-    if (filters.Status && log.Status !== filters.Status) {
-      return false;
-    }
-    if (filters.From && !log.From.toLowerCase().includes(filters.From.toLowerCase())) {
-      return false;
-    }
-    if (filters.timestamp) {
-      const filterDate = new Date(filters.timestamp).setHours(0, 0, 0, 0);
-      const logDate = new Date(log.timestamp).setHours(0, 0, 0, 0);
-      if (logDate !== filterDate) {
-        return false;
+  // Fetch logs from API
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Build query params
+        const params = {
+          page: currentPage,
+          limit: logsPerPage,
+        };
+
+        // Add filters only if they have values
+        if (filters.queryName) params.queryName = filters.queryName;
+        if (filters.SourceIP) params.SourceIP = filters.SourceIP;
+        if (filters.Status) params.Status = filters.Status;
+        if (filters.from) params.from = new Date(filters.from).getTime();
+        if (filters.to) params.to = new Date(filters.to).getTime();
+        if (filters.durationFrom) params.durationFrom = filters.durationFrom;
+        if (filters.durationTo) params.durationTo = filters.durationTo;
+
+        const response = await api.getLogs(params);
+
+        if (response.data.statusCode === 200) {
+          setLogs(response.data.data);
+          setTotalLogs(response.data.data.length); // You might need to get total count from backend
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch logs');
+        console.error('Error fetching logs:', err);
+      } finally {
+        setLoading(false);
       }
-    }
-    return true;
-  });
+    };
+
+    fetchLogs();
+  }, [currentPage, filters]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
   const indexOfLastLog = currentPage * logsPerPage;
   const indexOfFirstLog = indexOfLastLog - logsPerPage;
-  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -124,10 +82,12 @@ export default function LogsPage() {
   const handleClearFilters = () => {
     setFilters({
       queryName: '',
-      timestamp: '',
       SourceIP: '',
       Status: '',
-      From: ''
+      from: '',
+      to: '',
+      durationFrom: '',
+      durationTo: ''
     });
     setCurrentPage(1);
   };
@@ -170,7 +130,7 @@ export default function LogsPage() {
     return (
       <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
         <div className="flex items-center text-sm text-slate-600">
-          Showing {indexOfFirstLog + 1} to {Math.min(indexOfLastLog, filteredLogs.length)} of {filteredLogs.length} logs
+          Showing {indexOfFirstLog + 1} to {Math.min(indexOfLastLog, totalLogs)} of {totalLogs} logs
         </div>
         <div className="flex items-center space-x-2">
           <button
@@ -310,25 +270,50 @@ export default function LogsPage() {
                 </select>
               </div>
 
-              {/* DNS Server Filter */}
+              {/* From Date Filter */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">DNS Server</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">From Date</label>
                 <input
-                  type="text"
-                  value={filters.From}
-                  onChange={(e) => handleFilterChange('From', e.target.value)}
-                  placeholder="e.g., Cloudflare DNS"
+                  type="datetime-local"
+                  value={filters.from}
+                  onChange={(e) => handleFilterChange('from', e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
-              {/* Timestamp Filter */}
+              {/* To Date Filter */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Date</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">To Date</label>
                 <input
-                  type="date"
-                  value={filters.timestamp}
-                  onChange={(e) => handleFilterChange('timestamp', e.target.value)}
+                  type="datetime-local"
+                  value={filters.to}
+                  onChange={(e) => handleFilterChange('to', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Duration From Filter */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Min Duration (ms)</label>
+                <input
+                  type="number"
+                  value={filters.durationFrom}
+                  onChange={(e) => handleFilterChange('durationFrom', e.target.value)}
+                  placeholder="e.g., 100"
+                  min="0"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Duration To Filter */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Max Duration (ms)</label>
+                <input
+                  type="number"
+                  value={filters.durationTo}
+                  onChange={(e) => handleFilterChange('durationTo', e.target.value)}
+                  placeholder="e.g., 500"
+                  min="0"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -344,12 +329,21 @@ export default function LogsPage() {
                 </svg>
                 Query Logs
                 <span className="ml-3 text-sm font-normal text-slate-500">
-                  ({filteredLogs.length} {filteredLogs.length === 1 ? 'log' : 'logs'})
+                  ({logs.length} {logs.length === 1 ? 'log' : 'logs'})
                 </span>
               </h2>
             </div>
 
-            {currentLogs.length === 0 ? (
+            {loading ? (
+              <div className="p-8 text-center text-slate-500">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                Loading logs...
+              </div>
+            ) : error ? (
+              <div className="p-8 text-center text-red-500">
+                {error}
+              </div>
+            ) : logs.length === 0 ? (
               <div className="p-8 text-center text-slate-500">
                 No logs found matching your filters
               </div>
@@ -381,7 +375,7 @@ export default function LogsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {currentLogs.map((log) => (
+                      {logs.map((log) => (
                         <tr key={log._id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -433,7 +427,7 @@ export default function LogsPage() {
 
                 {/* Mobile Card View */}
                 <div className="lg:hidden divide-y divide-slate-200">
-                  {currentLogs.map((log) => (
+                  {logs.map((log) => (
                     <div key={log._id} className="p-4 hover:bg-slate-50 transition-colors">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">

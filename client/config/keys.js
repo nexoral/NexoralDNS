@@ -22,6 +22,7 @@ export const config = {
     SERVICE_INFO: '/api/service-info',
     TOGGLE_SERVICE: '/api/settings/toggle-service',
     GET_DASHBOARD_ANALYTICS: '/api/analytics/get-dashboard-data',
+    GET_LOGS: '/api/analytics/get-logs',
     GET_DEFAULT_TTL: '/api/settings/default-ttl',
     UPDATE_DEFAULT_TTL: '/api/settings/default-ttl'
   },

@@ -26,8 +26,8 @@ export class LogsService {
     if (!Analytics) {
       return { count: 0, success: 0, failed: 0, forwarded: 0, latestLogs: [], newDomains: 0, newActiveDomains: 0, newRecords: 0 };
     }
-    
-    const AllFilteredData = await Analytics.find({...query}).sort({_id: -1}).skip(skippable).limit(limit).toArray()
+    const AllFilteredData = await Analytics.find(query ? query : {}).sort({_id: -1}).skip(skippable).limit(limit).toArray()
+    console.log("query", query, AllFilteredData)
     return this.Responser.send(AllFilteredData, StatusCodes.OK, "Fetched All Filtered Logs")
   }
 }
