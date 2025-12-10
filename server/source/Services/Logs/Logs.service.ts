@@ -27,6 +27,6 @@ export class LogsService {
     const AllFilteredData = await Analytics.find(query ? query : {}).sort({_id: -1}).skip(skippable).limit(limit).toArray()
     const totalDocument = await Analytics.countDocuments(query ? query : {})
 
-    return this.Responser.send(AllFilteredData.length !== 0 ? { ...AllFilteredData, totalDocument } : [], StatusCodes.OK, "Fetched All Filtered Logs")
+    return this.Responser.send(AllFilteredData.length !== 0 ? { ...AllFilteredData, totalDocument } : [], AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
   }
 }
