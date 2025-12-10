@@ -47,11 +47,31 @@ export default class LogsController {
       }
     }
 
+    // Helper function to escape regex special characters
+    const escapeRegex = (str: string): string => {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
     // query constructor
     const query: any = {}
-    if (filters.SourceIP) query.SourceIP = filters.SourceIP
+
+    // Use regex for partial matching on SourceIP and queryName
+    if (filters.SourceIP) {
+      query.SourceIP = {
+        $regex: escapeRegex(filters.SourceIP),
+        $options: 'i' // case-insensitive
+      };
+    }
+
+    if (filters.queryName) {
+      query.queryName = {
+        $regex: escapeRegex(filters.queryName),
+        $options: 'i' // case-insensitive
+      };
+    }
+
+    // Exact match for Status
     if (filters.Status) query.Status = filters.Status
-    if (filters.queryName) query.queryName = filters.queryName
 
     // Handle timestamp range filters
     if (filters.from || filters.to) {

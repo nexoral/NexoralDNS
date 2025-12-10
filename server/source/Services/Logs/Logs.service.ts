@@ -24,8 +24,29 @@ export class LogsService {
     if (!Analytics) {
       return { count: 0, success: 0, failed: 0, forwarded: 0, latestLogs: [], newDomains: 0, newActiveDomains: 0, newRecords: 0 };
     }
-    const AllFilteredData = await Analytics.find(query ? query : {}).sort({_id: -1}).skip(skippable).limit(limit).toArray()
-    const totalDocument = await Analytics.countDocuments(query ? query : {})
+
+    // Use single aggregation to get both data and count
+    const result = await Analytics.aggregate([
+      // Match the query filters
+      { $match: query ? query : {} },
+
+      // Use facet to get both data and count in parallel
+      {
+        $facet: {
+          data: [
+            { $sort: { timestamp: -1 } },
+            { $skip: skippable },
+            { $limit: limit }
+          ],
+          metadata: [
+            { $count: "totalDocument" }
+          ]
+        }
+      }
+    ]).toArray();
+
+    const AllFilteredData = result[0]?.data || [];
+    const totalDocument = result[0]?.metadata[0]?.totalDocument || 0;
 
     return this.Responser.send(AllFilteredData.length !== 0 ? { ...AllFilteredData, totalDocument } : [], AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
   }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import api from '../../../services/api';
+import queryCache from '../../../utils/queryCache';
 
 export default function LogsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -47,7 +48,7 @@ export default function LogsPage() {
     };
   }, [filters]);
 
-  // Fetch logs from API
+  // Fetch logs with simple caching
   useEffect(() => {
     const fetchLogs = async () => {
       setLoading(true);
@@ -69,15 +70,28 @@ export default function LogsPage() {
         if (debouncedFilters.durationFrom) params.durationFrom = debouncedFilters.durationFrom;
         if (debouncedFilters.durationTo) params.durationTo = debouncedFilters.durationTo;
 
+        // Check cache first
+        const cached = queryCache.get(params);
+        if (cached) {
+          console.log('📦 Cache hit - loading from cache');
+          setLogs(cached.logs);
+          setTotalLogs(cached.totalDocument);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch from API
         const response = await api.getLogs(params);
 
-        if (response.data.statusCode === 200) {
+        // Handle both 200 (success) and 404 (no data found)
+        if (response.data.statusCode === 200 || response.data.statusCode === 404) {
           const responseData = response.data.data;
+          let result = { logs: [], totalDocument: 0 };
 
           // Check if data is empty array or object
           if (Array.isArray(responseData)) {
-            setLogs(responseData);
-            setTotalLogs(0);
+            result.logs = responseData;
+            result.totalDocument = 0;
           } else if (typeof responseData === 'object' && responseData !== null) {
             // Extract totalDocument from response
             const { totalDocument, ...logsData } = responseData;
@@ -87,12 +101,15 @@ export default function LogsPage() {
               .filter(key => !isNaN(Number(key)))
               .map(key => logsData[key]);
 
-            setLogs(logsArray);
-            setTotalLogs(totalDocument || 0);
-          } else {
-            setLogs([]);
-            setTotalLogs(0);
+            result.logs = logsArray;
+            result.totalDocument = totalDocument || 0;
           }
+
+          // Cache the result
+          queryCache.set(params, result);
+
+          setLogs(result.logs);
+          setTotalLogs(result.totalDocument);
         } else {
           setError(response.data.message || 'Failed to fetch logs');
           setLogs([]);
@@ -110,7 +127,7 @@ export default function LogsPage() {
     };
 
     fetchLogs();
-  }, [currentPage, debouncedFilters]);
+  }, [currentPage, debouncedFilters, logsPerPage]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
