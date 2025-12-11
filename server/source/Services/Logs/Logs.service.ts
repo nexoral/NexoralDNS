@@ -38,16 +38,12 @@ export class LogsService {
             { $skip: skippable },
             { $limit: limit }
           ],
-          metadata: [
-            { $count: "totalDocument" }
-          ]
         }
       }
     ]).toArray();
 
     const AllFilteredData = result[0]?.data || [];
-    const totalDocument = result[0]?.metadata[0]?.totalDocument || 0;
 
-    return this.Responser.send(AllFilteredData.length !== 0 ? { ...AllFilteredData, totalDocument } : [], AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
+    return this.Responser.send(AllFilteredData, AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
   }
 }
