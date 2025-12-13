@@ -1,8 +1,8 @@
 import { Retry } from "outers";
-import { DB_DEFAULT_CONFIGS } from "../core/key";
-import { getCollectionClient } from "../Database/mongodb.db";
-import CacheKeys from "../Redis/CacheKeys.cache";
-import RedisCache from "../Redis/Redis.cache";
+import { DB_DEFAULT_CONFIGS } from "../../core/key";
+import { getCollectionClient } from "../../Database/mongodb.db";
+import CacheKeys from "../../Redis/CacheKeys.cache";
+import RedisCache from "../../Redis/Redis.cache";
 
 
 // ainn Function to Load the Dashboard Data
@@ -12,7 +12,7 @@ export async function getDashboardDataStats(): Promise<object> {
   const DNSRecords = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
   const last24 = Date.now() - 24 * 60 * 60 * 1000;
 
-  if (!Analytics || !Domains || !DNSRecords ){
+  if (!Analytics || !Domains || !DNSRecords) {
     throw new Error("Collection not initilized")
   }
 
@@ -30,7 +30,7 @@ export async function getDashboardDataStats(): Promise<object> {
       { $match: { timestamp: { $gte: last24 } } },
       { $count: "count" }
     ]).toArray(),
-    
+
 
     // Last 10 DNS logs (include all properties you showed)
     Analytics.find(
