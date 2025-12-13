@@ -140,8 +140,8 @@ export default function DomainsPage() {
           {/* Page Header */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">Domain Management</h1>
-              <p className="text-slate-600">Manage your domains and DNS records</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">Create Custom LAN Domain</h1>
+              <p className="text-slate-600">Create and configure custom LAN domains for your network</p>
             </div>
             <Button onClick={() => setShowDomainModal(true)} variant="primary">
               Add Domain

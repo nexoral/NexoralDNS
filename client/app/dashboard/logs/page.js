@@ -9,7 +9,7 @@ export default function LogsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
 
-  const [page, setPage] = useState(1);
+  const [cursor, setCursor] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -26,15 +26,19 @@ export default function LogsPage() {
   const lastScrollY = useRef(0);
 
   // Load logs function
-  const loadLogs = async (pageNum, isNewSearch = false) => {
+  const loadLogs = async (cursorId = null, isNewSearch = false) => {
     if (loading) return;
 
     setLoading(true);
     try {
       const params = {
-        page: pageNum,
         limit: 25,
       };
+
+      // Add cursor for pagination (only if not a new search)
+      if (cursorId && !isNewSearch) {
+        params.cursor = cursorId;
+      }
 
       if (filters.queryName) params.queryName = filters.queryName;
       if (filters.SourceIP) params.SourceIP = filters.SourceIP;
@@ -49,7 +53,7 @@ export default function LogsPage() {
 
       if (isNewSearch) {
         setLogs(newLogs);
-        setPage(1);
+        setCursor(newLogs.length > 0 ? newLogs[newLogs.length - 1]._id : null);
         setHasMore(newLogs.length === 25);
       } else {
         // Only append if not duplicates
@@ -58,6 +62,10 @@ export default function LogsPage() {
           const uniqueNewLogs = newLogs.filter(log => !existingIds.has(log._id));
           return [...prev, ...uniqueNewLogs];
         });
+        // Update cursor to the last document's _id
+        if (newLogs.length > 0) {
+          setCursor(newLogs[newLogs.length - 1]._id);
+        }
         setHasMore(newLogs.length === 25);
       }
     } catch (err) {
@@ -69,7 +77,7 @@ export default function LogsPage() {
 
   // Load initial logs
   useEffect(() => {
-    loadLogs(1, true);
+    loadLogs(null, true);
   }, [filters]);
 
   // Scroll handler - only load when scrolling DOWN
@@ -97,9 +105,7 @@ export default function LogsPage() {
         // Debounce to prevent multiple calls
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
-          const nextPage = page + 1;
-          setPage(nextPage);
-          loadLogs(nextPage, false);
+          loadLogs(cursor, false);
         }, 100);
       }
     };
@@ -109,7 +115,7 @@ export default function LogsPage() {
       window.removeEventListener('scroll', handleScroll);
       clearTimeout(timeoutId);
     };
-  }, [loading, hasMore, page]);
+  }, [loading, hasMore, cursor]);
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));

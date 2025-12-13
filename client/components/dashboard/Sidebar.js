@@ -14,7 +14,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard', tooltip: 'Main Dashboard' },
-    { id: 'domains', label: 'Domain Management', icon: 'domains', href: '/dashboard/domains', tooltip: 'Manage Domains & DNS' },
+    { id: 'domains', label: 'Create Custom LAN Domain', icon: 'domains', href: '/dashboard/domains', tooltip: 'Create Custom LAN Domains' },
     { id: 'logs', label: 'Query Logs', icon: 'logs', href: '/dashboard/logs', tooltip: 'View DNS Query Logs' },
     { id: 'users', label: 'User Management', icon: 'users', href: '/dashboard/users', tooltip: 'Manage Users & Roles' },
     { id: 'devices', label: 'Connected Devices', icon: 'devices', href: '/dashboard/devices', tooltip: 'View Connected Devices', localOnly: true },

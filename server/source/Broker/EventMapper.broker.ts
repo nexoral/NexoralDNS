@@ -1,5 +1,5 @@
 // Services
-import { fetchConnectedIP } from "../CronJob/Connected_IP_fetcher.cron";
+import { fetchConnectedIP } from "../CronJob/Jobs/Connected_IP_fetcher.cron";
 
 // This File is Responsible for mapping events from the broker to appropriate handlers
 const Events = new Map<string, Function>();

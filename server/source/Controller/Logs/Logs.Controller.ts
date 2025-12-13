@@ -28,7 +28,7 @@ export default class LogsController {
       durationFrom: string,
       durationTo: string,
       limit: string,
-      page: string,
+      cursor: string,
       [key: string]: string | number; // Add index signature
     }
 
@@ -88,7 +88,7 @@ export default class LogsController {
     }    
     
     try {
-      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), parseInt(filters.page), query);
+      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query);
     } catch (error) {
       console.log(error)
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
