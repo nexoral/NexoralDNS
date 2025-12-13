@@ -129,4 +129,21 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
     handler: SettingsController.updateDefaultTTL
   });
 
+  // Get Cache Stats
+  fastify.get("/get-cache-stat", {
+    schema: {
+      description: 'Get the All Cache Stats',
+      tags: ['Settings'],
+      headers: {
+        type: 'object',
+        properties: {
+          authorization: { type: 'string', description: 'Bearer token for authentication' },
+        },
+        required: ['authorization'],
+      }
+    },
+    preHandler: [authGuard.isAuthenticated],
+    handler: SettingsController.getCacheStat
+  });
+
 }

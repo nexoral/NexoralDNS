@@ -78,6 +78,10 @@ export const api = {
 
   updateDefaultTTL: (data) =>
     apiClient.put(getApiUrl('UPDATE_DEFAULT_TTL'), data),
+
+  // Cache Management
+  getCacheStats: () =>
+    apiClient.get(getApiUrl('GET_CACHE_STATS')),
 };
 
 export default api;

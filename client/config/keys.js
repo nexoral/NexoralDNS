@@ -24,7 +24,8 @@ export const config = {
     GET_DASHBOARD_ANALYTICS: '/api/analytics/get-dashboard-data',
     GET_LOGS: '/api/analytics/get-logs',
     GET_DEFAULT_TTL: '/api/settings/default-ttl',
-    UPDATE_DEFAULT_TTL: '/api/settings/default-ttl'
+    UPDATE_DEFAULT_TTL: '/api/settings/default-ttl',
+    GET_CACHE_STATS: '/api/settings/get-cache-stat'
   },
 
   // Application Configuration

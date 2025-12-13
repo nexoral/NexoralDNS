@@ -8,6 +8,7 @@ import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware"
 // services
 import ServiceToggleService from "../../Services/settings/serviceToggle.service";
 import DefaultTTLService from "../../Services/settings/defaultTTL.service";
+import CacheService from "../../Services/settings/Cache.service";
 
 /**
  * SettingsController handles settings-related requests.
@@ -55,6 +56,18 @@ export default class SettingsController {
     try {
       const { defaultTTL } = request.body as { defaultTTL: number };
       return ttlService.updateDefaultTTL(defaultTTL);
+    } catch (error) {
+      return Responser.send(error);
+    }
+  }
+
+  // Get Cache Stat
+  static getCacheStat(request: authGuardFastifyRequest, reply: FastifyReply){
+    // construct Response
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to fetch Cache Data");
+    const cacheService = new CacheService(reply);
+    try {
+      return cacheService.getStats();
     } catch (error) {
       return Responser.send(error);
     }
