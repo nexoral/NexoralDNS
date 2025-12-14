@@ -146,4 +146,48 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
     handler: SettingsController.getCacheStat
   });
 
+  // Delete All DNS Cache
+  fastify.delete("/delete-all-dns-cache", {
+    schema: {
+      description: 'Delete All DNS Cache Keys',
+      tags: ['Settings'],
+      headers: {
+        type: 'object',
+        properties: {
+          authorization: { type: 'string', description: 'Bearer token for authentication' },
+        },
+        required: ['authorization'],
+      }
+    },
+    preHandler: [authGuard.isAuthenticated],
+    handler: SettingsController.deleteAllDNSCache
+  });
+
+  // Delete Specific Cache Key
+  fastify.delete("/delete-specific-cache-key", {
+    schema: {
+      description: 'Delete Specific Cache Key',
+      tags: ['Settings'],
+      headers: {
+        type: 'object',
+        properties: {
+          authorization: { type: 'string', description: 'Bearer token for authentication' },
+        },
+        required: ['authorization'],
+      },
+      querystring: {
+        type: 'object',
+        required: ['keyName'],
+        properties: {
+          keyName: {
+            type: 'string',
+            description: 'The cache key name to delete'
+          }
+        }
+      }
+    },
+    preHandler: [authGuard.isAuthenticated],
+    handler: SettingsController.deleteSpecificDnsKey
+  });
+
 }

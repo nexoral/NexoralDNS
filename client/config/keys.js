@@ -25,7 +25,9 @@ export const config = {
     GET_LOGS: '/api/analytics/get-logs',
     GET_DEFAULT_TTL: '/api/settings/default-ttl',
     UPDATE_DEFAULT_TTL: '/api/settings/default-ttl',
-    GET_CACHE_STATS: '/api/settings/get-cache-stat'
+    GET_CACHE_STATS: '/api/settings/get-cache-stat',
+    DELETE_ALL_CACHE: '/api/settings/delete-all-dns-cache',
+    DELETE_SPECIFIC_CACHE: '/api/settings/delete-specific-cache-key'
   },
 
   // Application Configuration

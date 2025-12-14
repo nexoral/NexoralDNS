@@ -61,6 +61,7 @@ export default function DNSCachePage() {
 
             return {
               id: currentSkip + index + 1,
+              cacheKey: record.key,
               domain: recordData.name || record.key,
               recordType: recordData.type || 'Unknown',
               value: recordData.value || record.value,
@@ -142,6 +143,7 @@ export default function DNSCachePage() {
   };
 
   const formatExpiryTime = (date) => {
+    if (!date) return 'N/A';
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -157,17 +159,39 @@ export default function DNSCachePage() {
     setShowClearSingleModal(true);
   };
 
-  const confirmClearSingle = () => {
-    console.log('Clear single record:', selectedRecord);
-    setShowClearSingleModal(false);
-    setSelectedRecord(null);
-    // Call API to clear single cache entry
+  const confirmClearSingle = async () => {
+    try {
+      const response = await api.deleteSpecificCache(selectedRecord.cacheKey);
+      if (response.data && (response.data.statusCode === 200 || response.data.statusCode === 202)) {
+        // Refresh cache stats after successful delete
+        await fetchCacheStats(false);
+      } else {
+        setError('Failed to delete cache entry');
+      }
+    } catch (err) {
+      console.error('Error deleting cache entry:', err);
+      setError('Failed to delete cache entry');
+    } finally {
+      setShowClearSingleModal(false);
+      setSelectedRecord(null);
+    }
   };
 
-  const confirmClearAll = () => {
-    console.log('Clear all cache');
-    setShowClearAllModal(false);
-    // Call API to clear all cache
+  const confirmClearAll = async () => {
+    try {
+      const response = await api.deleteAllCache();
+      if (response.data && (response.data.statusCode === 200 || response.data.statusCode === 202)) {
+        // Refresh cache stats after successful delete
+        await fetchCacheStats(false);
+      } else {
+        setError('Failed to clear all cache');
+      }
+    } catch (err) {
+      console.error('Error clearing all cache:', err);
+      setError('Failed to clear all cache');
+    } finally {
+      setShowClearAllModal(false);
+    }
   };
 
   const getRecordTypeBadge = (type) => {
@@ -202,7 +226,10 @@ export default function DNSCachePage() {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => fetchCacheStats(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  fetchCacheStats(false);
+                }}
                 disabled={loading}
                 className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium flex items-center space-x-2"
                 title="Refresh stats"
@@ -212,13 +239,15 @@ export default function DNSCachePage() {
                 </svg>
                 <span>Refresh</span>
               </button>
-              <Button
-                onClick={() => setShowClearAllModal(true)}
-                variant="danger"
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                Clear All Cache
-              </Button>
+              {cachedRecords.length > 0 && (
+                <Button
+                  onClick={() => setShowClearAllModal(true)}
+                  variant="danger"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Clear All Cache
+                </Button>
+              )}
             </div>
           </div>
 

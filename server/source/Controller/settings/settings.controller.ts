@@ -25,7 +25,7 @@ export default class SettingsController {
   constructor() { }
 
   // Toggle service
-  static toggleService(request: authGuardFastifyRequest, reply: FastifyReply) {
+  public static toggleService(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Service update failed");
     const serviceToggler = new ServiceToggleService(reply)
@@ -37,7 +37,7 @@ export default class SettingsController {
   }
 
   // Get Default TTL
-  static getDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
+  public static getDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to fetch Default TTL");
     const ttlService = new DefaultTTLService(reply);
@@ -49,7 +49,7 @@ export default class SettingsController {
   }
 
   // Update Default TTL
-  static updateDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
+  public static updateDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to update Default TTL");
     const ttlService = new DefaultTTLService(reply);
@@ -62,7 +62,7 @@ export default class SettingsController {
   }
 
   // Get Cache Stat
-  static getCacheStat(request: authGuardFastifyRequest, reply: FastifyReply){
+  public static getCacheStat(request: authGuardFastifyRequest, reply: FastifyReply){
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to fetch Cache Data");
     const cacheService = new CacheService(reply);
@@ -72,6 +72,36 @@ export default class SettingsController {
       const skip = parseFloat(requestQuery.skip) || 0;
       const limit = parseFloat(requestQuery.limit) || 50;
       return cacheService.getStats(limit, skip);
+    } catch (error) {
+      return Responser.send(error);
+    }
+  }
+
+  // Delete all DNS Cache
+  public static deleteAllDNSCache(request: authGuardFastifyRequest, reply: FastifyReply){
+    // construct Response
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to Delete Cache Keys");
+    const cacheService = new CacheService(reply);
+
+    try {
+      return cacheService.deleteAllDNSCahce()
+    } catch (error) {
+      return Responser.send(error);
+    }
+  }
+
+
+  // Delete Specific DNS Cache Key
+  public static deleteSpecificDnsKey(request: authGuardFastifyRequest, reply: FastifyReply) {
+    // construct Response
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to Delete Cache Key");
+    const cacheService = new CacheService(reply);
+
+    try {
+      // extract skip limit from query
+      const requestQuery = request.query as { keyName: string }
+
+      return cacheService.deleteSpecificDNSCache(requestQuery.keyName)
     } catch (error) {
       return Responser.send(error);
     }

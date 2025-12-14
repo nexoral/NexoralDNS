@@ -82,6 +82,12 @@ export const api = {
   // Cache Management
   getCacheStats: (params) =>
     apiClient.get(getApiUrl('GET_CACHE_STATS'), { params }),
+
+  deleteAllCache: () =>
+    apiClient.delete(getApiUrl('DELETE_ALL_CACHE')),
+
+  deleteSpecificCache: (keyName) =>
+    apiClient.delete(getApiUrl('DELETE_SPECIFIC_CACHE'), { params: { keyName } }),
 };
 
 export default api;
