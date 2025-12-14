@@ -641,7 +641,7 @@ class RedisCacheService {
 
    */
 
-  async getAllRecords(pattern: string = '*', limit: number = 1000): Promise<any[]> {
+  async getAllRecords(pattern: string = '*', limit: number = 1000, skip: number = 0): Promise<any[]> {
 
     try {
 
@@ -651,8 +651,8 @@ class RedisCacheService {
 
       const records = [];
 
-      // Limit to prevent overwhelming the system
-      const keysToProcess = keys.slice(0, limit);
+      // Apply skip and limit for pagination
+      const keysToProcess = keys.slice(skip, skip + limit);
 
       for (const key of keysToProcess) {
         const [value, ttl, type] = await Promise.all([

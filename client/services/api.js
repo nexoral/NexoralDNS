@@ -80,8 +80,8 @@ export const api = {
     apiClient.put(getApiUrl('UPDATE_DEFAULT_TTL'), data),
 
   // Cache Management
-  getCacheStats: () =>
-    apiClient.get(getApiUrl('GET_CACHE_STATS')),
+  getCacheStats: (params) =>
+    apiClient.get(getApiUrl('GET_CACHE_STATS'), { params }),
 };
 
 export default api;

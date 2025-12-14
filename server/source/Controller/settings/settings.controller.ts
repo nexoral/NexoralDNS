@@ -67,7 +67,11 @@ export default class SettingsController {
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to fetch Cache Data");
     const cacheService = new CacheService(reply);
     try {
-      return cacheService.getStats();
+      // extract skip limit from query
+      const requestQuery = request.query as {skip: string, limit: string}
+      const skip = parseFloat(requestQuery.skip) || 0;
+      const limit = parseFloat(requestQuery.limit) || 50;
+      return cacheService.getStats(limit, skip);
     } catch (error) {
       return Responser.send(error);
     }

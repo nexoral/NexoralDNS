@@ -17,12 +17,16 @@ export default class CacheService {
     this.Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Redis Cache Starts fetched")
   }
 
-  public async getStats () {
+  // get Cache Stats
+  public async getStats (limit: number, skip: number) {
+    // Pull Stats
     const starts = await this.RedisCache.getStats();
-    const records = await this.RedisCache.getAllRecords(`${CacheKeys.Domain_DNS_Record}*`)
+    // Pull Records
+    const records = await this.RedisCache.getAllRecords(`${CacheKeys.Domain_DNS_Record}*`, limit, skip)
 
-    starts.records = records;
-      return this.Responser.send(starts)
+    // Add Records into response
+      starts.records = records;
+    return this.Responser.send(starts)
   }
 
 }

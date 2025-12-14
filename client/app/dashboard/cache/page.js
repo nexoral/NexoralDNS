@@ -17,7 +17,11 @@ export default function DNSCachePage() {
   const [cacheStats, setCacheStats] = useState(null);
   const [cachedRecords, setCachedRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [skip, setSkip] = useState(0);
+  const [limit] = useState(50);
+  const [hasMore, setHasMore] = useState(true);
   const { user } = useAuthStore();
 
   // Fetch cache stats from API
@@ -25,13 +29,24 @@ export default function DNSCachePage() {
     fetchCacheStats();
   }, []);
 
-  const fetchCacheStats = async () => {
-    setLoading(true);
+  const fetchCacheStats = async (isLoadMore = false) => {
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setSkip(0);
+      setCachedRecords([]);
+    }
     setError(null);
+
+    const currentSkip = isLoadMore ? skip : 0;
+
     try {
-      const response = await api.getCacheStats();
+      const response = await api.getCacheStats({ skip: currentSkip, limit });
       if (response.data && response.data.statusCode === 200) {
-        setCacheStats(response.data.data);
+        if (!isLoadMore) {
+          setCacheStats(response.data.data);
+        }
 
         // Parse records if available
         if (response.data.data.records && Array.isArray(response.data.data.records)) {
@@ -45,7 +60,7 @@ export default function DNSCachePage() {
             }
 
             return {
-              id: index + 1,
+              id: currentSkip + index + 1,
               domain: recordData.name || record.key,
               recordType: recordData.type || 'Unknown',
               value: recordData.value || record.value,
@@ -54,9 +69,25 @@ export default function DNSCachePage() {
               size: record.size || '0 bytes'
             };
           });
-          setCachedRecords(parsedRecords);
+
+          if (isLoadMore) {
+            setCachedRecords(prev => [...prev, ...parsedRecords]);
+          } else {
+            setCachedRecords(parsedRecords);
+          }
+
+          // Check if there are more records to load
+          setHasMore(parsedRecords.length === limit);
+          if (isLoadMore) {
+            setSkip(currentSkip + parsedRecords.length);
+          } else {
+            setSkip(parsedRecords.length);
+          }
         } else {
-          setCachedRecords([]);
+          if (!isLoadMore) {
+            setCachedRecords([]);
+          }
+          setHasMore(false);
         }
       } else {
         setError('Failed to fetch cache stats');
@@ -64,17 +95,23 @@ export default function DNSCachePage() {
     } catch (err) {
       console.error('Error fetching cache stats:', err);
       setError('Failed to fetch cache stats');
-      // Set default values on error
-      setCacheStats({
-        total_keys: 0,
-        used_memory: '0B',
-        keyspace_hits: 0,
-        keyspace_misses: 0,
-        hit_rate: '0%'
-      });
-      setCachedRecords([]);
+      if (!isLoadMore) {
+        // Set default values on error
+        setCacheStats({
+          total_keys: 0,
+          used_memory: '0B',
+          keyspace_hits: 0,
+          keyspace_misses: 0,
+          hit_rate: '0%'
+        });
+        setCachedRecords([]);
+      }
     } finally {
-      setLoading(false);
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -165,7 +202,7 @@ export default function DNSCachePage() {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={fetchCacheStats}
+                onClick={() => fetchCacheStats(false)}
                 disabled={loading}
                 className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium flex items-center space-x-2"
                 title="Refresh stats"
@@ -203,8 +240,8 @@ export default function DNSCachePage() {
 
           {/* Stats Cards */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-pulse">
                   <div className="h-4 bg-slate-200 rounded w-20 mb-2"></div>
                   <div className="h-8 bg-slate-200 rounded w-16"></div>
@@ -212,21 +249,7 @@ export default function DNSCachePage() {
               ))}
             </div>
           ) : cacheStats ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-600">Total Records</p>
-                    <p className="text-2xl font-bold text-slate-800">{cacheStats.total_keys?.toLocaleString() || 0}</p>
-                  </div>
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -439,6 +462,34 @@ export default function DNSCachePage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Load More Button */}
+                {hasMore && filteredRecords.length > 0 && (
+                  <div className="p-6 border-t border-slate-200 flex justify-center">
+                    <button
+                      onClick={() => fetchCacheStats(true)}
+                      disabled={loadingMore}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Loading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                          <span>Load More</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -465,7 +516,7 @@ export default function DNSCachePage() {
               </div>
               <h3 className="text-xl font-bold text-slate-800 text-center mb-2">Clear All Cache?</h3>
               <p className="text-slate-600 text-center mb-6">
-                This will remove all {cacheStats?.total_keys?.toLocaleString() || 0} cached records. This action cannot be undone.
+                This will remove all {cachedRecords.length?.toLocaleString() || 0} cached records. This action cannot be undone.
               </p>
               <div className="flex space-x-3">
                 <button
