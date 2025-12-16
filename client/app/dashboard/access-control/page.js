@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import Button from '../../../components/ui/Button';
@@ -8,26 +8,47 @@ import useAuthStore from '../../../stores/authStore';
 import PoliciesTab from '../../../components/access-control/PoliciesTab';
 import DomainGroupsTab from '../../../components/access-control/DomainGroupsTab';
 import IPGroupsTab from '../../../components/access-control/IPGroupsTab';
-import AnalyticsTab from '../../../components/access-control/AnalyticsTab';
+import api from '../../../services/api';
 
 export default function AccessControlPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('policies');
   const { user } = useAuthStore();
+  const [stats, setStats] = useState({
+    activePolicies: 0,
+    blockedUsers: 0,
+    blockedDomains: 0,
+    blocksToday: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Mock stats - replace with API calls
-  const stats = {
-    activePolicies: 12,
-    blockedUsers: 8,
-    blockedDomains: 45,
-    blocksToday: 234
-  };
+  // Fetch analytics on mount
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        const response = await api.getAccessControlAnalytics();
+        const data = response.data.data;
+        setStats({
+          activePolicies: data.activePolicies || 0,
+          blockedUsers: data.blockedUsers || 0,
+          blockedDomains: data.blockedDomains || 0,
+          blocksToday: data.blocksToday || 0
+        });
+      } catch (error) {
+        console.error('Error fetching analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
 
   const tabs = [
     { id: 'policies', label: 'Policies', icon: '🛡️' },
     { id: 'domain-groups', label: 'Domain Groups', icon: '📁' },
-    { id: 'ip-groups', label: 'IP Groups', icon: '👥' },
-    { id: 'analytics', label: 'Analytics', icon: '📊' }
+    { id: 'ip-groups', label: 'IP Groups', icon: '👥' }
   ];
 
   return (
@@ -54,7 +75,11 @@ export default function AccessControlPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Active Policies</p>
-                  <p className="text-2xl font-bold text-slate-800">{stats.activePolicies}</p>
+                  <p className="text-2xl font-bold text-slate-800">
+                    {loading ? (
+                      <span className="inline-block animate-pulse bg-slate-200 h-8 w-12 rounded">&nbsp;</span>
+                    ) : stats.activePolicies}
+                  </p>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +93,11 @@ export default function AccessControlPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Blocked Users</p>
-                  <p className="text-2xl font-bold text-slate-800">{stats.blockedUsers}</p>
+                  <p className="text-2xl font-bold text-slate-800">
+                    {loading ? (
+                      <span className="inline-block animate-pulse bg-slate-200 h-8 w-12 rounded">&nbsp;</span>
+                    ) : stats.blockedUsers}
+                  </p>
                 </div>
                 <div className="p-3 bg-red-50 rounded-lg">
                   <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,7 +111,11 @@ export default function AccessControlPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Blocked Domains</p>
-                  <p className="text-2xl font-bold text-slate-800">{stats.blockedDomains}</p>
+                  <p className="text-2xl font-bold text-slate-800">
+                    {loading ? (
+                      <span className="inline-block animate-pulse bg-slate-200 h-8 w-12 rounded">&nbsp;</span>
+                    ) : stats.blockedDomains}
+                  </p>
                 </div>
                 <div className="p-3 bg-orange-50 rounded-lg">
                   <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +129,11 @@ export default function AccessControlPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Blocks Today</p>
-                  <p className="text-2xl font-bold text-slate-800">{stats.blocksToday}</p>
+                  <p className="text-2xl font-bold text-slate-800">
+                    {loading ? (
+                      <span className="inline-block animate-pulse bg-slate-200 h-8 w-12 rounded">&nbsp;</span>
+                    ) : stats.blocksToday}
+                  </p>
                 </div>
                 <div className="p-3 bg-purple-50 rounded-lg">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +172,6 @@ export default function AccessControlPage() {
               {activeTab === 'policies' && <PoliciesTab />}
               {activeTab === 'domain-groups' && <DomainGroupsTab />}
               {activeTab === 'ip-groups' && <IPGroupsTab />}
-              {activeTab === 'analytics' && <AnalyticsTab />}
             </div>
           </div>
         </main>

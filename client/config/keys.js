@@ -27,7 +27,29 @@ export const config = {
     UPDATE_DEFAULT_TTL: '/api/settings/default-ttl',
     GET_CACHE_STATS: '/api/settings/get-cache-stat',
     DELETE_ALL_CACHE: '/api/settings/delete-all-dns-cache',
-    DELETE_SPECIFIC_CACHE: '/api/settings/delete-specific-cache-key'
+    DELETE_SPECIFIC_CACHE: '/api/settings/delete-specific-cache-key',
+    // Access Control - Policies
+    CREATE_ACCESS_CONTROL_POLICY: '/api/access-control/policy',
+    GET_ACCESS_CONTROL_POLICIES: '/api/access-control/policies',
+    GET_ACCESS_CONTROL_POLICY: '/api/access-control/policy',
+    UPDATE_ACCESS_CONTROL_POLICY: '/api/access-control/policy',
+    TOGGLE_ACCESS_CONTROL_POLICY: '/api/access-control/policy',
+    DELETE_ACCESS_CONTROL_POLICY: '/api/access-control/policy',
+    // Access Control - Domain Groups
+    CREATE_DOMAIN_GROUP: '/api/access-control/domain-group',
+    GET_DOMAIN_GROUPS: '/api/access-control/domain-groups',
+    GET_DOMAIN_GROUP: '/api/access-control/domain-group',
+    UPDATE_DOMAIN_GROUP: '/api/access-control/domain-group',
+    DELETE_DOMAIN_GROUP: '/api/access-control/domain-group',
+    // Access Control - IP Groups
+    CREATE_IP_GROUP: '/api/access-control/ip-group',
+    GET_IP_GROUPS: '/api/access-control/ip-groups',
+    GET_IP_GROUP: '/api/access-control/ip-group',
+    UPDATE_IP_GROUP: '/api/access-control/ip-group',
+    DELETE_IP_GROUP: '/api/access-control/ip-group',
+    // Access Control - Analytics
+    GET_ACCESS_CONTROL_ANALYTICS: '/api/access-control/analytics',
+    GET_POLICY_STATISTICS: '/api/access-control/analytics/policies'
   },
 
   // Application Configuration

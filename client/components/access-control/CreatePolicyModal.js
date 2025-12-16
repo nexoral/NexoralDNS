@@ -16,6 +16,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
     isActive: true
   });
   const [newDomain, setNewDomain] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const policyTypes = [
     { id: 'user_domain', label: 'Block user from specific domains', icon: '🚫' },
@@ -58,8 +59,17 @@ export default function CreatePolicyModal({ onClose, onSave }) {
     if (step > 1) setStep(step - 1);
   };
 
-  const handleSubmit = () => {
-    onSave(formData);
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await onSave(formData);
+      // Modal will be closed by parent component on success
+    } catch (error) {
+      // Error handling is done in parent component
+      console.error('Error in modal:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const canProceed = () => {
@@ -396,20 +406,24 @@ export default function CreatePolicyModal({ onClose, onSave }) {
         <div className="p-6 border-t border-slate-200 flex items-center justify-between">
           <button
             onClick={step === 1 ? onClose : handleBack}
-            className="px-6 py-2 text-slate-600 hover:text-slate-800 font-medium"
+            disabled={loading}
+            className="px-6 py-2 text-slate-600 hover:text-slate-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
           <button
             onClick={step === 4 ? handleSubmit : handleNext}
-            disabled={!canProceed()}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              canProceed()
+            disabled={!canProceed() || loading}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+              canProceed() && !loading
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-slate-300 text-slate-500 cursor-not-allowed'
             }`}
           >
-            {step === 4 ? 'Create Policy' : 'Next'}
+            {loading && step === 4 && (
+              <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            )}
+            <span>{step === 4 ? (loading ? 'Creating...' : 'Create Policy') : 'Next'}</span>
           </button>
         </div>
       </div>

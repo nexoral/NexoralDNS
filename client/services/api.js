@@ -88,6 +88,64 @@ export const api = {
 
   deleteSpecificCache: (keyName) =>
     apiClient.delete(getApiUrl('DELETE_SPECIFIC_CACHE'), { params: { keyName } }),
+
+  // Access Control Policy Management
+  createAccessControlPolicy: (data) =>
+    apiClient.post(getApiUrl('CREATE_ACCESS_CONTROL_POLICY'), data),
+
+  getAccessControlPolicies: (params) =>
+    apiClient.get(getApiUrl('GET_ACCESS_CONTROL_POLICIES'), { params }),
+
+  getAccessControlPolicyById: (policyId) =>
+    apiClient.get(`${getApiUrl('GET_ACCESS_CONTROL_POLICY')}/${policyId}`),
+
+  updateAccessControlPolicy: (policyId, data) =>
+    apiClient.put(`${getApiUrl('UPDATE_ACCESS_CONTROL_POLICY')}/${policyId}`, data),
+
+  toggleAccessControlPolicy: (policyId) =>
+    apiClient.patch(`${getApiUrl('TOGGLE_ACCESS_CONTROL_POLICY')}/${policyId}/toggle`),
+
+  deleteAccessControlPolicy: (policyId) =>
+    apiClient.delete(`${getApiUrl('DELETE_ACCESS_CONTROL_POLICY')}/${policyId}`),
+
+  // Domain Group Management
+  createDomainGroup: (data) =>
+    apiClient.post(getApiUrl('CREATE_DOMAIN_GROUP'), data),
+
+  getDomainGroups: (params) =>
+    apiClient.get(getApiUrl('GET_DOMAIN_GROUPS'), { params }),
+
+  getDomainGroupById: (groupId) =>
+    apiClient.get(`${getApiUrl('GET_DOMAIN_GROUP')}/${groupId}`),
+
+  updateDomainGroup: (groupId, data) =>
+    apiClient.put(`${getApiUrl('UPDATE_DOMAIN_GROUP')}/${groupId}`, data),
+
+  deleteDomainGroup: (groupId) =>
+    apiClient.delete(`${getApiUrl('DELETE_DOMAIN_GROUP')}/${groupId}`),
+
+  // IP Group Management
+  createIPGroup: (data) =>
+    apiClient.post(getApiUrl('CREATE_IP_GROUP'), data),
+
+  getIPGroups: (params) =>
+    apiClient.get(getApiUrl('GET_IP_GROUPS'), { params }),
+
+  getIPGroupById: (groupId) =>
+    apiClient.get(`${getApiUrl('GET_IP_GROUP')}/${groupId}`),
+
+  updateIPGroup: (groupId, data) =>
+    apiClient.put(`${getApiUrl('UPDATE_IP_GROUP')}/${groupId}`, data),
+
+  deleteIPGroup: (groupId) =>
+    apiClient.delete(`${getApiUrl('DELETE_IP_GROUP')}/${groupId}`),
+
+  // Access Control Analytics
+  getAccessControlAnalytics: () =>
+    apiClient.get(getApiUrl('GET_ACCESS_CONTROL_ANALYTICS')),
+
+  getPolicyStatistics: () =>
+    apiClient.get(getApiUrl('GET_POLICY_STATISTICS')),
 };
 
 export default api;
