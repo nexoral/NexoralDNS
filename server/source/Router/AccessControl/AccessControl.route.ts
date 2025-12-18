@@ -74,52 +74,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
             description: 'Whether the policy is active'
           }
         }
-      },
-      response: {
-        201: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                policyId: { type: 'string' },
-                policy: { type: 'object' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        },
-        400: {
-          description: 'Bad request - Invalid data',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        },
-        409: {
-          description: 'Conflict - Policy already exists',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        }
       }
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
@@ -157,27 +111,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
             default: '50'
           }
         }
-      },
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                policies: { type: 'array' },
-                total: { type: 'number' },
-                skip: { type: 'number' },
-                limit: { type: 'number' },
-                filter: { type: 'string' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        }
       }
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
@@ -203,51 +136,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           policyId: {
             type: 'string',
             description: 'The policy ID'
-          }
-        }
-      },
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                policy: { type: 'object' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        },
-        400: {
-          description: 'Bad request - Invalid policy ID',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        },
-        404: {
-          description: 'Not found - Policy not found',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
           }
         }
       }
@@ -322,65 +210,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
             description: 'Whether the policy is active'
           }
         }
-      },
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                policy: { type: 'object' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        },
-        400: {
-          description: 'Bad request - Invalid data',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        },
-        404: {
-          description: 'Not found - Policy not found',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        },
-        409: {
-          description: 'Conflict - Policy name already exists',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        }
       }
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
@@ -408,52 +237,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
             description: 'The policy ID'
           }
         }
-      },
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                policyId: { type: 'string' },
-                isActive: { type: 'boolean' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        },
-        400: {
-          description: 'Bad request - Invalid policy ID',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        },
-        404: {
-          description: 'Not found - Policy not found',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        }
       }
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
@@ -479,51 +262,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           policyId: {
             type: 'string',
             description: 'The policy ID'
-          }
-        }
-      },
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                policyId: { type: 'string' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        },
-        400: {
-          description: 'Bad request - Invalid policy ID',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
-          }
-        },
-        404: {
-          description: 'Not found - Policy not found',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                error: { type: 'string' }
-              }
-            }
           }
         }
       }
