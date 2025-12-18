@@ -9,10 +9,13 @@ export interface AccessControlPolicyData {
   policyType: string;
   targetType: string;
   targetIP?: string;
-  targetIPGroup?: string;
+  targetIPs?: string[]; // Support multiple IPs
+  targetIPGroup?: ObjectId | string; // ObjectId reference to IP Group
+  targetIPGroups?: (ObjectId | string)[]; // Support multiple IP Groups
   blockType: string;
   domains?: string[];
-  domainGroup?: string;
+  domainGroup?: ObjectId | string; // ObjectId reference to Domain Group
+  domainGroups?: (ObjectId | string)[]; // Support multiple Domain Groups
   policyName: string;
   isActive: boolean;
   createdAt?: number;
@@ -60,7 +63,7 @@ export default class AccessControlPolicyService {
     }
 
     // Validate target type
-    const validTargetTypes = ["single_ip", "ip_group", "all"];
+    const validTargetTypes = ["single_ip", "multiple_ips", "ip_group", "multiple_ip_groups", "all"];
     if (!validTargetTypes.includes(policyData.targetType)) {
       const ErrorResponse = new BuildResponse(
         this.fastifyReply,
@@ -68,7 +71,7 @@ export default class AccessControlPolicyService {
         "Invalid target type"
       );
       return ErrorResponse.send({
-        error: "Target type must be one of: single_ip, ip_group, all"
+        error: "Target type must be one of: single_ip, multiple_ips, ip_group, multiple_ip_groups, all"
       });
     }
 
@@ -84,8 +87,20 @@ export default class AccessControlPolicyService {
       });
     }
 
+    // Validate target IPs if targetType is multiple_ips
+    if (policyData.targetType === "multiple_ips" && (!policyData.targetIPs || policyData.targetIPs.length === 0)) {
+      const ErrorResponse = new BuildResponse(
+        this.fastifyReply,
+        StatusCodes.BAD_REQUEST,
+        "Target IPs are required"
+      );
+      return ErrorResponse.send({
+        error: "At least one IP is required when target type is multiple_ips"
+      });
+    }
+
     // Validate target IP group if targetType is ip_group
-    if (policyData.targetType === "ip_group" && (!policyData.targetIPGroup || policyData.targetIPGroup.trim() === "")) {
+    if (policyData.targetType === "ip_group" && !policyData.targetIPGroup) {
       const ErrorResponse = new BuildResponse(
         this.fastifyReply,
         StatusCodes.BAD_REQUEST,
@@ -96,8 +111,20 @@ export default class AccessControlPolicyService {
       });
     }
 
+    // Validate target IP groups if targetType is multiple_ip_groups
+    if (policyData.targetType === "multiple_ip_groups" && (!policyData.targetIPGroups || policyData.targetIPGroups.length === 0)) {
+      const ErrorResponse = new BuildResponse(
+        this.fastifyReply,
+        StatusCodes.BAD_REQUEST,
+        "Target IP groups are required"
+      );
+      return ErrorResponse.send({
+        error: "At least one IP group is required when target type is multiple_ip_groups"
+      });
+    }
+
     // Validate block type
-    const validBlockTypes = ["specific_domains", "domain_group", "full_internet"];
+    const validBlockTypes = ["specific_domains", "domain_group", "multiple_domain_groups", "full_internet"];
     if (!validBlockTypes.includes(policyData.blockType)) {
       const ErrorResponse = new BuildResponse(
         this.fastifyReply,
@@ -105,7 +132,7 @@ export default class AccessControlPolicyService {
         "Invalid block type"
       );
       return ErrorResponse.send({
-        error: "Block type must be one of: specific_domains, domain_group, full_internet"
+        error: "Block type must be one of: specific_domains, domain_group, multiple_domain_groups, full_internet"
       });
     }
 
@@ -122,7 +149,7 @@ export default class AccessControlPolicyService {
     }
 
     // Validate domain group if blockType is domain_group
-    if (policyData.blockType === "domain_group" && (!policyData.domainGroup || policyData.domainGroup.trim() === "")) {
+    if (policyData.blockType === "domain_group" && !policyData.domainGroup) {
       const ErrorResponse = new BuildResponse(
         this.fastifyReply,
         StatusCodes.BAD_REQUEST,
@@ -130,6 +157,18 @@ export default class AccessControlPolicyService {
       );
       return ErrorResponse.send({
         error: "Domain group is required when block type is domain_group"
+      });
+    }
+
+    // Validate domain groups if blockType is multiple_domain_groups
+    if (policyData.blockType === "multiple_domain_groups" && (!policyData.domainGroups || policyData.domainGroups.length === 0)) {
+      const ErrorResponse = new BuildResponse(
+        this.fastifyReply,
+        StatusCodes.BAD_REQUEST,
+        "Domain groups are required"
+      );
+      return ErrorResponse.send({
+        error: "At least one domain group is required when block type is multiple_domain_groups"
       });
     }
 
@@ -151,12 +190,76 @@ export default class AccessControlPolicyService {
       });
     }
 
-    // Create the policy
-    const newPolicy = {
+    // Convert string IDs to ObjectIds for references
+    const newPolicy: any = {
       ...policyData,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+
+    // Convert targetIPGroup to ObjectId if it exists
+    if (newPolicy.targetIPGroup) {
+      if (!ObjectId.isValid(newPolicy.targetIPGroup)) {
+        const ErrorResponse = new BuildResponse(
+          this.fastifyReply,
+          StatusCodes.BAD_REQUEST,
+          "Invalid IP group ID"
+        );
+        return ErrorResponse.send({
+          error: "Invalid IP group ID format"
+        });
+      }
+      newPolicy.targetIPGroup = new ObjectId(newPolicy.targetIPGroup);
+    }
+
+    // Convert targetIPGroups array to ObjectIds if it exists
+    if (newPolicy.targetIPGroups && Array.isArray(newPolicy.targetIPGroups)) {
+      for (const id of newPolicy.targetIPGroups) {
+        if (!ObjectId.isValid(id)) {
+          const ErrorResponse = new BuildResponse(
+            this.fastifyReply,
+            StatusCodes.BAD_REQUEST,
+            "Invalid IP group IDs"
+          );
+          return ErrorResponse.send({
+            error: `Invalid IP group ID format: ${id}`
+          });
+        }
+      }
+      newPolicy.targetIPGroups = newPolicy.targetIPGroups.map((id: string) => new ObjectId(id));
+    }
+
+    // Convert domainGroup to ObjectId if it exists
+    if (newPolicy.domainGroup) {
+      if (!ObjectId.isValid(newPolicy.domainGroup)) {
+        const ErrorResponse = new BuildResponse(
+          this.fastifyReply,
+          StatusCodes.BAD_REQUEST,
+          "Invalid domain group ID"
+        );
+        return ErrorResponse.send({
+          error: "Invalid domain group ID format"
+        });
+      }
+      newPolicy.domainGroup = new ObjectId(newPolicy.domainGroup);
+    }
+
+    // Convert domainGroups array to ObjectIds if it exists
+    if (newPolicy.domainGroups && Array.isArray(newPolicy.domainGroups)) {
+      for (const id of newPolicy.domainGroups) {
+        if (!ObjectId.isValid(id)) {
+          const ErrorResponse = new BuildResponse(
+            this.fastifyReply,
+            StatusCodes.BAD_REQUEST,
+            "Invalid domain group IDs"
+          );
+          return ErrorResponse.send({
+            error: `Invalid domain group ID format: ${id}`
+          });
+        }
+      }
+      newPolicy.domainGroups = newPolicy.domainGroups.map((id: string) => new ObjectId(id));
+    }
 
     const result = await dbClient.insertOne(newPolicy);
 

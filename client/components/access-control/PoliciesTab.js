@@ -12,6 +12,22 @@ export default function PoliciesTab() {
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [ipGroups, setIpGroups] = useState([]);
+  const [domainGroups, setDomainGroups] = useState([]);
+
+  // Fetch groups for mapping IDs to names
+  const fetchGroups = async () => {
+    try {
+      const [ipGroupsResponse, domainGroupsResponse] = await Promise.all([
+        api.getIPGroups(),
+        api.getDomainGroups()
+      ]);
+      setIpGroups(ipGroupsResponse.data.data.groups || []);
+      setDomainGroups(domainGroupsResponse.data.data.groups || []);
+    } catch (err) {
+      console.error('Error fetching groups:', err);
+    }
+  };
 
   // Fetch policies from API
   const fetchPolicies = async () => {
@@ -29,6 +45,11 @@ export default function PoliciesTab() {
     }
   };
 
+  // Fetch groups on mount
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
   // Fetch policies on mount and when filter changes
   useEffect(() => {
     fetchPolicies();
@@ -42,7 +63,59 @@ export default function PoliciesTab() {
       domain_user: { label: 'Domain → User', color: 'bg-orange-100 text-orange-700 border-orange-300' },
       group_based: { label: 'Advanced', color: 'bg-cyan-100 text-cyan-700 border-cyan-300' }
     };
-    return badges[type] || badges.user_domain;
+    return badges[type] || badges.group_based;
+  };
+
+  // Helper function to get IP Group name by ID
+  const getIPGroupName = (id) => {
+    if (!id) return 'N/A';
+    // Convert to string for comparison (handles both ObjectId and string)
+    const idStr = typeof id === 'object' ? id.toString() : id;
+    const group = ipGroups.find(g => g._id.toString() === idStr);
+    return group ? group.name : `Unknown Group (${idStr})`;
+  };
+
+  // Helper function to get Domain Group name by ID
+  const getDomainGroupName = (id) => {
+    if (!id) return 'N/A';
+    // Convert to string for comparison (handles both ObjectId and string)
+    const idStr = typeof id === 'object' ? id.toString() : id;
+    const group = domainGroups.find(g => g._id.toString() === idStr);
+    return group ? group.name : `Unknown Group (${idStr})`;
+  };
+
+  // Helper function to format target display
+  const getTargetDisplay = (policy) => {
+    switch (policy.targetType) {
+      case 'all':
+        return 'All Users';
+      case 'single_ip':
+        return policy.targetIP || 'N/A';
+      case 'multiple_ips':
+        return `${policy.targetIPs?.length || 0} IP(s)`;
+      case 'ip_group':
+        return getIPGroupName(policy.targetIPGroup);
+      case 'multiple_ip_groups':
+        return `${policy.targetIPGroups?.length || 0} IP Group(s)`;
+      default:
+        return 'N/A';
+    }
+  };
+
+  // Helper function to format block display
+  const getBlockDisplay = (policy) => {
+    switch (policy.blockType) {
+      case 'full_internet':
+        return 'Full Internet';
+      case 'specific_domains':
+        return `${policy.domains?.length || 0} domain(s)`;
+      case 'domain_group':
+        return getDomainGroupName(policy.domainGroup);
+      case 'multiple_domain_groups':
+        return `${policy.domainGroups?.length || 0} Domain Group(s)`;
+      default:
+        return 'N/A';
+    }
   };
 
   // Handle toggle policy status
@@ -180,12 +253,8 @@ export default function PoliciesTab() {
         <div className="space-y-3">
           {filteredPolicies.map((policy) => {
             const badge = getTypeBadge(policy.policyType);
-            const displayTarget = policy.targetType === 'all' ? 'All Users' :
-                                 policy.targetType === 'single_ip' ? policy.targetIP :
-                                 policy.targetIPGroup || 'N/A';
-            const displayBlock = policy.blockType === 'full_internet' ? 'Full Internet' :
-                                policy.blockType === 'specific_domains' ? `${policy.domains?.length || 0} domain(s)` :
-                                policy.domainGroup || 'N/A';
+            const displayTarget = getTargetDisplay(policy);
+            const displayBlock = getBlockDisplay(policy);
 
             return (
               <div

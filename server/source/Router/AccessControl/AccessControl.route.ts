@@ -40,20 +40,30 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           },
           targetType: {
             type: 'string',
-            enum: ['single_ip', 'ip_group', 'all'],
+            enum: ['single_ip', 'multiple_ips', 'ip_group', 'multiple_ip_groups', 'all'],
             description: 'Target type for the policy'
           },
           targetIP: {
             type: 'string',
             description: 'Target IP address (required when targetType is single_ip)'
           },
+          targetIPs: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Multiple target IP addresses (required when targetType is multiple_ips)'
+          },
           targetIPGroup: {
             type: 'string',
-            description: 'Target IP group (required when targetType is ip_group)'
+            description: 'Target IP group ID (required when targetType is ip_group)'
+          },
+          targetIPGroups: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Multiple target IP group IDs (required when targetType is multiple_ip_groups)'
           },
           blockType: {
             type: 'string',
-            enum: ['specific_domains', 'domain_group', 'full_internet'],
+            enum: ['specific_domains', 'domain_group', 'multiple_domain_groups', 'full_internet'],
             description: 'Type of blocking to apply'
           },
           domains: {
@@ -63,7 +73,12 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           },
           domainGroup: {
             type: 'string',
-            description: 'Domain group to block (required when blockType is domain_group)'
+            description: 'Domain group ID to block (required when blockType is domain_group)'
+          },
+          domainGroups: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Multiple domain group IDs to block (required when blockType is multiple_domain_groups)'
           },
           policyName: {
             type: 'string',
@@ -176,20 +191,30 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           },
           targetType: {
             type: 'string',
-            enum: ['single_ip', 'ip_group', 'all'],
+            enum: ['single_ip', 'multiple_ips', 'ip_group', 'multiple_ip_groups', 'all'],
             description: 'Target type for the policy'
           },
           targetIP: {
             type: 'string',
             description: 'Target IP address'
           },
+          targetIPs: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Multiple target IP addresses'
+          },
           targetIPGroup: {
             type: 'string',
-            description: 'Target IP group'
+            description: 'Target IP group ID'
+          },
+          targetIPGroups: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Multiple target IP group IDs'
           },
           blockType: {
             type: 'string',
-            enum: ['specific_domains', 'domain_group', 'full_internet'],
+            enum: ['specific_domains', 'domain_group', 'multiple_domain_groups', 'full_internet'],
             description: 'Type of blocking to apply'
           },
           domains: {
@@ -199,7 +224,12 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           },
           domainGroup: {
             type: 'string',
-            description: 'Domain group to block'
+            description: 'Domain group ID to block'
+          },
+          domainGroups: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Multiple domain group IDs to block'
           },
           policyName: {
             type: 'string',
