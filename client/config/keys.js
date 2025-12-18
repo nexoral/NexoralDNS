@@ -46,10 +46,7 @@ export const config = {
     GET_IP_GROUPS: '/api/access-control/ip-groups',
     GET_IP_GROUP: '/api/access-control/ip-group',
     UPDATE_IP_GROUP: '/api/access-control/ip-group',
-    DELETE_IP_GROUP: '/api/access-control/ip-group',
-    // Access Control - Analytics
-    GET_ACCESS_CONTROL_ANALYTICS: '/api/access-control/analytics',
-    GET_POLICY_STATISTICS: '/api/access-control/analytics/policies'
+    DELETE_IP_GROUP: '/api/access-control/ip-group'
   },
 
   // Application Configuration

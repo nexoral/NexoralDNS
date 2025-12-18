@@ -139,13 +139,6 @@ export const api = {
 
   deleteIPGroup: (groupId) =>
     apiClient.delete(`${getApiUrl('DELETE_IP_GROUP')}/${groupId}`),
-
-  // Access Control Analytics
-  getAccessControlAnalytics: () =>
-    apiClient.get(getApiUrl('GET_ACCESS_CONTROL_ANALYTICS')),
-
-  getPolicyStatistics: () =>
-    apiClient.get(getApiUrl('GET_POLICY_STATISTICS')),
 };
 
 export default api;

@@ -9,7 +9,6 @@ import PermissionGuard from "../../Middlewares/permissionGuard.middleware";
 import AccessControlController from "../../Controller/AccessControl/AccessControl.controller";
 import DomainGroupController from "../../Controller/AccessControl/DomainGroup.controller";
 import IPGroupController from "../../Controller/AccessControl/IPGroup.controller";
-import AccessControlAnalyticsController from "../../Controller/AccessControl/AccessControlAnalytics.controller";
 
 export interface AccessControlOptions extends FastifyPluginOptions { }
 
@@ -781,86 +780,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
     handler: IPGroupController.deleteIPGroup
-  });
-
-  // ==================== ANALYTICS ====================
-
-  // Get access control analytics
-  fastify.get("/analytics", {
-    schema: {
-      description: 'Get access control analytics',
-      tags: ['Access Control'],
-      headers: {
-        type: 'object',
-        properties: {
-          authorization: { type: 'string', description: 'Bearer token for authentication' },
-        },
-        required: ['authorization'],
-      },
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                activePolicies: { type: 'number' },
-                totalPolicies: { type: 'number' },
-                blockedUsers: { type: 'number' },
-                blockedDomains: { type: 'number' },
-                blocksToday: { type: 'number' },
-                domainGroups: { type: 'number' },
-                ipGroups: { type: 'number' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
-    },
-    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
-    handler: AccessControlAnalyticsController.getAnalytics
-  });
-
-  // Get detailed policy statistics
-  fastify.get("/analytics/policies", {
-    schema: {
-      description: 'Get detailed policy statistics',
-      tags: ['Access Control'],
-      headers: {
-        type: 'object',
-        properties: {
-          authorization: { type: 'string', description: 'Bearer token for authentication' },
-        },
-        required: ['authorization'],
-      },
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'object',
-          properties: {
-            statusCode: { type: 'number' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                byType: { type: 'object' },
-                byStatus: { type: 'object' },
-                byTarget: { type: 'object' },
-                byBlockType: { type: 'object' },
-                total: { type: 'number' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
-    },
-    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
-    handler: AccessControlAnalyticsController.getPolicyStatistics
   });
 
 }
