@@ -1,10 +1,10 @@
 import { exec } from "child_process";
 // Get Current WAN IP
-import getLocalIPRange from "../utilities/GetWLANIP.utls";
+import getLocalIPRange from "../../utilities/GetWLANIP.utls";
 import { Retry } from "outers";
-import { pingIP } from "../helper/IP_Ping.helper";
-import { DB_DEFAULT_CONFIGS } from "../core/key";
-import { getCollectionClient } from "../Database/mongodb.db";
+import { pingIP } from "../../helper/IP_Ping.helper";
+import { DB_DEFAULT_CONFIGS } from "../../core/key";
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { promisify } from "util";
 
 

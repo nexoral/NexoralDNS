@@ -10,7 +10,7 @@ export const api = {
   verifyToken: () =>
     apiClient.get(getApiUrl('VERIFY_TOKEN')),
 
-  // Domain Management
+  // Create Custom LAN Domain
   getAllDomains: () =>
     apiClient.get(getApiUrl('GET_ALL_DOMAINS')),
 
@@ -78,6 +78,16 @@ export const api = {
 
   updateDefaultTTL: (data) =>
     apiClient.put(getApiUrl('UPDATE_DEFAULT_TTL'), data),
+
+  // Cache Management
+  getCacheStats: (params) =>
+    apiClient.get(getApiUrl('GET_CACHE_STATS'), { params }),
+
+  deleteAllCache: () =>
+    apiClient.delete(getApiUrl('DELETE_ALL_CACHE')),
+
+  deleteSpecificCache: (keyName) =>
+    apiClient.delete(getApiUrl('DELETE_SPECIFIC_CACHE'), { params: { keyName } }),
 };
 
 export default api;

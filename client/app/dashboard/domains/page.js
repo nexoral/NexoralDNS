@@ -7,7 +7,6 @@ import Button from '../../../components/ui/Button';
 import DomainCard from '../../../components/domains/DomainCard';
 import DomainModal from '../../../components/domains/DomainModal';
 import RecordModal from '../../../components/domains/RecordModal';
-import BlockModal from '../../../components/domains/BlockModal';
 import DeleteConfirmModal from '../../../components/domains/DeleteConfirmModal';
 import useAuthStore from '../../../stores/authStore';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
@@ -17,10 +16,8 @@ export default function DomainsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
-  const [showBlockModal, setShowBlockModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState(null);
-  const [selectedDomainForBlock, setSelectedDomainForBlock] = useState(null);
   const [selectedDomainForDelete, setSelectedDomainForDelete] = useState(null);
   const [domains, setDomains] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,16 +109,6 @@ export default function DomainsPage() {
     setShowRecordModal(true);
   };
 
-  const handleBlockDomain = (domain) => {
-    setSelectedDomainForBlock(domain);
-    setShowBlockModal(true);
-  };
-
-  const handleSaveBlock = (blockSettings) => {
-    // Block domain logic would go here
-    console.log('Block settings:', blockSettings);
-  };
-
   // Calculate total records across all domains
   const totalRecords = domains.reduce((sum, d) => sum + d.records, 0);
 
@@ -140,8 +127,8 @@ export default function DomainsPage() {
           {/* Page Header */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">Domain Management</h1>
-              <p className="text-slate-600">Manage your domains and DNS records</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">Create Custom LAN Domain</h1>
+              <p className="text-slate-600">Create and configure custom LAN domains for your network</p>
             </div>
             <Button onClick={() => setShowDomainModal(true)} variant="primary">
               Add Domain
@@ -236,7 +223,6 @@ export default function DomainsPage() {
                       domain={domain}
                       onDelete={() => handleDeleteDomain(domain)}
                       onManageRecords={() => handleManageRecords(domain)}
-                      onBlock={() => handleBlockDomain(domain)}
                     />
                   ))}
                 </div>
@@ -283,18 +269,6 @@ export default function DomainsPage() {
             // Refetch all domains when the DNS Records modal is closed
             fetchDomains();
           }}
-        />
-      )}
-
-      {/* Block Domain Modal */}
-      {showBlockModal && selectedDomainForBlock && (
-        <BlockModal
-          domain={selectedDomainForBlock}
-          onClose={() => {
-            setShowBlockModal(false);
-            setSelectedDomainForBlock(null);
-          }}
-          onSave={handleSaveBlock}
         />
       )}
 

@@ -7,7 +7,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
 import { getCollectionClient } from "../../Database/mongodb.db";
-import { fetchConnectedIP } from "../../CronJob/Connected_IP_fetcher.cron";
+import { fetchConnectedIP } from "../../CronJob/Jobs/Connected_IP_fetcher.cron";
 
 export default class RouterService {
   private readonly fastifyReply: FastifyReply

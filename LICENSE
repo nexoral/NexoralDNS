@@ -1,31 +1,75 @@
-Creative Commons Attribution-NonCommercial 4.0 International License
+NexoralDNS Proprietary Source-Available License
+Version 1.0, Copyright (c) 2025 Nexoral
 
-Copyright (c) 2025 NexoralDNS Contributors
+Permission is hereby granted to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to use the Software in
+its unmodified form, subject to the following conditions:
 
-This work is licensed under the Creative Commons Attribution-NonCommercial 4.0
-International License.
+1. PERMITTED USE
+   You may:
+   - Download and install the Software for personal or commercial use
+   - Use the Software with LIMITED features as described in FEATURES.md
+   - View the source code for learning and reference purposes
+   - Report bugs and security vulnerabilities
 
-You are free to:
-  - Use this software for personal, educational, or research purposes
-  - Share and redistribute the software in any medium or format
-  - Adapt, remix, transform, and build upon the software
+2. RESTRICTIONS
+   You may NOT:
+   - Modify, alter, adapt, or create derivative works of the Software
+   - Redistribute modified versions of the Software
+   - Remove or alter any copyright notices or license information
+   - Reverse engineer, decompile, or disassemble the Software
+   - Use the Software's source code in other projects or products
+   - Sublicense, rent, lease, or transfer the Software to third parties
+   - Fork the repository for modification purposes
 
-Under the following terms:
-  - Attribution: You must give appropriate credit, provide a link to the license,
-    and indicate if changes were made.
+3. FULL FEATURE LICENSE
+   - The free version includes LIMITED features only
+   - To unlock FULL features, you must purchase a commercial license from:
+     https://nexoral.in
+   - Commercial licenses are non-transferable and subject to separate terms
+   - License keys are required to activate premium features
 
-  - NonCommercial: You may NOT use this software for commercial purposes.
-    This includes but is not limited to:
-    * Selling the software or derivative works
-    * Using the software in a commercial product or service
-    * Using the software to generate revenue or profit
-    * Incorporating the software into commercial offerings
+4. REDISTRIBUTION
+   You may:
+   - Redistribute the UNMODIFIED Software in its original form
+   - Share the official download links
 
-  - No warranties: This software is provided "AS IS", without warranty of any kind,
-    express or implied, including but not limited to the warranties of
-    merchantability, fitness for a particular purpose and noninfringement.
+   You must:
+   - Include this license file with any redistribution
+   - Not charge fees for redistribution of the free version
+   - Direct users to https://nexoral.in for commercial licenses
 
-To view the full license text, visit:
-https://creativecommons.org/licenses/by-nc/4.0/legalcode
+5. INTELLECTUAL PROPERTY
+   - All rights, title, and interest in the Software remain with Nexoral
+   - The Software contains proprietary and confidential information
+   - This license does NOT grant you any rights to trademarks or service marks
 
-For commercial licensing inquiries, please contact the project maintainers.
+6. TERMINATION
+   This license is effective until terminated. Your rights under this license
+   will terminate automatically without notice if you fail to comply with any
+   of its terms. Upon termination, you must destroy all copies of the Software.
+
+7. WARRANTY DISCLAIMER
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
+   THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+   FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+
+8. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL NEXORAL BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT,
+   OR CONSEQUENTIAL DAMAGES WHATSOEVER ARISING OUT OF OR RELATED TO YOUR USE
+   OR INABILITY TO USE THE SOFTWARE.
+
+9. GOVERNING LAW
+   This license shall be governed by and construed in accordance with the
+   laws of India, without regard to its conflict of law provisions.
+
+10. CONTACT
+    For commercial licensing inquiries: https://nexoral.in
+    For support and bug reports: https://github.com/nexoral/NexoralDNS/issues
+
+BY USING THE SOFTWARE, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS LICENSE,
+UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND CONDITIONS.

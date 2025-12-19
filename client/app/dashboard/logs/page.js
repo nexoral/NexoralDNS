@@ -1,20 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import api from '../../../services/api';
-import queryCache from '../../../utils/queryCache';
 
 export default function LogsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const logsPerPage = 10;
-
-  // Filter state
+  const [cursor, setCursor] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [filters, setFilters] = useState({
     queryName: '',
     SourceIP: '',
@@ -25,118 +23,102 @@ export default function LogsPage() {
     durationTo: ''
   });
 
-  // API state
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [totalLogs, setTotalLogs] = useState(0);
-  const [debouncedFilters, setDebouncedFilters] = useState(filters);
-  const [isDebouncing, setIsDebouncing] = useState(false);
+  const lastScrollY = useRef(0);
 
-  // Debounce filters to avoid calling API on every keystroke
+  // Load logs function
+  const loadLogs = async (cursorId = null, isNewSearch = false) => {
+    if (loading) return;
+
+    setLoading(true);
+    try {
+      const params = {
+        limit: 25,
+      };
+
+      // Add cursor for pagination (only if not a new search)
+      if (cursorId && !isNewSearch) {
+        params.cursor = cursorId;
+      }
+
+      if (filters.queryName) params.queryName = filters.queryName;
+      if (filters.SourceIP) params.SourceIP = filters.SourceIP;
+      if (filters.Status) params.Status = filters.Status;
+      if (filters.from) params.from = new Date(filters.from).getTime();
+      if (filters.to) params.to = new Date(filters.to).getTime();
+      if (filters.durationFrom) params.durationFrom = filters.durationFrom;
+      if (filters.durationTo) params.durationTo = filters.durationTo;
+
+      const response = await api.getLogs(params);
+      const newLogs = response.data.data || [];
+
+      if (isNewSearch) {
+        setLogs(newLogs);
+        setCursor(newLogs.length > 0 ? newLogs[newLogs.length - 1]._id : null);
+        setHasMore(newLogs.length === 25);
+      } else {
+        // Only append if not duplicates
+        setLogs(prev => {
+          const existingIds = new Set(prev.map(log => log._id));
+          const uniqueNewLogs = newLogs.filter(log => !existingIds.has(log._id));
+          return [...prev, ...uniqueNewLogs];
+        });
+        // Update cursor to the last document's _id
+        if (newLogs.length > 0) {
+          setCursor(newLogs[newLogs.length - 1]._id);
+        }
+        setHasMore(newLogs.length === 25);
+      }
+    } catch (err) {
+      console.error('Error loading logs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load initial logs
   useEffect(() => {
-    setIsDebouncing(true);
-    const timer = setTimeout(() => {
-      setDebouncedFilters(filters);
-      setCurrentPage(1); // Reset to first page when filters change
-      setIsDebouncing(false);
-    }, 500); // 500ms debounce delay
-
-    return () => {
-      clearTimeout(timer);
-      setIsDebouncing(false);
-    };
+    loadLogs(null, true);
   }, [filters]);
 
-  // Fetch logs with simple caching
+  // Scroll handler - only load when scrolling DOWN
   useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
-      setError(null);
+    let timeoutId;
 
-      try {
-        // Build query params
-        const params = {
-          page: currentPage,
-          limit: logsPerPage,
-        };
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
 
-        // Add filters only if they have values
-        if (debouncedFilters.queryName) params.queryName = debouncedFilters.queryName;
-        if (debouncedFilters.SourceIP) params.SourceIP = debouncedFilters.SourceIP;
-        if (debouncedFilters.Status) params.Status = debouncedFilters.Status;
-        if (debouncedFilters.from) params.from = new Date(debouncedFilters.from).getTime();
-        if (debouncedFilters.to) params.to = new Date(debouncedFilters.to).getTime();
-        if (debouncedFilters.durationFrom) params.durationFrom = debouncedFilters.durationFrom;
-        if (debouncedFilters.durationTo) params.durationTo = debouncedFilters.durationTo;
+      // Check if scrolling down
+      const isScrollingDown = currentScrollY > lastScrollY.current;
+      lastScrollY.current = currentScrollY;
 
-        // Check cache first
-        const cached = queryCache.get(params);
-        if (cached) {
-          console.log('📦 Cache hit - loading from cache');
-          setLogs(cached.logs);
-          setTotalLogs(cached.totalDocument);
-          setLoading(false);
-          return;
-        }
+      // Only proceed if scrolling down
+      if (!isScrollingDown) return;
 
-        // Fetch from API
-        const response = await api.getLogs(params);
+      if (loading || !hasMore) return;
 
-        // Handle both 200 (success) and 404 (no data found)
-        if (response.data.statusCode === 200 || response.data.statusCode === 404) {
-          const responseData = response.data.data;
-          let result = { logs: [], totalDocument: 0 };
+      const scrollTop = currentScrollY;
+      const windowHeight = window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
 
-          // Check if data is empty array or object
-          if (Array.isArray(responseData)) {
-            result.logs = responseData;
-            result.totalDocument = 0;
-          } else if (typeof responseData === 'object' && responseData !== null) {
-            // Extract totalDocument from response
-            const { totalDocument, ...logsData } = responseData;
-
-            // Convert object with numeric keys to array
-            const logsArray = Object.keys(logsData)
-              .filter(key => !isNaN(Number(key)))
-              .map(key => logsData[key]);
-
-            result.logs = logsArray;
-            result.totalDocument = totalDocument || 0;
-          }
-
-          // Cache the result
-          queryCache.set(params, result);
-
-          setLogs(result.logs);
-          setTotalLogs(result.totalDocument);
-        } else {
-          setError(response.data.message || 'Failed to fetch logs');
-          setLogs([]);
-          setTotalLogs(0);
-        }
-      } catch (err) {
-        const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch logs. Please try again.';
-        setError(errorMessage);
-        setLogs([]);
-        setTotalLogs(0);
-        console.error('Error fetching logs:', err);
-      } finally {
-        setLoading(false);
+      // Only load if near bottom
+      if (scrollTop + windowHeight >= docHeight - 300) {
+        // Debounce to prevent multiple calls
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          loadLogs(cursor, false);
+        }, 100);
       }
     };
 
-    fetchLogs();
-  }, [currentPage, debouncedFilters, logsPerPage]);
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
-  const indexOfLastLog = currentPage * logsPerPage;
-  const indexOfFirstLog = indexOfLastLog - logsPerPage;
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(timeoutId);
+    };
+  }, [loading, hasMore, cursor]);
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
-    // Note: Page reset is handled by debounce effect
   };
 
   const handleClearFilters = () => {
@@ -149,7 +131,6 @@ export default function LogsPage() {
       durationFrom: '',
       durationTo: ''
     });
-    setCurrentPage(1);
   };
 
   const formatTimestamp = (timestamp) => {
@@ -171,98 +152,6 @@ export default function LogsPage() {
     if (status.includes('FAILED')) return 'bg-red-100 text-red-700 border-red-300';
     if (status.includes('SERVICE_DOWN')) return 'bg-orange-100 text-orange-700 border-orange-300';
     return 'bg-gray-100 text-gray-700 border-gray-300';
-  };
-
-  const Pagination = () => {
-    const pageNumbers = [];
-    const maxPagesToShow = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
-    if (endPage - startPage < maxPagesToShow - 1) {
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    return (
-      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
-        <div className="flex items-center text-sm text-slate-600">
-          {totalLogs > 0 ? (
-            <>
-              Showing {indexOfFirstLog + 1} to {Math.min(indexOfFirstLog + logs.length, totalLogs)} of {totalLogs.toLocaleString()} logs
-            </>
-          ) : (
-            'No logs to display'
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-              currentPage === 1
-                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            Previous
-          </button>
-
-          {startPage > 1 && (
-            <>
-              <button
-                onClick={() => setCurrentPage(1)}
-                className="px-3 py-1 rounded-lg text-sm font-medium bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
-              >
-                1
-              </button>
-              {startPage > 2 && <span className="text-slate-400">...</span>}
-            </>
-          )}
-
-          {pageNumbers.map(number => (
-            <button
-              key={number}
-              onClick={() => setCurrentPage(number)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                currentPage === number
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              {number}
-            </button>
-          ))}
-
-          {endPage < totalPages && (
-            <>
-              {endPage < totalPages - 1 && <span className="text-slate-400">...</span>}
-              <button
-                onClick={() => setCurrentPage(totalPages)}
-                className="px-3 py-1 rounded-lg text-sm font-medium bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
-              >
-                {totalPages}
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-              currentPage === totalPages
-                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -396,41 +285,16 @@ export default function LogsPage() {
                   </svg>
                   Query Logs
                   <span className="ml-3 text-sm font-normal text-slate-500">
-                    ({totalLogs.toLocaleString()} total)
+                    ({logs.length.toLocaleString()} loaded)
                   </span>
                 </h2>
-                {isDebouncing && (
-                  <span className="text-xs text-slate-500 flex items-center">
-                    <svg className="animate-spin h-4 w-4 mr-1 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Searching...
-                  </span>
-                )}
               </div>
             </div>
 
-            {loading ? (
+            {logs.length === 0 && loading ? (
               <div className="p-8 text-center text-slate-500">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                 <p className="text-sm">Loading logs...</p>
-              </div>
-            ) : error ? (
-              <div className="p-8 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-red-600 font-medium mb-2">Error Loading Logs</p>
-                <p className="text-sm text-slate-600">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Retry
-                </button>
               </div>
             ) : logs.length === 0 ? (
               <div className="p-8 text-center">
@@ -565,7 +429,27 @@ export default function LogsPage() {
                   ))}
                 </div>
 
-                <Pagination />
+                {/* Infinite Scroll Loading Indicator */}
+                {loading && logs.length > 0 && (
+                  <div className="p-6 text-center border-t border-slate-200 bg-slate-50">
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin h-6 w-6 mr-2 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span className="text-sm text-slate-600">Loading more logs...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* End of List Indicator */}
+                {!hasMore && logs.length > 0 && (
+                  <div className="p-6 text-center border-t border-slate-200 bg-slate-50">
+                    <p className="text-sm text-slate-500">
+                      You've reached the end of the logs
+                    </p>
+                  </div>
+                )}
               </>
             )}
           </div>

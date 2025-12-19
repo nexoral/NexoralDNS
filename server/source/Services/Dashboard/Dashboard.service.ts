@@ -4,7 +4,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import RedisCache from "../../Redis/Redis.cache";
 
 import CacheKeys from "../../Redis/CacheKeys.cache";
-import { getDashboardDataStats } from "../../CronJob/DashboardAnalytics.cron";
+import { getDashboardDataStats } from "../../CronJob/Jobs/DashboardAnalytics.cron";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 
@@ -58,7 +58,7 @@ export default class DashboardService {
     ] = await Promise.all([
       // New queries count since base computation
       Analytics.aggregate([
-        { $match: { timestamp: { $gte: since, $lte: Date.now() }} },
+        { $match: { timestamp: { $gte: since, $lte: Date.now() } } },
         { $count: "count" }
       ]).toArray(),
 

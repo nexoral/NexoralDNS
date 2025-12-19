@@ -1,12 +1,12 @@
-import RabbitMQService from "../RabbitMQ/Rabbitmq.config";
-import { QueueKeys } from "../Redis/CacheKeys.cache";
+import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
+import { QueueKeys } from "../../Redis/CacheKeys.cache";
 
 // mongoDB
-import { getCollectionClient } from "../Database/mongodb.db";
-import { DB_DEFAULT_CONFIGS } from "../core/key";
+import { getCollectionClient } from "../../Database/mongodb.db";
+import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { Console } from "outers";
 
-export default async function BatchProcessAnalytics () {
+export default async function BatchProcessAnalytics() {
   const AnalyticsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
 
   // Handle the Initilization Error
@@ -15,10 +15,10 @@ export default async function BatchProcessAnalytics () {
   }
 
   console.log("Running Batch Process")
-  await RabbitMQService.consumeBatch(QueueKeys.DNS_Analytics, async (messages: any[])=> {
+  await RabbitMQService.consumeBatch(QueueKeys.DNS_Analytics, async (messages: any[]) => {
     console.log("Batch", messages)
     const status = await AnalyticsCollection?.insertMany(messages);
-    if (status?.acknowledged == true && status.insertedCount !== 0 ){
+    if (status?.acknowledged == true && status.insertedCount !== 0) {
       return true
     }
     return false;

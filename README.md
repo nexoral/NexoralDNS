@@ -3,7 +3,7 @@
 **Advanced DNS Management & Surveillance System**
 
 ![Version](https://img.shields.io/badge/version-Latest%20Stable-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![License](https://img.shields.io/badge/license-Proprietary-red)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
 
 ---
@@ -213,13 +213,19 @@ sudo docker compose up -d
 
 ## 📜 License
 
-MIT License - See [LICENSE](LICENSE) file for details.
+Proprietary Source-Available License - See [LICENSE](LICENSE) file for details.
+
+**Free to use with limited features. Full features require a commercial license from [nexoral.in](https://nexoral.in)**
+
+Source code is available for reference and learning purposes only. Modifications are not permitted.
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our contributing guidelines in the repository.
+We welcome bug reports, feature requests, and security vulnerability reports! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+Note: This is source-available software. Code contributions are not accepted, but we highly value your feedback and issue reports.
 
 ---
 

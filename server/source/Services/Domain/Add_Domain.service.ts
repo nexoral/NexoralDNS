@@ -75,7 +75,7 @@ export default class DomainAddService {
           type: type,
           name: domain,
           value: IpAddress,
-          ttl: 300,
+          ttl: 100,
         }
       ];
 

@@ -89,8 +89,8 @@ export default function Dashboard() {
 
   const quickActions = [
     {
-      title: 'Domain Management',
-      description: 'Add and configure domains & DNS records',
+      title: 'Create Custom LAN Domain',
+      description: 'Create and configure custom LAN domains',
       icon: '🌐',
       link: '/dashboard/domains',
       count: stats.totalDomains

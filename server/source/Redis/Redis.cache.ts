@@ -570,44 +570,57 @@ class RedisCacheService {
 
       if (!this.client) await this.connect();
 
-      const info = await this.client!.info();
+      // Get different sections of info
+      const [statsInfo, memoryInfo, clientsInfo, keyspaceInfo] = await Promise.all([
+        this.client!.info('stats'),
+        this.client!.info('memory'),
+        this.client!.info('clients'),
+        this.client!.info('keyspace')
+      ]);
 
-
-
-      // Parse info string
-
+      // Parse info strings
       const stats: any = {};
 
-      info.split('\r\n').forEach(line => {
+      const parseInfo = (info: string) => {
+        info.split('\r\n').forEach(line => {
+          // Skip comments and empty lines
+          if (line.startsWith('#') || !line.trim()) return;
 
-        const [key, value] = line.split(':');
+          const colonIndex = line.indexOf(':');
+          if (colonIndex > 0) {
+            const key = line.substring(0, colonIndex).trim();
+            const value = line.substring(colonIndex + 1).trim();
+            stats[key] = value;
+          }
+        });
+      };
 
-        if (key && value) {
+      parseInfo(statsInfo);
+      parseInfo(memoryInfo);
+      parseInfo(clientsInfo);
+      parseInfo(keyspaceInfo);
 
-          stats[key] = value;
-
+      // Count total keys across all databases
+      let totalKeys = 0;
+      Object.keys(stats).forEach(key => {
+        if (key.startsWith('db')) {
+          // Parse format like: "keys=123,expires=45,avg_ttl=3600"
+          const match = stats[key].match(/keys=(\d+)/);
+          if (match) {
+            totalKeys += parseInt(match[1]);
+          }
         }
-
       });
 
-
-
       return {
-
-        connected_clients: stats.connected_clients,
-
-        used_memory: stats.used_memory_human,
-
-        used_memory_peak: stats.used_memory_peak_human,
-
-        total_commands_processed: stats.total_commands_processed,
-
-        keyspace_hits: stats.keyspace_hits,
-
-        keyspace_misses: stats.keyspace_misses,
-
-        hit_rate: this.calculateHitRate(stats.keyspace_hits, stats.keyspace_misses)
-
+        connected_clients: parseInt(stats.connected_clients || '0'),
+        used_memory: stats.used_memory_human || '0B',
+        used_memory_peak: stats.used_memory_peak_human || '0B',
+        total_commands_processed: parseInt(stats.total_commands_processed || '0'),
+        keyspace_hits: parseInt(stats.keyspace_hits || '0'),
+        keyspace_misses: parseInt(stats.keyspace_misses || '0'),
+        total_keys: totalKeys,
+        hit_rate: this.calculateHitRate(stats.keyspace_hits || '0', stats.keyspace_misses || '0')
       };
 
     } catch (error) {
@@ -615,6 +628,91 @@ class RedisCacheService {
       Console.red('❌ Failed to get cache stats:', error);
 
       return null;
+
+    }
+
+  }
+
+
+
+  /**
+
+   * Get all cached records with details
+
+   */
+
+  async getAllRecords(pattern: string = '*', limit: number = 1000, skip: number = 0): Promise<any[]> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const keys = await this.client!.keys(pattern);
+
+      const records = [];
+
+      // Apply skip and limit for pagination
+      const keysToProcess = keys.slice(skip, skip + limit);
+
+      for (const key of keysToProcess) {
+        const [value, ttl, type] = await Promise.all([
+          this.client!.get(key),
+          this.client!.ttl(key),
+          this.client!.type(key)
+        ]);
+
+        // Calculate approximate size
+        const size = value ? Buffer.byteLength(value, 'utf8') : 0;
+
+        records.push({
+          key,
+          value,
+          ttl,
+          type,
+          size: `${size} bytes`,
+          expiresAt: ttl > 0 ? new Date(Date.now() + ttl * 1000) : null
+        });
+      }
+
+      return records;
+
+    } catch (error) {
+
+      Console.red('❌ Failed to get all records:', error);
+
+      return [];
+
+    }
+
+  }
+
+
+
+  /**
+
+   * Delete a specific cache entry by key
+
+   */
+
+  async deleteCacheEntry(key: string): Promise<boolean> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const result = await this.client!.del(key);
+
+      if (result > 0) {
+        Console.green(`✅ Cache entry deleted: ${key}`);
+        return true;
+      }
+      return false;
+
+    } catch (error) {
+
+      Console.red(`❌ Failed to delete cache entry ${key}:`, error);
+
+      return false;
 
     }
 
