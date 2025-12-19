@@ -54,7 +54,12 @@ body {
 }
 
 /* Headings */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 700;
   line-height: 1.2;
   margin-top: 2rem;
@@ -86,13 +91,13 @@ h4 {
 }
 
 /* Links */
-a {
+a:not(.btn):not([class*="bg-gradient"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-white"]) {
   color: var(--accent-blue);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
-a:hover {
+a:not(.btn):not([class*="bg-gradient"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-white"]):hover {
   color: var(--accent-cyan);
   text-decoration: underline;
 }
@@ -120,7 +125,8 @@ pre {
 }
 
 /* Lists */
-ul, ol {
+ul,
+ol {
   margin: 1rem 0;
   padding-left: 2rem;
 }
