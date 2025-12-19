@@ -17,16 +17,21 @@ interface NavSection {
 
 const navigation: NavSection[] = [
   {
-    section: 'Documentation',
+    section: 'Getting Started',
     items: [
       { title: 'Home', href: '/', icon: '🏠' },
+      { title: 'Quick Start', href: '/docs/getting-started', icon: '🚀' },
       { title: 'Installation', href: '/docs/installation', icon: '⚡' },
-      { title: 'Architecture', href: '/docs/architecture', icon: '🏗️' },
+      { title: 'Configuration', href: '/docs/configuration', icon: '⚙️' },
+    ]
+  },
+  {
+    section: 'Using NexoralDNS',
+    items: [
+      { title: 'Dashboard Guide', href: '/docs/dashboard', icon: '🖥️' },
       { title: 'Features', href: '/docs/features', icon: '✨' },
       { title: 'API Reference', href: '/docs/api', icon: '🔌' },
-      { title: 'Security', href: '/docs/security', icon: '🔒' },
-      { title: 'Contributing', href: '/docs/contributing', icon: '🤝' },
-      { title: 'Troubleshooting', href: '/docs/troubleshooting', icon: '🆘' },
+      { title: 'Architecture', href: '/docs/architecture', icon: '🏗️' },
     ]
   },
   {
@@ -37,6 +42,23 @@ const navigation: NavSection[] = [
       { title: 'Stop', href: '/docs/commands/stop', icon: '⏹️' },
       { title: 'Update', href: '/docs/commands/update', icon: '🔄' },
       { title: 'Remove', href: '/docs/commands/remove', icon: '🗑️' },
+    ]
+  },
+  {
+    section: 'Resources',
+    items: [
+      { title: 'FAQ', href: '/docs/faq', icon: '❓' },
+      { title: 'Troubleshooting', href: '/docs/troubleshooting', icon: '🔧' },
+      { title: 'Security', href: '/docs/security', icon: '🔒' },
+      { title: 'Changelog', href: '/docs/changelog', icon: '📋' },
+    ]
+  },
+  {
+    section: 'Community',
+    items: [
+      { title: 'Contributing', href: '/docs/contributing', icon: '🤝' },
+      { title: 'Contact', href: '/contact', icon: '📧' },
+      { title: 'License', href: '/docs/license', icon: '📄' },
     ]
   }
 ];
@@ -129,10 +151,9 @@ export default function Sidebar() {
                           className={`
                             flex items-center gap-3 px-3 py-2 rounded-lg
                             transition-all duration-200 group
-                            ${
-                              isActive
-                                ? 'bg-white/10 text-white border border-white/20'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            ${isActive
+                              ? 'bg-white/10 text-white border border-white/20'
+                              : 'text-gray-400 hover:text-white hover:bg-white/5'
                             }
                           `}
                         >
