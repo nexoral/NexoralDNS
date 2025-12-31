@@ -6,6 +6,7 @@ export const config = {
   API_ENDPOINTS: {
     LOGIN: '/api/auth/login',
     VERIFY_TOKEN: '/api/auth/verify',
+    CHANGE_PASSWORD: '/api/auth/change-password',
     GET_ALL_DOMAINS: '/api/domains/all-domains',
     DNS_RECORDS: '/api/dns/records',
     DNS_LIST: '/api/dns/list',

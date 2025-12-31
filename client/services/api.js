@@ -10,6 +10,9 @@ export const api = {
   verifyToken: () =>
     apiClient.get(getApiUrl('VERIFY_TOKEN')),
 
+  changePassword: (data) =>
+    apiClient.post(getApiUrl('CHANGE_PASSWORD'), data),
+
   // Create Custom LAN Domain
   getAllDomains: () =>
     apiClient.get(getApiUrl('GET_ALL_DOMAINS')),

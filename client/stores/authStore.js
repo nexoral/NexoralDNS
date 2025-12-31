@@ -19,9 +19,7 @@ const useAuthStore = create(
       permissions: [],
       passwordUpdatedAt: null,
 
-      // Set auth state from login response
       login: (data) => {
-        // Handle minimal login with just token (for session restoration)
         if (data.token && !data.user && !data.data) {
           set({
             token: data.token,
@@ -30,27 +28,28 @@ const useAuthStore = create(
           return;
         }
 
-        // Regular login handling with full data
         const userData = {
           id: data.data?.user?.id || data.user?.id,
           username: data.data?.user?.username || data.user?.username || 'User',
         };
 
-        // Extract permissions from role.permissions (new structure) or fallback to data.permissions
         const permissionsData = (data.data?.role?.permissions || data.data?.permissions || []).map(p => ({
           _id: p._id,
           code: p.code,
           name: p.name
         }));
 
-        // Extract role data
         const roleData = data.data?.role ? {
           id: data.data.role.id || data.data.role._id,
           name: data.data.role.name || 'Unknown Role',
         } : null;
 
-        // Extract passwordUpdatedAt
-        const passwordUpdatedAt = data.data?.user?.passwordUpdatedAt || null;
+        const newPasswordUpdatedAt = data.data?.user?.passwordUpdatedAt ||
+                                     data.user?.passwordUpdatedAt ||
+                                     null;
+
+        const currentState = get();
+        const passwordUpdatedAt = newPasswordUpdatedAt || currentState.passwordUpdatedAt;
 
         set({
           token: data.token || data.data?.token,
@@ -61,7 +60,6 @@ const useAuthStore = create(
           passwordUpdatedAt: passwordUpdatedAt
         });
 
-        // Only run localStorage operations on client side
         if (typeof window !== 'undefined') {
           localStorage.setItem(config.AUTH.TOKEN_KEY, data.token || data.data?.token);
           if (data.refreshToken || data.data?.refreshToken) {
@@ -71,13 +69,10 @@ const useAuthStore = create(
       },
 
       logout: () => {
-        // Only clear localStorage on client side
         if (typeof window !== 'undefined') {
-          // Clear all localStorage permanently
           localStorage.clear();
         }
 
-        // Reset auth state
         set({
           token: null,
           user: null,
@@ -88,14 +83,12 @@ const useAuthStore = create(
         });
       },
 
-      // Check if user has specific permission
       hasPermission: (permissionCode) => {
         const { permissions } = get();
         return Array.isArray(permissions) &&
           permissions.some(p => p && typeof p === 'object' && p.code === permissionCode);
       },
 
-      // Check if user has one of the specified permissions
       hasAnyPermission: (permissionCodes) => {
         const { permissions } = get();
         return Array.isArray(permissions) &&
