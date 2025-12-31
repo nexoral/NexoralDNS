@@ -94,7 +94,13 @@ export default class LoginService {
       token: token.toKen,
       user: {
         id: userDetails._id,
-        username: username
+        username: username,
+        passwordUpdatedAt: userDetails.passwordUpdatedAt
+      },
+      role :{
+        id: userDetails.role._id,
+        name: userDetails.role.name,
+        permissions: userDetails.permissions
       }
     });
   }

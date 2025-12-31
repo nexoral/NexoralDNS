@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Button from '../ui/Button';
 import CreatePolicyModal from './CreatePolicyModal';
+import ConfirmationModal from '../ui/ConfirmationModal';
 import api from '../../services/api';
 
 export default function PoliciesTab() {
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [policyToDelete, setPolicyToDelete] = useState(null);
   const [filter, setFilter] = useState('all');
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,15 +133,21 @@ export default function PoliciesTab() {
     }
   };
 
-  // Handle delete policy
-  const handleDeletePolicy = async (policyId, policyName) => {
-    if (!confirm(`Are you sure you want to delete "${policyName}"?`)) {
-      return;
-    }
+  // Handle delete policy - show confirmation modal
+  const handleDeletePolicy = (policyId, policyName) => {
+    setPolicyToDelete({ id: policyId, name: policyName });
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete policy
+  const confirmDeletePolicy = async () => {
+    if (!policyToDelete) return;
 
     try {
-      const response = await api.deleteAccessControlPolicy(policyId);
+      const response = await api.deleteAccessControlPolicy(policyToDelete.id);
       toast.success(response.data.data.message || 'Policy deleted successfully');
+      setShowDeleteModal(false);
+      setPolicyToDelete(null);
       fetchPolicies(); // Refresh the list
     } catch (err) {
       console.error('Error deleting policy:', err);
@@ -320,6 +329,32 @@ export default function PoliciesTab() {
           onClose={() => setShowModal(false)}
           onSave={handleCreatePolicy}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && policyToDelete && (
+        <ConfirmationModal
+          title="Delete Policy"
+          description="This action cannot be undone"
+          confirmText="Delete Policy"
+          cancelText="Cancel"
+          variant="danger"
+          onClose={() => {
+            setShowDeleteModal(false);
+            setPolicyToDelete(null);
+          }}
+          onConfirm={confirmDeletePolicy}
+        >
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 className="font-medium text-red-800 mb-2">Warning</h3>
+            <p className="text-sm text-red-700">
+              Are you sure you want to delete the policy <strong>"{policyToDelete.name}"</strong>?
+            </p>
+            <p className="text-sm text-red-700 mt-2">
+              This will immediately remove all access control restrictions associated with this policy.
+            </p>
+          </div>
+        </ConfirmationModal>
       )}
     </div>
   );

@@ -17,6 +17,7 @@ const useAuthStore = create(
       token: null,
       role: null,
       permissions: [],
+      passwordUpdatedAt: null,
 
       // Set auth state from login response
       login: (data) => {
@@ -35,23 +36,29 @@ const useAuthStore = create(
           username: data.data?.user?.username || data.user?.username || 'User',
         };
 
-        // Extract permissions as plain objects to ensure proper serialization
-        const permissionsData = (data.data?.permissions || []).map(p => ({
+        // Extract permissions from role.permissions (new structure) or fallback to data.permissions
+        const permissionsData = (data.data?.role?.permissions || data.data?.permissions || []).map(p => ({
           _id: p._id,
           code: p.code,
           name: p.name
         }));
 
+        // Extract role data
+        const roleData = data.data?.role ? {
+          id: data.data.role.id || data.data.role._id,
+          name: data.data.role.name || 'Unknown Role',
+        } : null;
+
+        // Extract passwordUpdatedAt
+        const passwordUpdatedAt = data.data?.user?.passwordUpdatedAt || null;
+
         set({
           token: data.token || data.data?.token,
           user: userData,
           isAuthenticated: true,
-          role: data.data?.roleId ? {
-            id: data.data.roleId,
-            name: data.data.role?.name || 'Unknown Role',
-            code: data.data.role?.code
-          } : null,
-          permissions: permissionsData
+          role: roleData,
+          permissions: permissionsData,
+          passwordUpdatedAt: passwordUpdatedAt
         });
 
         // Only run localStorage operations on client side
@@ -68,6 +75,7 @@ const useAuthStore = create(
         if (typeof window !== 'undefined') {
           localStorage.removeItem(config.AUTH.TOKEN_KEY);
           localStorage.removeItem(config.AUTH.REFRESH_TOKEN_KEY);
+          localStorage.removeItem('nexoral-auth-storage');
         }
 
         // Reset auth state
@@ -76,7 +84,8 @@ const useAuthStore = create(
           user: null,
           isAuthenticated: false,
           role: null,
-          permissions: []
+          permissions: [],
+          passwordUpdatedAt: null
         });
       },
 
@@ -104,6 +113,7 @@ const useAuthStore = create(
         isAuthenticated: state.isAuthenticated,
         permissions: state.permissions,
         role: state.role,
+        passwordUpdatedAt: state.passwordUpdatedAt,
       }),
     }
   )
