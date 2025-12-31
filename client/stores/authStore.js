@@ -73,9 +73,8 @@ const useAuthStore = create(
       logout: () => {
         // Only clear localStorage on client side
         if (typeof window !== 'undefined') {
-          localStorage.removeItem(config.AUTH.TOKEN_KEY);
-          localStorage.removeItem(config.AUTH.REFRESH_TOKEN_KEY);
-          localStorage.removeItem('nexoral-auth-storage');
+          // Clear all localStorage permanently
+          localStorage.clear();
         }
 
         // Reset auth state
