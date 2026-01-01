@@ -97,6 +97,12 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS, dnsRecordsCol);
     const DnsAnalyticsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.ANALYTICS, DnsAnalyticsCol);
+    const accessControlPoliciesCol = db.collection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES, accessControlPoliciesCol);
+    const domainGroupsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS, domainGroupsCol);
+    const ipGroupsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS, ipGroupsCol);
 
     // create Indexes
     await serviceCol.createIndex({ Service_Status: 1 }, { unique: true });
@@ -111,6 +117,8 @@ export default async () => {
     await DnsAnalyticsCol.createIndex({ queryType: 1 })
     await DnsAnalyticsCol.createIndex({ From: 1 })
     await DnsAnalyticsCol.createIndex({ duration: 1 })
+    await DnsAnalyticsCol.createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 }) // This index for Auto Delete after 7 days
+    await DnsAnalyticsCol.createIndex({ updatedAt: 1 })
 
     await DnsAnalyticsCol.createIndex({ timestamp: 1, Status: 1 })
     await DnsAnalyticsCol.createIndex({ timestamp: 1, queryType: 1 })
@@ -122,6 +130,20 @@ export default async () => {
     // DNS Records
     await dnsRecordsCol.createIndex({ domainId: 1 })
 
+    // Access Control Policies
+    await accessControlPoliciesCol.createIndex({ policyName: 1 })
+    await accessControlPoliciesCol.createIndex({ isActive: 1 })
+    await accessControlPoliciesCol.createIndex({ policyType: 1 })
+    await accessControlPoliciesCol.createIndex({ targetType: 1 })
+    await accessControlPoliciesCol.createIndex({ createdAt: -1 })
+
+    // Domain Groups
+    await domainGroupsCol.createIndex({ name: 1 }, { unique: true })
+    await domainGroupsCol.createIndex({ createdAt: -1 })
+
+    // IP Groups
+    await ipGroupsCol.createIndex({ name: 1 }, { unique: true })
+    await ipGroupsCol.createIndex({ createdAt: -1 })
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();

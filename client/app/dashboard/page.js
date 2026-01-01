@@ -9,16 +9,17 @@ import NetworkOverview from '../../components/dashboard/NetworkOverview';
 import RecentLogs from '../../components/dashboard/RecentLogs';
 import DNSQueryChart from '../../components/dashboard/DNSQueryChart';
 import TopServersChart from '../../components/dashboard/TopServersChart';
+import ChangePasswordModal from '../../components/auth/ChangePasswordModal';
 import useAuthStore from '../../stores/authStore';
 import { isLocalNetwork } from '../../services/networkDetection';
 import { api } from '../../services/api';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuthStore();
+  const { user, passwordUpdatedAt } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // Real analytics data from API
   const [stats, setStats] = useState({
     totalQueries: 0,
     totalDomains: 0,
@@ -34,17 +35,17 @@ export default function Dashboard() {
     totalRecordsConsideredForAvgDuration: 0
   });
 
-  // Recent DNS logs
   const [recentLogs, setRecentLogs] = useState([]);
-
-  // Full analytics data for charts
   const [analyticsData, setAnalyticsData] = useState(null);
 
-  // Fetch dashboard analytics on component mount
+  useEffect(() => {
+    if (passwordUpdatedAt === null || passwordUpdatedAt === undefined) {
+      setShowPasswordModal(true);
+    }
+  }, [passwordUpdatedAt, user]);
+
   useEffect(() => {
     fetchDashboardAnalytics();
-
-    // Refresh analytics every 30 seconds
     const interval = setInterval(fetchDashboardAnalytics, 30000);
 
     return () => clearInterval(interval);
@@ -75,7 +76,6 @@ export default function Dashboard() {
           totalRecordsConsideredForAvgDuration: data.totalRecordsConsideredForAvgDuration || 0
         });
 
-        // Set recent logs
         setRecentLogs(data.LatestLogs || []);
       }
 
@@ -83,7 +83,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Failed to fetch dashboard analytics:', error);
       setIsLoading(false);
-      // Keep showing default values on error
     }
   };
 
@@ -110,9 +109,7 @@ export default function Dashboard() {
       count: 'View',
       localOnly: true
     }
-    // Removed "Active Domains" card as requested
   ].filter(action => {
-    // Filter out local-only actions when not on local network
     if (action.localOnly) {
       return isLocalNetwork();
     }
@@ -121,21 +118,16 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Content */}
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
-        {/* Header */}
         <Header
           user={user}
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           sidebarOpen={sidebarOpen}
         />
 
-        {/* Dashboard Content */}
         <main className="p-4 lg:p-6">
-          {/* Welcome Section */}
           <div className="mb-8">
             <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">
               Welcome back, {user?.username ? user.username : 'User'}! 👋
@@ -143,7 +135,6 @@ export default function Dashboard() {
             <p className="text-slate-600">Manage your DNS infrastructure efficiently.</p>
           </div>
 
-          {/* Loading State */}
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
               {[1, 2, 3, 4].map((i) => (
@@ -156,31 +147,23 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              {/* Stats Cards */}
               <StatsCards stats={stats} />
 
-              {/* Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {/* DNS Query Distribution Chart */}
                 <DNSQueryChart analytics={analyticsData} />
-
-                {/* Top Global DNS Servers Chart */}
                 <TopServersChart topServers={analyticsData?.TopGlobalServer || []} />
               </div>
             </>
           )}
 
-          {/* Network Overview - Local Network Only */}
           {isLocalNetwork() && (
             <div className="mb-8">
               <NetworkOverview />
             </div>
           )}
 
-          {/* Quick Actions */}
           <QuickActions actions={quickActions} />
 
-          {/* Recent DNS Logs */}
           <div className="mb-8">
             <RecentLogs logs={recentLogs} />
           </div>
@@ -188,11 +171,19 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {showPasswordModal && (
+        <ChangePasswordModal
+          onClose={() => setShowPasswordModal(false)}
+          isRequired={false}
+          title="Update Your Password"
+          description="For security reasons, please set a new password"
         />
       )}
     </div>
