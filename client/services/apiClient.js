@@ -31,21 +31,26 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const { response } = error;
+    const { response, config: requestConfig } = error;
 
     // Handle 401 Unauthorized - Session expired or invalid token
     if (response?.status === 401) {
-      // Clear auth state
-      localStorage.removeItem(config.AUTH.TOKEN_KEY);
-      localStorage.removeItem(config.AUTH.REFRESH_TOKEN_KEY);
-      localStorage.removeItem('auth-storage');
+      // Don't auto-logout for change-password endpoint (wrong current password is expected)
+      const isChangePasswordEndpoint = requestConfig?.url?.includes('/change-password');
 
-      // Redirect to login page
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
+      if (!isChangePasswordEndpoint) {
+        // Clear auth state
+        localStorage.removeItem(config.AUTH.TOKEN_KEY);
+        localStorage.removeItem(config.AUTH.REFRESH_TOKEN_KEY);
+        localStorage.removeItem('auth-storage');
+
+        // Redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
+
+        return Promise.reject(new Error('Session expired. Please login again.'));
       }
-
-      return Promise.reject(new Error('Session expired. Please login again.'));
     }
 
     // Handle 403 Forbidden - Insufficient permissions

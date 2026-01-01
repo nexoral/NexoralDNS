@@ -17,7 +17,13 @@ export default async function BatchProcessAnalytics() {
   console.log("Running Batch Process")
   await RabbitMQService.consumeBatch(QueueKeys.DNS_Analytics, async (messages: any[]) => {
     console.log("Batch", messages)
-    const status = await AnalyticsCollection?.insertMany(messages);
+    const currentTimestamp = new Date();
+    const messagesWithTimestamps = messages.map((message) => ({
+      ...message,
+      createdAt: currentTimestamp,
+      updatedAt: currentTimestamp
+    }));
+    const status = await AnalyticsCollection?.insertMany(messagesWithTimestamps);
     if (status?.acknowledged == true && status.insertedCount !== 0) {
       return true
     }

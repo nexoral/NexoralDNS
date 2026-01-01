@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import useAuthStore from '../../stores/authStore';
 import config, { getApiUrl } from '../../config/keys';
+import ConfirmationModal from '../ui/ConfirmationModal';
 
 // Helper to parse JWT
 const parseJwt = (token) => {
@@ -27,6 +28,7 @@ const parseJwt = (token) => {
 
 export default function Header({ onMenuClick, sidebarOpen }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [displayName, setDisplayName] = useState('User');
   const dropdownRef = useRef(null);
   const router = useRouter();
@@ -116,14 +118,22 @@ export default function Header({ onMenuClick, sidebarOpen }) {
     setDropdownOpen(prev => !prev);
   };
 
-  // Handle logout click
-  const handleLogout = async () => {
+  // Handle logout click - show confirmation modal
+  const handleLogout = () => {
+    setDropdownOpen(false);
+    setShowLogoutModal(true);
+  };
+
+  // Confirm logout
+  const confirmLogout = async () => {
     try {
       logout();
+      setShowLogoutModal(false);
       router.push('/');
     } catch (error) {
       console.error('Logout failed:', error);
       logout();
+      setShowLogoutModal(false);
       router.push('/');
     }
   };
@@ -174,10 +184,10 @@ export default function Header({ onMenuClick, sidebarOpen }) {
                   <FiSettings className="h-4 w-4 mr-2 text-gray-500" />
                   Settings
                 </Link>
-                <Link href="/help" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <a href="https://dns.nexoral.in" target="_blank" rel="noopener noreferrer" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                   <FiHelpCircle className="h-4 w-4 mr-2 text-gray-500" />
                   Help
-                </Link>
+                </a>
                 <button
                   onClick={handleLogout}
                   className="w-full text-left flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
@@ -190,6 +200,25 @@ export default function Header({ onMenuClick, sidebarOpen }) {
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <ConfirmationModal
+          title="Logout"
+          description="Are you sure you want to logout?"
+          confirmText="Logout"
+          cancelText="Cancel"
+          variant="warning"
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={confirmLogout}
+        >
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-700">
+              You will be logged out of your current session and redirected to the login page.
+            </p>
+          </div>
+        </ConfirmationModal>
+      )}
     </header>
   );
 }
