@@ -35,6 +35,19 @@ export default function DashboardLayout({ children }) {
 
       if (token) {
         try {
+          // Get persisted auth state from Zustand storage
+          const persistedState = localStorage.getItem('nexoral-auth-storage');
+          let passwordUpdatedAt = null;
+
+          if (persistedState) {
+            try {
+              const parsedState = JSON.parse(persistedState);
+              passwordUpdatedAt = parsedState.state?.passwordUpdatedAt || null;
+            } catch (e) {
+              console.error('Error parsing persisted state:', e);
+            }
+          }
+
           // Parse the token to get user information
           const decodedToken = parseJwt(token);
 
@@ -43,10 +56,11 @@ export default function DashboardLayout({ children }) {
             const userData = {
               id: decodedToken.data._id,
               username: decodedToken.data.username,
-              roleId: decodedToken.data.roleId
+              roleId: decodedToken.data.roleId,
+              passwordUpdatedAt: passwordUpdatedAt
             };
 
-            // Login with user data extracted from token
+            // Login with user data extracted from token and persisted state
             login({
               token,
               user: userData,
