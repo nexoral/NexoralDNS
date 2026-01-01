@@ -1,0 +1,27 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="180" height="180" rx="40" fill="url(#gradient1)"/>
+
+  <defs>
+    <linearGradient id="gradient1" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Central "N" letter -->
+  <g transform="translate(90, 90)">
+    <path d="M-30 -40 L-30 40 L-20 40 L-20 -16 L20 40 L30 40 L30 -40 L20 -40 L20 16 L-20 -40 Z"
+          fill="white"
+          stroke="white"
+          stroke-width="2"/>
+  </g>
+
+  <!-- Network dots -->
+  <circle cx="35" cy="35" r="5" fill="#22D3EE"/>
+  <circle cx="145" cy="35" r="5" fill="#22D3EE"/>
+  <circle cx="145" cy="145" r="5" fill="#22D3EE"/>
+
+  <!-- Orbit ring -->
+  <circle cx="90" cy="90" r="65" stroke="white" stroke-width="2" fill="none" opacity="0.3"/>
+</svg>
