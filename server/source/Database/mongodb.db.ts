@@ -117,6 +117,8 @@ export default async () => {
     await DnsAnalyticsCol.createIndex({ queryType: 1 })
     await DnsAnalyticsCol.createIndex({ From: 1 })
     await DnsAnalyticsCol.createIndex({ duration: 1 })
+    await DnsAnalyticsCol.createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 }) // This index for Auto Delete after 7 days
+    await DnsAnalyticsCol.createIndex({ updatedAt: 1 })
 
     await DnsAnalyticsCol.createIndex({ timestamp: 1, Status: 1 })
     await DnsAnalyticsCol.createIndex({ timestamp: 1, queryType: 1 })
