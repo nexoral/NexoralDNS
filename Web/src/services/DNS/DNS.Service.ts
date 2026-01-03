@@ -67,7 +67,7 @@ export default class DNS {
       // Log successful rebinding
       setTimeout(() => {
         const address = this.server.address();
-        Console.green(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker: ${process.pid}`);
+        Console.green(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker process: ${process.pid}`);
       }, 100);
     });
     ipScanner.scan();
