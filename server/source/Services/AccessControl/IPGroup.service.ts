@@ -291,6 +291,34 @@ export default class IPGroupService {
       });
     }
 
+    // Check if this IP group is being used in any access control policies
+    const policyClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    if (!policyClient) {
+      throw new Error("Database connection error.");
+    }
+
+    const groupObjectId = new ObjectId(groupId);
+    const policiesUsingGroup = await policyClient.find({
+      $or: [
+        { targetIPGroup: groupObjectId },
+        { targetIPGroups: groupObjectId }
+      ]
+    }).toArray();
+
+    if (policiesUsingGroup.length > 0) {
+      const policyNames = policiesUsingGroup.map(p => p.policyName).join(", ");
+      const ErrorResponse = new BuildResponse(
+        this.fastifyReply,
+        StatusCodes.CONFLICT,
+        "IP group is in use"
+      );
+      return ErrorResponse.send({
+        error: `Cannot delete IP group "${existingGroup.name}" because it is being used in ${policiesUsingGroup.length} access control policy(ies): ${policyNames}`,
+        policiesCount: policiesUsingGroup.length,
+        policies: policiesUsingGroup.map(p => ({ id: p._id, name: p.policyName }))
+      });
+    }
+
     await dbClient.deleteOne({ _id: new ObjectId(groupId) });
 
     const Responser = new BuildResponse(
