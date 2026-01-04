@@ -20,7 +20,7 @@ export default class BlockList {
 
   // Shared cache across all instances (class-level)
   private static globalCache: Map<string, { blocked: boolean; timestamp: number }> = new Map();
-  private static GLOBAL_CACHE_TTL = 5000; // 5 seconds
+  private static GLOBAL_CACHE_TTL = 3000; // 3 seconds
 
   constructor(IO: InputOutputHandler, msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo) {
     this.IO = IO;
