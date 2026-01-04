@@ -4,11 +4,17 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
+import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
+
+export interface DomainEntry {
+  domain: string;
+  isWildcard: boolean;
+}
 
 export interface DomainGroupData {
   name: string;
   description?: string;
-  domains: string[];
+  domains: DomainEntry[];
   createdAt?: number;
   updatedAt?: number;
 }
@@ -78,6 +84,14 @@ export default class DomainGroupService {
     };
 
     const result = await dbClient.insertOne(newGroup);
+
+    // Immediately reload ACL policies to Redis (since policies may reference this group)
+    try {
+      await forceReloadACLPolicies();
+    } catch (error) {
+      console.error('[ACL] Failed to reload policies after domain group create:', error);
+      // Don't fail the request if Redis reload fails
+    }
 
     const Responser = new BuildResponse(
       this.fastifyReply,
@@ -243,6 +257,14 @@ export default class DomainGroupService {
 
     const updatedGroup = await dbClient.findOne({ _id: new ObjectId(groupId) });
 
+    // Immediately reload ACL policies to Redis (since policies may reference this group)
+    try {
+      await forceReloadACLPolicies();
+    } catch (error) {
+      console.error('[ACL] Failed to reload policies after domain group update:', error);
+      // Don't fail the request if Redis reload fails
+    }
+
     const Responser = new BuildResponse(
       this.fastifyReply,
       StatusCodes.OK,
@@ -291,7 +313,43 @@ export default class DomainGroupService {
       });
     }
 
+    // Check if this domain group is being used in any access control policies
+    const policyClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    if (!policyClient) {
+      throw new Error("Database connection error.");
+    }
+
+    const groupObjectId = new ObjectId(groupId);
+    const policiesUsingGroup = await policyClient.find({
+      $or: [
+        { domainGroup: groupObjectId },
+        { domainGroups: groupObjectId }
+      ]
+    }).toArray();
+
+    if (policiesUsingGroup.length > 0) {
+      const policyNames = policiesUsingGroup.map(p => p.policyName).join(", ");
+      const ErrorResponse = new BuildResponse(
+        this.fastifyReply,
+        StatusCodes.CONFLICT,
+        "Domain group is in use"
+      );
+      return ErrorResponse.send({
+        error: `Cannot delete domain group "${existingGroup.name}" because it is being used in ${policiesUsingGroup.length} access control policy(ies): ${policyNames}`,
+        policiesCount: policiesUsingGroup.length,
+        policies: policiesUsingGroup.map(p => ({ id: p._id, name: p.policyName }))
+      });
+    }
+
     await dbClient.deleteOne({ _id: new ObjectId(groupId) });
+
+    // Immediately reload ACL policies to Redis
+    try {
+      await forceReloadACLPolicies();
+    } catch (error) {
+      console.error('[ACL] Failed to reload policies after domain group delete:', error);
+      // Don't fail the request if Redis reload fails
+    }
 
     const Responser = new BuildResponse(
       this.fastifyReply,

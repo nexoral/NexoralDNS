@@ -8,6 +8,7 @@ import api from '../../services/api';
 export default function DomainGroupsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
+  const [deletingGroup, setDeletingGroup] = useState(null);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,19 +64,11 @@ export default function DomainGroupsTab() {
   };
 
   // Handle delete group
-  const handleDeleteGroup = async (groupId, groupName) => {
-    if (!confirm(`Are you sure you want to delete "${groupName}"?`)) {
-      return;
-    }
-
-    try {
-      const response = await api.deleteDomainGroup(groupId);
-      toast.success(response.data.data.message || 'Domain group deleted successfully');
-      fetchGroups(); // Refresh the list
-    } catch (err) {
-      console.error('Error deleting domain group:', err);
-      toast.error(err.response?.data?.data?.error || 'Failed to delete domain group');
-    }
+  const handleDeleteGroup = async (groupId) => {
+    const response = await api.deleteDomainGroup(groupId);
+    toast.success(response.data.data.message || 'Domain group deleted successfully');
+    setDeletingGroup(null);
+    fetchGroups(); // Refresh the list
   };
 
   // Fetch groups on mount
@@ -144,7 +137,7 @@ export default function DomainGroupsTab() {
                     </svg>
                   </button>
                   <button
-                    onClick={() => handleDeleteGroup(group._id, group.name)}
+                    onClick={() => setDeletingGroup(group)}
                     className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                     title="Delete"
                   >
@@ -167,9 +160,23 @@ export default function DomainGroupsTab() {
               {/* Domain Preview */}
               <div className="bg-slate-50 rounded p-3 max-h-32 overflow-y-auto">
                 <div className="text-xs text-slate-600 space-y-1">
-                  {group.domains?.slice(0, 5).map((domain, idx) => (
-                    <div key={idx} className="font-mono">{domain}</div>
-                  ))}
+                  {group.domains?.slice(0, 5).map((domainEntry, idx) => {
+                    const domain = typeof domainEntry === 'string' ? domainEntry : domainEntry.domain;
+                    const isWildcard = typeof domainEntry === 'string'
+                      ? domainEntry.startsWith('*.') || domainEntry.endsWith('.*')
+                      : domainEntry.isWildcard;
+
+                    return (
+                      <div key={idx} className="flex items-center justify-between">
+                        <span className="font-mono">{domain}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ml-2 ${
+                          isWildcard ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {isWildcard ? '🌐' : '🎯'}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {group.domains?.length > 5 && (
                     <div className="text-slate-500 italic">+ {group.domains.length - 5} more</div>
                   )}
@@ -197,6 +204,15 @@ export default function DomainGroupsTab() {
           }}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingGroup && (
+        <DeleteConfirmModal
+          group={deletingGroup}
+          onClose={() => setDeletingGroup(null)}
+          onConfirm={() => handleDeleteGroup(deletingGroup._id)}
+        />
+      )}
     </div>
   );
 }
@@ -208,18 +224,26 @@ function DomainGroupModal({ group, onClose, onSave }) {
     domains: group?.domains || []
   });
   const [newDomain, setNewDomain] = useState('');
+  const [newDomainIsWildcard, setNewDomainIsWildcard] = useState(false);
 
   const icons = ['📱', '🎬', '🎮', '🔞', '📊', '💼', '🌐', '⚡', '🔥', '🛡️', '🔒', '📁'];
 
   const addDomain = () => {
-    if (newDomain && !formData.domains.includes(newDomain)) {
-      setFormData({ ...formData, domains: [...formData.domains, newDomain] });
+    if (newDomain && !formData.domains.some(d => (typeof d === 'string' ? d : d.domain) === newDomain)) {
+      setFormData({
+        ...formData,
+        domains: [...formData.domains, { domain: newDomain, isWildcard: newDomainIsWildcard }]
+      });
       setNewDomain('');
+      setNewDomainIsWildcard(false);
     }
   };
 
-  const removeDomain = (domain) => {
-    setFormData({ ...formData, domains: formData.domains.filter(d => d !== domain) });
+  const removeDomain = (domainToRemove) => {
+    setFormData({
+      ...formData,
+      domains: formData.domains.filter(d => (typeof d === 'string' ? d : d.domain) !== domainToRemove)
+    });
   };
 
   return (
@@ -271,37 +295,69 @@ function DomainGroupModal({ group, onClose, onSave }) {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Domains</label>
-            <div className="flex space-x-2 mb-3">
+            <div className="space-y-2 mb-3">
               <input
                 type="text"
-                placeholder="e.g., facebook.com or *.instagram.com"
+                placeholder="e.g., facebook.com"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addDomain()}
-                className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newDomainIsWildcard}
+                  onChange={(e) => setNewDomainIsWildcard(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                <span>
+                  Include subdomains (wildcard)
+                  <span className="text-slate-500 ml-1">
+                    - e.g., blocks both "facebook.com" and "www.facebook.com"
+                  </span>
+                </span>
+              </label>
               <button
                 onClick={addDomain}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                Add
+                Add Domain
               </button>
             </div>
             {formData.domains.length > 0 && (
               <div className="space-y-2 max-h-60 overflow-y-auto p-3 bg-slate-50 rounded-lg">
-                {formData.domains.map((domain, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200">
-                    <span className="text-sm font-mono text-slate-700">{domain}</span>
-                    <button
-                      onClick={() => removeDomain(domain)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                {formData.domains.map((domainEntry, idx) => {
+                  const domain = typeof domainEntry === 'string' ? domainEntry : domainEntry.domain;
+                  const isWildcard = typeof domainEntry === 'string'
+                    ? domainEntry.startsWith('*.') || domainEntry.endsWith('.*')
+                    : domainEntry.isWildcard;
+
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white rounded border border-slate-200">
+                      <div className="flex-1">
+                        <span className="text-sm font-mono font-medium text-slate-700">{domain}</span>
+                        <div className="flex items-center mt-1 space-x-2">
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            isWildcard
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {isWildcard ? '🌐 With Subdomains' : '🎯 Exact Match'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeDomain(domain)}
+                        className="text-red-600 hover:text-red-700 ml-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -325,6 +381,97 @@ function DomainGroupModal({ group, onClose, onSave }) {
           >
             {group ? 'Update Group' : 'Create Group'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirmModal({ group, onClose, onConfirm }) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
+  const [policiesInUse, setPoliciesInUse] = useState([]);
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      setError(null);
+      setPoliciesInUse([]);
+      await onConfirm();
+    } catch (err) {
+      console.error('Error deleting domain group:', err);
+      const errorData = err.response?.data?.data;
+
+      // Check if group is in use by policies
+      if (errorData?.policiesCount && errorData?.policies) {
+        setError(`Cannot delete this group because it is being used in ${errorData.policiesCount} access control policy(ies).`);
+        setPoliciesInUse(errorData.policies);
+      } else {
+        setError(errorData?.error || 'Failed to delete domain group. Please try again.');
+      }
+
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+
+          <h3 className="text-lg font-semibold text-slate-800 text-center mb-2">
+            Delete Domain Group
+          </h3>
+          <p className="text-slate-600 text-center mb-4">
+            Are you sure you want to delete <span className="font-semibold">"{group.name}"</span>?
+          </p>
+          <p className="text-sm text-slate-500 text-center mb-4">
+            This group contains {group.domains?.length || 0} domain{group.domains?.length !== 1 ? 's' : ''}.
+          </p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800 font-medium mb-2">{error}</p>
+              {policiesInUse.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-red-700 font-semibold mb-2">Policies using this group:</p>
+                  <ul className="space-y-1">
+                    {policiesInUse.map((policy) => (
+                      <li key={policy.id} className="text-xs text-red-700 flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        {policy.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-red-600 mt-3 italic">Please remove this group from these policies before deleting.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              disabled={deleting}
+              className="flex-1 px-4 py-2 text-slate-600 hover:text-slate-800 font-medium disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

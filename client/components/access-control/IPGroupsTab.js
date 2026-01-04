@@ -8,6 +8,7 @@ import api from '../../services/api';
 export default function IPGroupsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
+  const [deletingGroup, setDeletingGroup] = useState(null);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,19 +64,11 @@ export default function IPGroupsTab() {
   };
 
   // Handle delete group
-  const handleDeleteGroup = async (groupId, groupName) => {
-    if (!confirm(`Are you sure you want to delete "${groupName}"?`)) {
-      return;
-    }
-
-    try {
-      const response = await api.deleteIPGroup(groupId);
-      toast.success(response.data.data.message || 'IP group deleted successfully');
-      fetchGroups(); // Refresh the list
-    } catch (err) {
-      console.error('Error deleting IP group:', err);
-      toast.error(err.response?.data?.data?.error || 'Failed to delete IP group');
-    }
+  const handleDeleteGroup = async (groupId) => {
+    const response = await api.deleteIPGroup(groupId);
+    toast.success(response.data.data.message || 'IP group deleted successfully');
+    setDeletingGroup(null);
+    fetchGroups(); // Refresh the list
   };
 
   // Fetch groups on mount
@@ -144,7 +137,7 @@ export default function IPGroupsTab() {
                     </svg>
                   </button>
                   <button
-                    onClick={() => handleDeleteGroup(group._id, group.name)}
+                    onClick={() => setDeletingGroup(group)}
                     className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                     title="Delete"
                   >
@@ -195,6 +188,15 @@ export default function IPGroupsTab() {
               handleCreateGroup(groupData);
             }
           }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingGroup && (
+        <DeleteConfirmModal
+          group={deletingGroup}
+          onClose={() => setDeletingGroup(null)}
+          onConfirm={() => handleDeleteGroup(deletingGroup._id)}
         />
       )}
     </div>
@@ -320,6 +322,97 @@ function IPGroupModal({ group, onClose, onSave }) {
           >
             {group ? 'Update Group' : 'Create Group'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirmModal({ group, onClose, onConfirm }) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
+  const [policiesInUse, setPoliciesInUse] = useState([]);
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      setError(null);
+      setPoliciesInUse([]);
+      await onConfirm();
+    } catch (err) {
+      console.error('Error deleting IP group:', err);
+      const errorData = err.response?.data?.data;
+
+      // Check if group is in use by policies
+      if (errorData?.policiesCount && errorData?.policies) {
+        setError(`Cannot delete this group because it is being used in ${errorData.policiesCount} access control policy(ies).`);
+        setPoliciesInUse(errorData.policies);
+      } else {
+        setError(errorData?.error || 'Failed to delete IP group. Please try again.');
+      }
+
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+
+          <h3 className="text-lg font-semibold text-slate-800 text-center mb-2">
+            Delete IP Group
+          </h3>
+          <p className="text-slate-600 text-center mb-4">
+            Are you sure you want to delete <span className="font-semibold">"{group.name}"</span>?
+          </p>
+          <p className="text-sm text-slate-500 text-center mb-4">
+            This group contains {group.ipAddresses?.length || 0} IP address{group.ipAddresses?.length !== 1 ? 'es' : ''}.
+          </p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800 font-medium mb-2">{error}</p>
+              {policiesInUse.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-red-700 font-semibold mb-2">Policies using this group:</p>
+                  <ul className="space-y-1">
+                    {policiesInUse.map((policy) => (
+                      <li key={policy.id} className="text-xs text-red-700 flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        {policy.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-red-600 mt-3 italic">Please remove this group from these policies before deleting.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              disabled={deleting}
+              className="flex-1 px-4 py-2 text-slate-600 hover:text-slate-800 font-medium disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

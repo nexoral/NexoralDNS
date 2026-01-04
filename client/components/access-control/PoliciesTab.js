@@ -215,27 +215,6 @@ export default function PoliciesTab() {
         >
           Inactive
         </button>
-        <div className="border-l border-slate-300 h-6 mx-2"></div>
-        <button
-          onClick={() => setFilter('user_domain')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            filter === 'user_domain'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          User → Domain
-        </button>
-        <button
-          onClick={() => setFilter('user_internet')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            filter === 'user_internet'
-              ? 'bg-red-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          User → Internet
-        </button>
       </div>
 
       {/* Policies List */}

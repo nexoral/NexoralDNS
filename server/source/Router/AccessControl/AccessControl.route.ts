@@ -68,8 +68,20 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           },
           domains: {
             type: 'array',
-            items: { type: 'string' },
-            description: 'List of domains to block (required when blockType is specific_domains)'
+            items: {
+              oneOf: [
+                { type: 'string' },
+                {
+                  type: 'object',
+                  required: ['domain', 'isWildcard'],
+                  properties: {
+                    domain: { type: 'string' },
+                    isWildcard: { type: 'boolean' }
+                  }
+                }
+              ]
+            },
+            description: 'List of domains to block (required when blockType is specific_domains). Can be strings or objects with domain and isWildcard properties.'
           },
           domainGroup: {
             type: 'string',
@@ -219,8 +231,20 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
           },
           domains: {
             type: 'array',
-            items: { type: 'string' },
-            description: 'List of domains to block'
+            items: {
+              oneOf: [
+                { type: 'string' },
+                {
+                  type: 'object',
+                  required: ['domain', 'isWildcard'],
+                  properties: {
+                    domain: { type: 'string' },
+                    isWildcard: { type: 'boolean' }
+                  }
+                }
+              ]
+            },
+            description: 'List of domains to block. Can be strings or objects with domain and isWildcard properties.'
           },
           domainGroup: {
             type: 'string',
@@ -320,7 +344,23 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           name: { type: 'string', description: 'Group name' },
           description: { type: 'string', description: 'Group description' },
-          domains: { type: 'array', items: { type: 'string' }, description: 'List of domains' }
+          domains: {
+            type: 'array',
+            items: {
+              oneOf: [
+                { type: 'string' },
+                {
+                  type: 'object',
+                  required: ['domain', 'isWildcard'],
+                  properties: {
+                    domain: { type: 'string' },
+                    isWildcard: { type: 'boolean' }
+                  }
+                }
+              ]
+            },
+            description: 'List of domains. Can be strings or objects with domain and isWildcard properties.'
+          }
         }
       }
     },
@@ -393,7 +433,23 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           name: { type: 'string', description: 'Group name' },
           description: { type: 'string', description: 'Group description' },
-          domains: { type: 'array', items: { type: 'string' }, description: 'List of domains' }
+          domains: {
+            type: 'array',
+            items: {
+              oneOf: [
+                { type: 'string' },
+                {
+                  type: 'object',
+                  required: ['domain', 'isWildcard'],
+                  properties: {
+                    domain: { type: 'string' },
+                    isWildcard: { type: 'boolean' }
+                  }
+                }
+              ]
+            },
+            description: 'List of domains. Can be strings or objects with domain and isWildcard properties.'
+          }
         }
       }
     },

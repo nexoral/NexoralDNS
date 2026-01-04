@@ -13,6 +13,7 @@ import CacheKeys, { QueueKeys } from "../../Redis/CacheKeys.cache";
 // RabbitMQ
 import { DNS_QUERY_STATUS_KEYS } from "../../Redis/CacheKeys.cache";
 import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
+import BlockList from "../Rules/BlockList.service";
 
 export default class StartRulesService {
   private IO: InputOutputHandler;
@@ -76,6 +77,20 @@ export default class StartRulesService {
       serviceStatus.serviceConfig = {
         DefaultTTL: 10
       }
+    }
+
+    // Check Access Control Policy Check
+    const PolicyCheckRuleStatus = await new BlockList(this.IO, msg, rinfo).checkDomain(queryName);
+    if (PolicyCheckRuleStatus) {
+      // Add to Analytics
+      AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.BLOCKED;
+      AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_BLOCKED;
+      const end = performance.now();
+      const duration = end - start; // in milliseconds
+      AnalyticsMSgPayload.duration = duration;
+      console.log("Published from Blocked Rule", AnalyticsMSgPayload)
+      RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+      this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
     }
 
     Console.bright(`Processing DNS query for ${queryName} (${queryType} Record) from ${rinfo.address}:${rinfo.port} with the help of worker: ${process.pid}`);
