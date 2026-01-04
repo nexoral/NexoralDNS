@@ -49,6 +49,26 @@ class RedisCacheService {
 
   }
 
+  /**
+
+   * Get the raw Redis client for advanced operations
+
+   * Use with caution - prefer using the built-in methods when possible
+
+   */
+
+  public async getClient(): Promise<RedisClientType> {
+
+    if (!this.client || !this.client.isOpen) {
+
+      await this.connect();
+
+    }
+
+    return this.client!;
+
+  }
+
 
 
   /**

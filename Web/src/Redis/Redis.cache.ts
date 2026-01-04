@@ -49,6 +49,26 @@ class RedisCacheService {
 
   }
 
+  /**
+
+   * Get the raw Redis client for advanced operations
+
+   * Use with caution - prefer using the built-in methods when possible
+
+   */
+
+  public async getClient(): Promise<RedisClientType> {
+
+    if (!this.client || !this.client.isOpen) {
+
+      await this.connect();
+
+    }
+
+    return this.client!;
+
+  }
+
 
 
   /**
@@ -661,6 +681,222 @@ class RedisCacheService {
       this.client = null;
 
       Console.green('✅ Redis connection closed');
+
+    }
+
+  }
+
+  // ============================================
+
+  // ACCESS CONTROL LIST (ACL) METHODS
+
+  // ============================================
+
+  /**
+
+   * Get blocked domains for a specific IP address
+
+   * @param ip Client IP address
+
+   * @returns Set of blocked domains for this IP
+
+   */
+
+  async getBlockedDomainsForIP(ip: string): Promise<string[]> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const key = `acl:ip:${ip}`;
+
+      const domains = await this.client!.sMembers(key);
+
+      return domains || [];
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to get blocked domains for IP ${ip}:`, error);
+
+      return [];
+
+    }
+
+  }
+
+  /**
+
+   * Get globally blocked domains (applies to all users)
+
+   * @returns Set of globally blocked domains
+
+   */
+
+  async getGloballyBlockedDomains(): Promise<string[]> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const domains = await this.client!.sMembers('acl:all_users');
+
+      return domains || [];
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to get globally blocked domains:`, error);
+
+      return [];
+
+    }
+
+  }
+
+  /**
+
+   * Get ACL metadata (policy count, last updated, etc.)
+
+   * @returns ACL metadata object
+
+   */
+
+  async getACLMetadata(): Promise<any> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      const metadata = await this.client!.get('acl:metadata');
+
+      return metadata ? JSON.parse(metadata) : null;
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to get ACL metadata:`, error);
+
+      return null;
+
+    }
+
+  }
+
+  /**
+
+   * Check if a domain is blocked for a specific IP
+
+   * Supports wildcard matching (*.domain.com)
+
+   * @param ip Client IP address
+
+   * @param domain Domain to check
+
+   * @returns true if blocked, false otherwise
+
+   */
+
+  async isDomainBlocked(ip: string, domain: string): Promise<boolean> {
+
+    try {
+
+      if (!this.client) await this.connect();
+
+      // Get IP-specific blocks and global blocks in parallel
+
+      const [ipBlocks, globalBlocks] = await Promise.all([
+
+        this.getBlockedDomainsForIP(ip),
+
+        this.getGloballyBlockedDomains()
+
+      ]);
+
+      // Combine both lists
+
+      const allBlocks = [...ipBlocks, ...globalBlocks];
+
+      // Check for exact match
+
+      if (allBlocks.includes(domain)) {
+
+        return true;
+
+      }
+
+      // Check for wildcard and subdomain matching
+
+      for (const blockedPattern of allBlocks) {
+
+        // Full internet block (*)
+
+        if (blockedPattern === '*') {
+
+          return true;
+
+        }
+
+        // Wildcard subdomain block (*.example.com should match sub.example.com)
+
+        if (blockedPattern.startsWith('*.')) {
+
+          const baseDomain = blockedPattern.substring(2); // Remove *.
+
+          if (domain.endsWith(baseDomain) || domain === baseDomain) {
+
+            return true;
+
+          }
+
+        }
+
+        // Wildcard prefix block (example.* should match example.com, example.org)
+
+        else if (blockedPattern.endsWith('.*')) {
+
+          const basePrefix = blockedPattern.slice(0, -2); // Remove .*
+
+          if (domain.startsWith(basePrefix)) {
+
+            return true;
+
+          }
+
+        }
+
+        // Subdomain matching: if "facebook.com" is blocked, also block "www.facebook.com"
+
+        else {
+
+          // Check if query domain is a subdomain of blocked domain
+
+          if (domain.endsWith('.' + blockedPattern)) {
+
+            return true;
+
+          }
+
+          // Also check if blocked pattern is a subdomain of query domain
+
+          // This allows "www.facebook.com" to block "facebook.com" lookups
+
+          if (blockedPattern.endsWith('.' + domain)) {
+
+            return true;
+
+          }
+
+        }
+
+      }
+
+      return false;
+
+    } catch (error) {
+
+      Console.yellow(`⚠️  Failed to check if domain ${domain} is blocked for IP ${ip}:`, error);
+
+      // Fail open (allow on error) to prevent blocking all traffic
+
+      return false;
 
     }
 

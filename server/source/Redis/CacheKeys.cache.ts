@@ -3,8 +3,17 @@ enum CacheKeys {
   Domain_DNS_Record = "Domain_DNS_Record",
   Block_Domains = "Blocked_Domain",
   DnsQueryDetailsStore = "DNS_QUERY",
-  DashboardAnaliticalData = "DashboardAnaliticalDataStats"
+  DashboardAnaliticalData = "DashboardAnaliticalDataStats",
+  ACL_All_Users = "acl:all_users",
+  ACL_Metadata = "acl:metadata"
 }
+
+/**
+ * Helper function to get ACL key for specific IP
+ * @param ip IP address
+ * @returns Redis key for IP-specific blocked domains
+ */
+export const getACLKeyForIP = (ip: string): string => `acl:ip:${ip}`;
 
 export enum QueueKeys {
   DNS_Analytics = "DNS_analytcs"
