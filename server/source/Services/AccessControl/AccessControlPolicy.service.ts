@@ -4,6 +4,12 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
+import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
+
+export interface DomainEntry {
+  domain: string;
+  isWildcard: boolean;
+}
 
 export interface AccessControlPolicyData {
   policyType: string;
@@ -13,7 +19,7 @@ export interface AccessControlPolicyData {
   targetIPGroup?: ObjectId | string; // ObjectId reference to IP Group
   targetIPGroups?: (ObjectId | string)[]; // Support multiple IP Groups
   blockType: string;
-  domains?: string[];
+  domains?: DomainEntry[];
   domainGroup?: ObjectId | string; // ObjectId reference to Domain Group
   domainGroups?: (ObjectId | string)[]; // Support multiple Domain Groups
   policyName: string;
@@ -263,6 +269,16 @@ export default class AccessControlPolicyService {
 
     const result = await dbClient.insertOne(newPolicy);
 
+    // Immediately reload ACL policies to Redis
+    // Note: In-memory caches in BlockList will expire after 5 seconds
+    try {
+      await forceReloadACLPolicies();
+      console.log('[ACL] Policies reloaded to Redis after policy creation');
+    } catch (error) {
+      console.error('[ACL] Failed to reload policies after create:', error);
+      // Don't fail the request if Redis reload fails
+    }
+
     const Responser = new BuildResponse(
       this.fastifyReply,
       StatusCodes.CREATED,
@@ -444,6 +460,14 @@ export default class AccessControlPolicyService {
 
     const updatedPolicy = await dbClient.findOne({ _id: new ObjectId(policyId) });
 
+    // Immediately reload ACL policies to Redis
+    try {
+      await forceReloadACLPolicies();
+    } catch (error) {
+      console.error('[ACL] Failed to reload policies after update:', error);
+      // Don't fail the request if Redis reload fails
+    }
+
     const Responser = new BuildResponse(
       this.fastifyReply,
       StatusCodes.OK,
@@ -499,6 +523,14 @@ export default class AccessControlPolicyService {
       { $set: { isActive: newStatus, updatedAt: Date.now() } }
     );
 
+    // Immediately reload ACL policies to Redis
+    try {
+      await forceReloadACLPolicies();
+    } catch (error) {
+      console.error('[ACL] Failed to reload policies after toggle:', error);
+      // Don't fail the request if Redis reload fails
+    }
+
     const Responser = new BuildResponse(
       this.fastifyReply,
       StatusCodes.OK,
@@ -549,6 +581,14 @@ export default class AccessControlPolicyService {
     }
 
     await dbClient.deleteOne({ _id: new ObjectId(policyId) });
+
+    // Immediately reload ACL policies to Redis
+    try {
+      await forceReloadACLPolicies();
+    } catch (error) {
+      console.error('[ACL] Failed to reload policies after delete:', error);
+      // Don't fail the request if Redis reload fails
+    }
 
     const Responser = new BuildResponse(
       this.fastifyReply,

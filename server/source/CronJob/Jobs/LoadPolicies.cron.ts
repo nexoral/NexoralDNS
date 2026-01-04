@@ -15,10 +15,15 @@ import RedisCache from "../../Redis/Redis.cache";
  * 3. acl:metadata -> JSON with policy count, last updated timestamp
  */
 
+interface DomainEntry {
+  domain: string;
+  isWildcard: boolean;
+}
+
 interface ExpandedPolicy {
   policyName: string;
   targetIPs: string[];
-  blockedDomains: string[];
+  blockedDomains: DomainEntry[];
   isActive: boolean;
 }
 
@@ -61,7 +66,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 
   for (const policy of activePolicies) {
     const targetIPs: string[] = [];
-    const blockedDomains: string[] = [];
+    const blockedDomains: DomainEntry[] = [];
 
     // Expand target IPs
     switch (policy.targetType) {
@@ -91,26 +96,55 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
         break;
     }
 
-    // Expand blocked domains
+    // Expand blocked domains with wildcard state
     switch (policy.blockType) {
       case 'full_internet':
-        blockedDomains.push('*'); // Block everything
+        blockedDomains.push({ domain: '*', isWildcard: true }); // Block everything
         break;
       case 'specific_domains':
-        if (policy.domains) blockedDomains.push(...policy.domains);
+        if (policy.domains) {
+          // Handle both old format (string[]) and new format (DomainEntry[])
+          for (const domainEntry of policy.domains) {
+            if (typeof domainEntry === 'string') {
+              // Legacy format: assume wildcard if starts with *.
+              blockedDomains.push({ domain: domainEntry, isWildcard: domainEntry.startsWith('*.') });
+            } else {
+              // New format with explicit wildcard flag
+              blockedDomains.push(domainEntry);
+            }
+          }
+        }
         break;
       case 'domain_group':
         if (policy.domainGroup) {
           const groupId = policy.domainGroup.toString();
           const domains = domainGroupMap.get(groupId) || [];
-          blockedDomains.push(...domains);
+          // Handle both old format (string[]) and new format (DomainEntry[])
+          for (const domainEntry of domains) {
+            if (typeof domainEntry === 'string') {
+              // Legacy format
+              blockedDomains.push({ domain: domainEntry, isWildcard: domainEntry.startsWith('*.') });
+            } else {
+              // New format
+              blockedDomains.push(domainEntry);
+            }
+          }
         }
         break;
       case 'multiple_domain_groups':
         if (policy.domainGroups) {
           for (const groupId of policy.domainGroups) {
             const domains = domainGroupMap.get(groupId.toString()) || [];
-            blockedDomains.push(...domains);
+            // Handle both old format (string[]) and new format (DomainEntry[])
+            for (const domainEntry of domains) {
+              if (typeof domainEntry === 'string') {
+                // Legacy format
+                blockedDomains.push({ domain: domainEntry, isWildcard: domainEntry.startsWith('*.') });
+              } else {
+                // New format
+                blockedDomains.push(domainEntry);
+              }
+            }
           }
         }
         break;
@@ -130,6 +164,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   console.log(`[ACL] Expanded ${expandedPolicies.length} policies`);
 
   // Build Redis data structure
+  // Store domains as JSON strings to preserve wildcard state
   const ipToDomains = new Map<string, Set<string>>();
   const allUsersBlockedDomains = new Set<string>();
 
@@ -139,8 +174,9 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
     for (const ip of policy.targetIPs) {
       if (ip === '*') {
         // Policy applies to all users
-        for (const domain of policy.blockedDomains) {
-          allUsersBlockedDomains.add(domain);
+        for (const domainEntry of policy.blockedDomains) {
+          // Store as JSON to preserve wildcard state
+          allUsersBlockedDomains.add(JSON.stringify(domainEntry));
         }
       } else {
         // Policy applies to specific IP
@@ -148,8 +184,9 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
           ipToDomains.set(ip, new Set());
         }
         const domainSet = ipToDomains.get(ip)!;
-        for (const domain of policy.blockedDomains) {
-          domainSet.add(domain);
+        for (const domainEntry of policy.blockedDomains) {
+          // Store as JSON to preserve wildcard state
+          domainSet.add(JSON.stringify(domainEntry));
         }
       }
     }
@@ -201,6 +238,20 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   const duration = Date.now() - startTime;
   console.log(`[ACL]  Successfully loaded policies to Redis in ${duration}ms`);
   console.log(`[ACL] Stats: ${metadata.expandedPolicies} policies, ${metadata.trackedIPs} IPs, ${metadata.globalBlocks} global blocks`);
+}
+
+/**
+ * Force reload ACL policies to Redis (called on policy/domain group changes)
+ * This ensures immediate updates without waiting for the cron job
+ */
+export async function forceReloadACLPolicies(): Promise<void> {
+  try {
+    await loadAccessControlPoliciesToRedis();
+    console.log('[ACL] Force reload completed successfully');
+  } catch (error) {
+    console.error('[ACL] Error during force reload:', error);
+    throw error;
+  }
 }
 
 /**

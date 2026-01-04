@@ -18,12 +18,25 @@ export default class BlockList {
   private readonly localCache: Map<string, { blocked: boolean; timestamp: number }>;
   private readonly CACHE_TTL = 5000; // 5 seconds local cache
 
+  // Shared cache across all instances (class-level)
+  private static globalCache: Map<string, { blocked: boolean; timestamp: number }> = new Map();
+  private static GLOBAL_CACHE_TTL = 5000; // 5 seconds
+
   constructor(IO: InputOutputHandler, msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo) {
     this.IO = IO;
     this.msg = msg;
     this.rinfo = rinfo;
     this.clientIP = rinfo.address;
     this.localCache = new Map();
+  }
+
+  /**
+   * Clear all in-memory caches (both instance and global)
+   * This should be called when ACL policies are updated
+   */
+  public static clearAllCaches(): void {
+    BlockList.globalCache.clear();
+    console.log('[BlockList] Cleared all in-memory caches');
   }
 
   /**
@@ -40,25 +53,37 @@ export default class BlockList {
     const normalizedDomain = domain.toLowerCase();
     const cacheKey = `${this.clientIP}:${normalizedDomain}`;
 
-    // Layer 1: Check in-memory cache (fastest)
-    const cached = this.localCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
-      return cached.blocked;
+    // Layer 1: Check global cache (shared across instances)
+    const globalCached = BlockList.globalCache.get(cacheKey);
+    if (globalCached && (Date.now() - globalCached.timestamp) < BlockList.GLOBAL_CACHE_TTL) {
+      return globalCached.blocked;
     }
 
-    // Layer 2: Check Redis (ACL policies loaded by cron)
+    // Layer 2: Check instance cache
+    const localCached = this.localCache.get(cacheKey);
+    if (localCached && (Date.now() - localCached.timestamp) < this.CACHE_TTL) {
+      return localCached.blocked;
+    }
+
+    // Layer 3: Check Redis (ACL policies loaded by cron)
     try {
       const isBlocked = await RedisCache.isDomainBlocked(this.clientIP, normalizedDomain);
 
-      // Update local cache
-      this.localCache.set(cacheKey, {
+      // Update both caches
+      const cacheEntry = {
         blocked: isBlocked,
         timestamp: Date.now()
-      });
+      };
+
+      this.localCache.set(cacheKey, cacheEntry);
+      BlockList.globalCache.set(cacheKey, cacheEntry);
 
       // Clean up old cache entries if cache gets too large
       if (this.localCache.size > 1000) {
         this.cleanLocalCache();
+      }
+      if (BlockList.globalCache.size > 10000) {
+        BlockList.cleanGlobalCache();
       }
 
       return isBlocked;
@@ -139,6 +164,19 @@ export default class BlockList {
     for (const [key, value] of this.localCache.entries()) {
       if (now - value.timestamp > this.CACHE_TTL) {
         this.localCache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Clean up expired entries from global cache
+   * Keeps cache size manageable
+   */
+  public static cleanGlobalCache(): void {
+    const now = Date.now();
+    for (const [key, value] of BlockList.globalCache.entries()) {
+      if (now - value.timestamp > BlockList.GLOBAL_CACHE_TTL) {
+        BlockList.globalCache.delete(key);
       }
     }
   }

@@ -814,71 +814,93 @@ class RedisCacheService {
 
       const allBlocks = [...ipBlocks, ...globalBlocks];
 
-      // Check for exact match
+      // Parse domain entries from JSON strings
 
-      if (allBlocks.includes(domain)) {
+      for (const blockEntry of allBlocks) {
 
-        return true;
+        let domainEntry: { domain: string; isWildcard: boolean };
 
-      }
+        try {
 
-      // Check for wildcard and subdomain matching
+          // Try to parse as JSON (new format)
 
-      for (const blockedPattern of allBlocks) {
+          domainEntry = JSON.parse(blockEntry);
+
+        } catch {
+
+          // Fallback to legacy format (plain string)
+
+          domainEntry = {
+
+            domain: blockEntry,
+
+            isWildcard: blockEntry.startsWith('*.') || blockEntry.endsWith('.*') || blockEntry === '*'
+
+          };
+
+        }
+
+        const blockedDomain = domainEntry.domain;
+
+        const isWildcard = domainEntry.isWildcard;
 
         // Full internet block (*)
 
-        if (blockedPattern === '*') {
+        if (blockedDomain === '*') {
 
           return true;
 
         }
 
-        // Wildcard subdomain block (*.example.com should match sub.example.com)
+        // Check based on wildcard state
 
-        if (blockedPattern.startsWith('*.')) {
+        if (isWildcard) {
 
-          const baseDomain = blockedPattern.substring(2); // Remove *.
+          // Wildcard subdomain block (*.example.com should match sub.example.com)
 
-          if (domain.endsWith(baseDomain) || domain === baseDomain) {
+          if (blockedDomain.startsWith('*.')) {
 
-            return true;
+            const baseDomain = blockedDomain.substring(2); // Remove *.
 
-          }
+            if (domain.endsWith(baseDomain) || domain === baseDomain) {
 
-        }
+              return true;
 
-        // Wildcard prefix block (example.* should match example.com, example.org)
-
-        else if (blockedPattern.endsWith('.*')) {
-
-          const basePrefix = blockedPattern.slice(0, -2); // Remove .*
-
-          if (domain.startsWith(basePrefix)) {
-
-            return true;
+            }
 
           }
 
-        }
+          // Wildcard prefix block (example.* should match example.com, example.org)
 
-        // Subdomain matching: if "facebook.com" is blocked, also block "www.facebook.com"
+          else if (blockedDomain.endsWith('.*')) {
 
-        else {
+            const basePrefix = blockedDomain.slice(0, -2); // Remove .*
 
-          // Check if query domain is a subdomain of blocked domain
+            if (domain.startsWith(basePrefix)) {
 
-          if (domain.endsWith('.' + blockedPattern)) {
+              return true;
 
-            return true;
+            }
 
           }
 
-          // Also check if blocked pattern is a subdomain of query domain
+          // Generic wildcard - treat as subdomain matching
 
-          // This allows "www.facebook.com" to block "facebook.com" lookups
+          else {
 
-          if (blockedPattern.endsWith('.' + domain)) {
+            if (domain.endsWith('.' + blockedDomain) || domain === blockedDomain) {
+
+              return true;
+
+            }
+
+          }
+
+        } else {
+
+          // Exact match only (not wildcard)
+
+          if (domain === blockedDomain) {
 
             return true;
 

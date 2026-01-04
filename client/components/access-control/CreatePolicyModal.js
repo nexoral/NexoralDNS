@@ -23,6 +23,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
   // Temporary input fields
   const [newIP, setNewIP] = useState('');
   const [newDomain, setNewDomain] = useState('');
+  const [newDomainIsWildcard, setNewDomainIsWildcard] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ipGroups, setIpGroups] = useState([]);
   const [domainGroups, setDomainGroups] = useState([]);
@@ -61,14 +62,18 @@ export default function CreatePolicyModal({ onClose, onSave }) {
   };
 
   const addDomain = () => {
-    if (newDomain && !formData.domains.includes(newDomain)) {
-      setFormData({ ...formData, domains: [...formData.domains, newDomain] });
+    if (newDomain && !formData.domains.some(d => d.domain === newDomain)) {
+      setFormData({
+        ...formData,
+        domains: [...formData.domains, { domain: newDomain, isWildcard: newDomainIsWildcard }]
+      });
       setNewDomain('');
+      setNewDomainIsWildcard(false);
     }
   };
 
-  const removeDomain = (domain) => {
-    setFormData({ ...formData, domains: formData.domains.filter(d => d !== domain) });
+  const removeDomain = (domainToRemove) => {
+    setFormData({ ...formData, domains: formData.domains.filter(d => d.domain !== domainToRemove) });
   };
 
   const toggleIPGroup = (groupId) => {
@@ -428,28 +433,53 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                   </div>
                   {formData.blockType === 'specific_domains' && (
                     <div className="mt-3 space-y-2">
-                      <div className="flex space-x-2">
+                      <div className="space-y-2">
                         <input
                           type="text"
-                          placeholder="e.g., facebook.com or *.instagram.com"
+                          placeholder="e.g., facebook.com"
                           value={newDomain}
                           onChange={(e) => setNewDomain(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && addDomain()}
-                          className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
+                        <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={newDomainIsWildcard}
+                            onChange={(e) => setNewDomainIsWildcard(e.target.checked)}
+                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                          />
+                          <span>
+                            Include subdomains (wildcard)
+                            <span className="text-slate-500 ml-1">
+                              - e.g., blocks both "facebook.com" and "www.facebook.com"
+                            </span>
+                          </span>
+                        </label>
                         <button
                           onClick={addDomain}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
-                          Add
+                          Add Domain
                         </button>
                       </div>
                       {formData.domains.length > 0 && (
-                        <div className="space-y-2">
-                          {formData.domains.map((domain, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                              <span className="text-sm text-slate-700">{domain}</span>
-                              <button onClick={() => removeDomain(domain)} className="text-red-600 hover:text-red-700">
+                        <div className="space-y-2 mt-3">
+                          {formData.domains.map((domainEntry, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-slate-700">{domainEntry.domain}</span>
+                                <div className="flex items-center mt-1 space-x-2">
+                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                    domainEntry.isWildcard
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-slate-200 text-slate-600'
+                                  }`}>
+                                    {domainEntry.isWildcard ? '🌐 With Subdomains' : '🎯 Exact Match'}
+                                  </span>
+                                </div>
+                              </div>
+                              <button onClick={() => removeDomain(domainEntry.domain)} className="text-red-600 hover:text-red-700 ml-2">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
