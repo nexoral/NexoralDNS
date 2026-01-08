@@ -18,7 +18,7 @@ NexoralDNS is a high-performance DNS server with advanced features including:
 - **User plan management** with feature limits
 - **Analytics & logging** for query monitoring
 - **Multi-client support** with client-specific rules
-
+ 
 ---
 
 ## Flow Diagrams
