@@ -103,8 +103,10 @@ jq -n \
                "     - Example: \"Arre bhai, ye loop dekh ke meri aankhein jal gayin 🔥. Isko fix kar warna production fat jayega aur boss teri class lega 😂.\"\n" +
                "   - **Content**: Point out specific improvements, potential bugs, or best practices. If the code looks great, say something encouraging in the requested language.\n" +
                "6. **Reviewer Comment**: IF (and only if) the variable $pr_reviewers is NOT empty, write a separate comment addressed to the reviewers (" + $pr_reviewers + "). \n" +
-               "   - Tell them specifically what to check based on the diff (e.g., \"@Reviewer, check the logic in auth.ts carefully\"). \n" +
-               "   - Keep it professional but helpful. If $pr_reviewers is empty, return null.\n\n" +
+               "   - Tell them specifically what to check based on the diff.\n" +
+               "   - **Tone/Language**: Follow the same rules as above. If 'english', be professional. If 'hinglish', be FRANK, FUNNY, and use ROAST mode. \n" +
+               "     - Example Hinglish: \"@Reviewer bhai, zara iska auth logic dekh lena, kahin fat na jaye 😂. Isne shayad nasha karke code likha hai.\"\n" +
+               "   - If $pr_reviewers is empty, return null.\n\n" +
                "Git Diff:\n" + $diff + "\n\n" +
                "**IMPORTANT**: Output ONLY a valid JSON object with this structure:\n" +
                "{\n" +
@@ -211,7 +213,6 @@ if [[ -n "$REVIEW_COMMENT" ]]; then
   curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "$COMMENT_PAYLOAD" \
-    "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
     "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
 fi
 
