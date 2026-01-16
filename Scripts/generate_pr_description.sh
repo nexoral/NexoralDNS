@@ -88,7 +88,7 @@ jq -n \
                "2. **Generate Description**: If Needs Description is true, generate a VERY LONG, DETAILED, and COMPREHENSIVE description (Summary, Key Changes, Technical Details).\n" +
                "3. **Code Quality Check**: Perform a strict code quality check. Look for bugs, security issues, performance bottlenecks, and bad practices.\n" +
                "4. **Suggestion**: Provide a specific recommendation for user @" + $user_name + ". Should this be merged? Does it need improvements? Be specific.\n" +
-               "5. **Review Comment**: Write a constructive code review comment addressed to @" + $user_name + ". Act like a Senior Engineer mentoring a Junior. Point out specific improvements, potential bugs, or best practices. Use emojis 🚀 🐛 🎨 to make it lively and not dull. If the code looks great, just say 'Great job! LGTM 🚀'.\n\n" +
+               "5. **Review Comment**: Write a constructive code review comment addressed to @" + $user_name + ". Act like a Senior Engineer mentoring a Junior. Point out specific improvements, potential bugs, or best practices. Use emojis 🚀 🐛 🎨 to make it lively and not dull. If the code looks great, just say Great job! LGTM 🚀.\n\n" +
                "Git Diff:\n" + $diff + "\n\n" +
                "**IMPORTANT**: Output ONLY a valid JSON object with this structure:\n" +
                "{\n" +
