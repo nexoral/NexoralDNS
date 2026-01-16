@@ -9,6 +9,7 @@ MIN_DESC_LENGTH=50
 MIN_TITLE_LENGTH=10
 API_URL="https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
 USER_NAME="${USER_NAME:-AnkanSaha}"
+LANGUAGE="${LANGUAGE:-hinglish}"
 
 # Check for API Key
 if [[ -z "$GEMINI_API_KEY" ]]; then
@@ -77,24 +78,33 @@ jq -n \
   --arg title "$CURRENT_TITLE" \
   --arg needs_desc "$NEEDS_DESC" \
   --arg user_name "$USER_NAME" \
+  --arg lang "$LANGUAGE" \
   '{
     contents: [{
       parts: [{
         text: ("You are an expert software engineer and code reviewer. Analyze the following git diff and PR title.\n\n" +
                "Current Title: \"" + $title + "\"\n" +
-               "Needs Description: " + $needs_desc + "\n\n" +
+               "Needs Description: " + $needs_desc + "\n" +
+               "Language Preference: " + $lang + "\n\n" +
                "Task:\n" +
                "1. **Evaluate Title**: If current title is short (<10 chars), generic, or unrelated, generate a new concise type-based title (feat:, fix:, etc). Otherwise return null.\n" +
                "2. **Generate Description**: If Needs Description is true, generate a VERY LONG, DETAILED, and COMPREHENSIVE description (Summary, Key Changes, Technical Details).\n" +
                "3. **Code Quality Check**: Perform a strict code quality check. Look for bugs, security issues, performance bottlenecks, and bad practices.\n" +
-               "4. **Suggestion**: Provide a specific recommendation for user @" + $user_name + ". Should this be merged? Does it need improvements? Be specific.\n\n" +
+               "4. **Suggestion**: Provide a specific recommendation for user @" + $user_name + ". Should this be merged? Does it need improvements? Be specific.\n" +
+               "5. **Review Comment**: Write a constructive code review comment addressed to @" + $user_name + ". \n" +
+               "   - **Tone**: Act like a Senior Engineer mentoring a Junior. Be friendly but strict about quality. Use emojis 🚀 🐛 🎨.\n" +
+               "   - **Language**: If Language Preference is \"english\", write in standard professional English. \n" +
+               "     If it is NOT \"english\" (default), write in **Hinglish** (Hindi + English mix). Use frank, friendly words like \"Bro\", \"Yaar\", \"Dekh bhai\". \n" +
+               "     Example Hinglish: \"Bro, yeh code thoda optimize ho sakta hai. Loop ke andar DB call mat kar, performance gir jayegi 📉. Isko batch mein convert kar de.\"\n" +
+               "   - **Content**: Point out specific improvements, potential bugs, or best practices. If the code looks great, say something encouraging in the requested language.\n\n" +
                "Git Diff:\n" + $diff + "\n\n" +
                "**IMPORTANT**: Output ONLY a valid JSON object with this structure:\n" +
                "{\n" +
                "  \"new_title\": \"string or null\",\n" +
                "  \"description\": \"string or null\",\n" +
                "  \"quality_check\": \"string\",\n" +
-               "  \"suggestion\": \"string\"\n" +
+               "  \"suggestion\": \"string\",\n" +
+               "  \"review_comment\": \"string\"\n" +
                "}")
       }]
     }]
@@ -124,6 +134,7 @@ NEW_TITLE=$(echo "$CLEAN_JSON" | jq -r '.new_title // empty')
 NEW_DESC=$(echo "$CLEAN_JSON" | jq -r '.description // empty')
 QUALITY=$(echo "$CLEAN_JSON" | jq -r '.quality_check // empty')
 SUGGESTION=$(echo "$CLEAN_JSON" | jq -r '.suggestion // empty')
+REVIEW_COMMENT=$(echo "$CLEAN_JSON" | jq -r '.review_comment // empty')
 
 if [[ "$NEW_TITLE" == "null" ]]; then NEW_TITLE=""; fi
 if [[ "$NEW_DESC" == "null" ]]; then NEW_DESC=""; fi
@@ -189,5 +200,17 @@ curl -s -X PATCH -H "Authorization: token ${GITHUB_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "$UPDATE_JSON" \
   "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}"
+
+# 7. Post Review Comment (if exists)
+if [[ -n "$REVIEW_COMMENT" ]]; then
+  echo "Posting Review Comment..."
+  # Use jq to safely escape the comment
+  COMMENT_PAYLOAD=$(jq -n --arg body "$REVIEW_COMMENT" '{body: $body}')
+  
+  curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$COMMENT_PAYLOAD" \
+    "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+fi
 
 echo "Done."
