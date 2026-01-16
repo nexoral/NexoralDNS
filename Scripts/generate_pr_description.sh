@@ -8,6 +8,7 @@ PR_NUMBER="${PR_NUMBER}"
 MIN_DESC_LENGTH=50
 MIN_TITLE_LENGTH=10
 API_URL="https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
+USER_NAME="${USER_NAME:-AnkanSaha}"
 
 # Check for API Key
 if [[ -z "$GEMINI_API_KEY" ]]; then
@@ -75,6 +76,7 @@ jq -n \
   --arg diff "$TRUNCATED_DIFF" \
   --arg title "$CURRENT_TITLE" \
   --arg needs_desc "$NEEDS_DESC" \
+  --arg user_name "$USER_NAME" \
   '{
     contents: [{
       parts: [{
@@ -85,7 +87,7 @@ jq -n \
                "1. **Evaluate Title**: If current title is short (<10 chars), generic, or unrelated, generate a new concise type-based title (feat:, fix:, etc). Otherwise return null.\n" +
                "2. **Generate Description**: If Needs Description is true, generate a VERY LONG, DETAILED, and COMPREHENSIVE description (Summary, Key Changes, Technical Details).\n" +
                "3. **Code Quality Check**: Perform a strict code quality check. Look for bugs, security issues, performance bottlenecks, and bad practices.\n" +
-               "4. **Suggestion**: Provide a specific recommendation for user @AnkanSha. Should this be merged? Does it need improvements? Be specific.\n\n" +
+               "4. **Suggestion**: Provide a specific recommendation for user @" + $user_name + ". Should this be merged? Does it need improvements? Be specific.\n\n" +
                "Git Diff:\n" + $diff + "\n\n" +
                "**IMPORTANT**: Output ONLY a valid JSON object with this structure:\n" +
                "{\n" +
@@ -163,7 +165,7 @@ $QUALITY"
   if [[ -n "$SUGGESTION" ]]; then
     FULL_BODY="$FULL_BODY
 
-## 💡 Suggestion for @AnkanSha
+## 💡 Suggestion for @$USER_NAME
 $SUGGESTION"
   fi
   
