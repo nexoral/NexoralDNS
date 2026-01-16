@@ -162,8 +162,8 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       SERVICE_NAME: "NexoralDNS",
       API_KEY: process.env.SERVICE_API_KEY || undefined,
       CLOUD_URL: process.env.CLOUD_URL || undefined,
-      Service_Status: "active", // active, inactive
-        DefaultTTL: 10,
+      Service_Status: "active",
+      DefaultTTL: 10,
       Connected_At: null,
       Disconnected_At: null,
       Current_WiFi_SSID: null,
