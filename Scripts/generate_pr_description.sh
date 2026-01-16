@@ -20,8 +20,13 @@ fi
 echo "Processing PR #${PR_NUMBER} in ${REPO}"
 
 # 1. Get PR Details
-PR_RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+PR_RESPONSE=$(curl -s -f -H "Authorization: token ${GITHUB_TOKEN}" \
   "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}")
+
+if [[ $? -ne 0 ]]; then
+  echo "Error fetching PR details."
+  exit 1
+fi
 
 CURRENT_BODY=$(echo "$PR_RESPONSE" | jq -r '.body // ""')
 CURRENT_TITLE=$(echo "$PR_RESPONSE" | jq -r '.title // ""')
@@ -54,16 +59,21 @@ fi
 # So I will proceed if EITHER title is bad OR description is short.
 
 if [[ "$NEEDS_DESC" == "false" ]]; then
-   # If description is fine, we might still need to check title.
-   # But we can't easily check title quality without AI. 
-   # So we proceed to fetch diff and ask AI, but we tell AI to keep description null if not needed.
-   echo "Checking if title needs improvement..."
+if [[ "$NEEDS_DESC" == "false" ]]; then
+   echo "Description is sufficient. Skipping AI generation."
+   exit 0
 fi
 
 # 3. Fetch Diff
-DIFF=$(curl -s -L -H "Authorization: token ${GITHUB_TOKEN}" \
+# 3. Fetch Diff
+DIFF=$(curl -s -L -f -H "Authorization: token ${GITHUB_TOKEN}" \
   -H "Accept: application/vnd.github.v3.diff" \
   "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}")
+
+if [[ $? -ne 0 ]]; then
+  echo "Error fetching PR diff."
+  exit 1
+fi
 
 if [[ -z "$DIFF" ]]; then
   echo "Diff is empty. Exiting."
@@ -103,8 +113,10 @@ jq -n \
                "     - Example: \"Arre bhai, ye loop dekh ke meri aankhein jal gayin 🔥. Isko fix kar warna production fat jayega aur boss teri class lega 😂.\"\n" +
                "   - **Content**: Point out specific improvements, potential bugs, or best practices. If the code looks great, say something encouraging in the requested language.\n" +
                "6. **Reviewer Comment**: IF (and only if) the variable $pr_reviewers is NOT empty, write a separate comment addressed to the reviewers (" + $pr_reviewers + "). \n" +
-               "   - Tell them specifically what to check based on the diff (e.g., \"@Reviewer, check the logic in auth.ts carefully\"). \n" +
-               "   - Keep it professional but helpful. If $pr_reviewers is empty, return null.\n\n" +
+               "   - Tell them specifically what to check based on the diff.\n" +
+               "   - **Tone/Language**: Follow the same rules as above. If 'english', be professional. If 'hinglish', be FRANK, FUNNY, and use ROAST mode. \n" +
+               "     - Example Hinglish: \"@Reviewer bhai, zara iska auth logic dekh lena, kahin fat na jaye 😂. Isne shayad nasha karke code likha hai.\"\n" +
+               "   - If $pr_reviewers is empty, return null.\n\n" +
                "Git Diff:\n" + $diff + "\n\n" +
                "**IMPORTANT**: Output ONLY a valid JSON object with this structure:\n" +
                "{\n" +
@@ -119,10 +131,16 @@ jq -n \
   }' > payload.json
 
 echo "Sending request to Gemini..."
-RESPONSE=$(curl -s -X POST "$API_URL" \
+RESPONSE=$(curl -s -f -X POST "$API_URL" \
   -H "x-goog-api-key: $GEMINI_API_KEY" \
   -H "Content-Type: application/json" \
   -d @payload.json)
+
+if [[ $? -ne 0 ]]; then
+  echo "Error calling Gemini API."
+  echo "Response: $RESPONSE"
+  exit 1
+fi
 
 # 5. Parse Response
 # Extract text content. The response might contain markdown code blocks for json.
@@ -191,16 +209,19 @@ $QUALITY"
 fi
 
 # Check if there is anything to update
-if [[ "$UPDATE_JSON" == "{}" ]]; then
-  echo "No updates needed."
-  exit 0
+if [[ "$UPDATE_JSON" != "{}" ]]; then
+  echo "Updating PR..."
+  curl -s -f -X PATCH -H "Authorization: token ${GITHUB_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$UPDATE_JSON" \
+    "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}"
+    
+  if [[ $? -ne 0 ]]; then
+    echo "Error updating PR description."
+  fi
+else
+  echo "No description/title updates needed."
 fi
-
-echo "Updating PR..."
-curl -s -X PATCH -H "Authorization: token ${GITHUB_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "$UPDATE_JSON" \
-  "https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}"
 
 # 7. Post Review Comment (if exists)
 if [[ -n "$REVIEW_COMMENT" ]]; then
@@ -208,11 +229,15 @@ if [[ -n "$REVIEW_COMMENT" ]]; then
   # Use jq to safely escape the comment
   COMMENT_PAYLOAD=$(jq -n --arg body "$REVIEW_COMMENT" '{body: $body}')
   
-  curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
+  curl -s -f -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "$COMMENT_PAYLOAD" \
     "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
-    "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+    
+  if [[ $? -ne 0 ]]; then
+    echo "Error posting review comment."
+  fi
+fi
 fi
 
 # 8. Post Reviewer Comment (if exists)
@@ -220,10 +245,15 @@ if [[ -n "$REVIEWER_COMMENT" && "$REVIEWER_COMMENT" != "null" ]]; then
   echo "Posting Reviewer Comment..."
   COMMENT_PAYLOAD=$(jq -n --arg body "$REVIEWER_COMMENT" '{body: $body}')
   
-  curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
+  curl -s -f -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "$COMMENT_PAYLOAD" \
     "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+
+  if [[ $? -ne 0 ]]; then
+    echo "Error posting reviewer comment."
+  fi
+fi
 fi
 
 echo "Done."
