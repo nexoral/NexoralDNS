@@ -38,7 +38,7 @@ def get_pr_diff():
 
 def generate_pr_content(diff, current_title, current_body):
     """Generates a PR title and description using Gemini API."""
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
     headers = {
         "x-goog-api-key": GEMINI_API_KEY,
         "Content-Type": "application/json"
@@ -83,10 +83,7 @@ def generate_pr_content(diff, current_title, current_body):
     payload = {
         "contents": [{
             "parts": [{"text": prompt}]
-        }],
-        "generationConfig": {
-            "response_mime_type": "application/json"
-        }
+        }]
     }
     
     response = requests.post(url, headers=headers, json=payload)
@@ -96,8 +93,19 @@ def generate_pr_content(diff, current_title, current_body):
         
     try:
         result = response.json()
-        content = result['candidates'][0]['content']['parts'][0]['text']
-        # Clean up markdown code blocks if present (though response_mime_type should handle it)
+        if 'candidates' not in result or not result['candidates']:
+            print("No candidates returned by Gemini.")
+            print(f"Full response: {result}")
+            return None
+            
+        candidate = result['candidates'][0]
+        if 'content' not in candidate:
+            print("No content in candidate (possibly blocked).")
+            print(f"Full response: {result}")
+            return None
+            
+        content = candidate['content']['parts'][0]['text']
+        # Clean up markdown code blocks if present
         content = content.replace("```json", "").replace("```", "").strip()
         import json
         return json.loads(content)
