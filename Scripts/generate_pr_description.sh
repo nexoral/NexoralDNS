@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Configuration
+# Configuration for PR description generation
 GITHUB_TOKEN="${GITHUB_TOKEN}"
 GEMINI_API_KEY="${GEMINI_API_KEY}"
 REPO="${GITHUB_REPOSITORY}"
@@ -58,7 +58,6 @@ fi
 # HOWEVER, the user *also* said "update the PR Title if it too short".
 # So I will proceed if EITHER title is bad OR description is short.
 
-if [[ "$NEEDS_DESC" == "false" ]]; then
 if [[ "$NEEDS_DESC" == "false" ]]; then
    echo "Description is sufficient. Skipping AI generation."
    exit 0
@@ -238,8 +237,6 @@ if [[ -n "$REVIEW_COMMENT" ]]; then
     echo "Error posting review comment."
   fi
 fi
-fi
-
 # 8. Post Reviewer Comment (if exists)
 if [[ -n "$REVIEWER_COMMENT" && "$REVIEWER_COMMENT" != "null" ]]; then
   echo "Posting Reviewer Comment..."
@@ -253,7 +250,6 @@ if [[ -n "$REVIEWER_COMMENT" && "$REVIEWER_COMMENT" != "null" ]]; then
   if [[ $? -ne 0 ]]; then
     echo "Error posting reviewer comment."
   fi
-fi
 fi
 
 echo "Done."
