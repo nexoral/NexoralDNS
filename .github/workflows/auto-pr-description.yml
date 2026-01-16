@@ -20,13 +20,11 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
-        run: pip install requests
-
       - name: Generate and Update Description
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: python .github/scripts/generate_pr_description.py
+          USER_NAME: ${{ secrets.USER_NAME }}
+        run: ./Scripts/generate_pr_description.sh
