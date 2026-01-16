@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Configuration
+# Configuration for PR description generation
 GITHUB_TOKEN="${GITHUB_TOKEN}"
 GEMINI_API_KEY="${GEMINI_API_KEY}"
 REPO="${GITHUB_REPOSITORY}"

@@ -1,4 +1,4 @@
-name: Auto PR Description
+name: Auto PR Updater
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  update-pr-description:
+  update-pull-request:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
