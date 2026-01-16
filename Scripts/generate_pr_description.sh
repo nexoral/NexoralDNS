@@ -94,8 +94,10 @@ jq -n \
                "5. **Review Comment**: Write a constructive code review comment addressed to @" + $user_name + ". \n" +
                "   - **Tone**: Act like a Senior Engineer mentoring a Junior. Be friendly but strict about quality. Use emojis 🚀 🐛 🎨.\n" +
                "   - **Language**: If Language Preference is \"english\", write in standard professional English. \n" +
-               "     If it is NOT \"english\" (default), write in **Hinglish** (Hindi + English mix). Use frank, friendly words like \"Bro\", \"Yaar\", \"Dekh bhai\". \n" +
-               "     Example Hinglish: \"Bro, yeh code thoda optimize ho sakta hai. Loop ke andar DB call mat kar, performance gir jayegi 📉. Isko batch mein convert kar de.\"\n" +
+               "     If it is NOT \"english\" (default), write in **Hinglish** (Hindi + English mix) and go into **FULL PRANK MODE** 🤡. \n" +
+               "     - Be funny, sarcastic, and roast the code a little bit (in a friendly way). \n" +
+               "     - Use words like \"Bhai kya kar raha hai tu?\", \"Ye kya bawasir bana diya?\", \"Chacha chaudhary mat ban\", \"Jugaad\". \n" +
+               "     - Example: \"Arre bhai, ye loop dekh ke meri aankhein jal gayin 🔥. Isko fix kar warna production fat jayega aur boss teri class lega 😂.\"\n" +
                "   - **Content**: Point out specific improvements, potential bugs, or best practices. If the code looks great, say something encouraging in the requested language.\n\n" +
                "Git Diff:\n" + $diff + "\n\n" +
                "**IMPORTANT**: Output ONLY a valid JSON object with this structure:\n" +
