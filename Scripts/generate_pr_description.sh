@@ -25,6 +25,8 @@ PR_RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
 
 CURRENT_BODY=$(echo "$PR_RESPONSE" | jq -r '.body // ""')
 CURRENT_TITLE=$(echo "$PR_RESPONSE" | jq -r '.title // ""')
+PR_AUTHOR=$(echo "$PR_RESPONSE" | jq -r '.user.login // ""')
+PR_REVIEWERS=$(echo "$PR_RESPONSE" | jq -r '.requested_reviewers[].login' | paste -sd "," -)
 
 # Handle null body
 if [[ "$CURRENT_BODY" == "null" ]]; then CURRENT_BODY=""; fi
@@ -79,6 +81,8 @@ jq -n \
   --arg needs_desc "$NEEDS_DESC" \
   --arg user_name "$USER_NAME" \
   --arg lang "$LANGUAGE" \
+  --arg pr_author "$PR_AUTHOR" \
+  --arg pr_reviewers "$PR_REVIEWERS" \
   '{
     contents: [{
       parts: [{
@@ -90,23 +94,25 @@ jq -n \
                "1. **Evaluate Title**: If current title is short (<10 chars), generic, or unrelated, generate a new concise type-based title (feat:, fix:, etc). Otherwise return null.\n" +
                "2. **Generate Description**: If Needs Description is true, generate a VERY LONG, DETAILED, and COMPREHENSIVE description (Summary, Key Changes, Technical Details).\n" +
                "3. **Code Quality Check**: Perform a strict code quality check. Look for bugs, security issues, performance bottlenecks, and bad practices.\n" +
-               "4. **Suggestion**: Provide a specific recommendation for user @" + $user_name + ". Should this be merged? Does it need improvements? Be specific.\n" +
-               "5. **Review Comment**: Write a constructive code review comment addressed to @" + $user_name + ". \n" +
+               "4. **Review Comment**: Write a constructive code review comment addressed to @" + $pr_author + ". \n" +
                "   - **Tone**: Act like a Senior Engineer mentoring a Junior. Be friendly but strict about quality. Use emojis 🚀 🐛 🎨.\n" +
                "   - **Language**: If Language Preference is \"english\", write in standard professional English. \n" +
                "     If it is NOT \"english\" (default), write in **Hinglish** (Hindi + English mix) and go into **FULL PRANK MODE** 🤡. \n" +
                "     - Be funny, sarcastic, and roast the code a little bit (in a friendly way). \n" +
                "     - Use words like \"Bhai kya kar raha hai tu?\", \"Ye kya bawasir bana diya?\", \"Chacha chaudhary mat ban\", \"Jugaad\". \n" +
                "     - Example: \"Arre bhai, ye loop dekh ke meri aankhein jal gayin 🔥. Isko fix kar warna production fat jayega aur boss teri class lega 😂.\"\n" +
-               "   - **Content**: Point out specific improvements, potential bugs, or best practices. If the code looks great, say something encouraging in the requested language.\n\n" +
+               "   - **Content**: Point out specific improvements, potential bugs, or best practices. If the code looks great, say something encouraging in the requested language.\n" +
+               "6. **Reviewer Comment**: IF (and only if) the variable $pr_reviewers is NOT empty, write a separate comment addressed to the reviewers (" + $pr_reviewers + "). \n" +
+               "   - Tell them specifically what to check based on the diff (e.g., \"@Reviewer, check the logic in auth.ts carefully\"). \n" +
+               "   - Keep it professional but helpful. If $pr_reviewers is empty, return null.\n\n" +
                "Git Diff:\n" + $diff + "\n\n" +
                "**IMPORTANT**: Output ONLY a valid JSON object with this structure:\n" +
                "{\n" +
                "  \"new_title\": \"string or null\",\n" +
                "  \"description\": \"string or null\",\n" +
                "  \"quality_check\": \"string\",\n" +
-               "  \"suggestion\": \"string\",\n" +
-               "  \"review_comment\": \"string\"\n" +
+               "  \"review_comment\": \"string\",\n" +
+               "  \"reviewer_comment\": \"string or null\"\n" +
                "}")
       }]
     }]
@@ -135,8 +141,8 @@ CLEAN_JSON=$(echo "$GENERATED_TEXT" | sed 's/```json//g' | sed 's/```//g')
 NEW_TITLE=$(echo "$CLEAN_JSON" | jq -r '.new_title // empty')
 NEW_DESC=$(echo "$CLEAN_JSON" | jq -r '.description // empty')
 QUALITY=$(echo "$CLEAN_JSON" | jq -r '.quality_check // empty')
-SUGGESTION=$(echo "$CLEAN_JSON" | jq -r '.suggestion // empty')
 REVIEW_COMMENT=$(echo "$CLEAN_JSON" | jq -r '.review_comment // empty')
+REVIEWER_COMMENT=$(echo "$CLEAN_JSON" | jq -r '.reviewer_comment // empty')
 
 if [[ "$NEW_TITLE" == "null" ]]; then NEW_TITLE=""; fi
 if [[ "$NEW_DESC" == "null" ]]; then NEW_DESC=""; fi
@@ -175,13 +181,6 @@ if [[ -n "$NEW_DESC" ]]; then
 $QUALITY"
   fi
   
-  if [[ -n "$SUGGESTION" ]]; then
-    FULL_BODY="$FULL_BODY
-
-## 💡 Suggestion for @$USER_NAME
-$SUGGESTION"
-  fi
-  
   FULL_BODY="$FULL_BODY
 
 ---
@@ -208,6 +207,18 @@ if [[ -n "$REVIEW_COMMENT" ]]; then
   echo "Posting Review Comment..."
   # Use jq to safely escape the comment
   COMMENT_PAYLOAD=$(jq -n --arg body "$REVIEW_COMMENT" '{body: $body}')
+  
+  curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$COMMENT_PAYLOAD" \
+    "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+    "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+fi
+
+# 8. Post Reviewer Comment (if exists)
+if [[ -n "$REVIEWER_COMMENT" && "$REVIEWER_COMMENT" != "null" ]]; then
+  echo "Posting Reviewer Comment..."
+  COMMENT_PAYLOAD=$(jq -n --arg body "$REVIEWER_COMMENT" '{body: $body}')
   
   curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Content-Type: application/json" \
