@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 
 interface NavItem {
   title: string;
@@ -136,15 +137,25 @@ export default function Sidebar() {
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto px-4 pb-4 space-y-6 scrollbar-thin">
             {navigation.map((section, sectionIdx) => (
-              <div key={sectionIdx}>
+              <motion.div
+                key={sectionIdx}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: sectionIdx * 0.1 }}
+              >
                 <h3 className="px-3 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">
                   {section.section}
                 </h3>
                 <ul className="space-y-1">
-                  {section.items.map((item) => {
+                  {section.items.map((item, itemIdx) => {
                     const isActive = pathname === item.href;
                     return (
-                      <li key={item.href}>
+                      <motion.li
+                        key={item.href}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: sectionIdx * 0.1 + itemIdx * 0.05 }}
+                      >
                         <Link
                           href={item.href}
                           onClick={() => setIsMobileMenuOpen(false)}
@@ -162,14 +173,17 @@ export default function Sidebar() {
                           </span>
                           <span className="text-sm font-medium flex-1">{item.title}</span>
                           {isActive && (
-                            <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full"></div>
+                            <motion.div
+                              layoutId="activeIndicator"
+                              className="w-1 h-4 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full"
+                            />
                           )}
                         </Link>
-                      </li>
+                      </motion.li>
                     );
                   })}
                 </ul>
-              </div>
+              </motion.div>
             ))}
           </nav>
 
