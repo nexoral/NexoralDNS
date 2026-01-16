@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import CopyCodeBlock from "@/components/CopyCodeBlock";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/MotionWrapper";
 
 export const metadata: Metadata = {
   title: "Getting Started - NexoralDNS Documentation",
@@ -109,50 +110,54 @@ export default function GettingStartedPage() {
     <div className="px-4 sm:px-6 lg:px-12 py-12">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full text-sm text-green-400 mb-6">
-            <span>⏱️</span>
-            5 minute setup
+        <FadeIn>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full text-sm text-green-400 mb-6">
+              <span>⏱️</span>
+              5 minute setup
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              Getting Started
+            </h1>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Get NexoralDNS up and running in just a few minutes. Follow these simple steps to take control of your network&apos;s DNS.
+            </p>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Getting Started
-          </h1>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-            Get NexoralDNS up and running in just a few minutes. Follow these simple steps to take control of your network&apos;s DNS.
-          </p>
-        </div>
+        </FadeIn>
 
         {/* Prerequisites */}
-        <div className="mb-12 p-6 bg-gray-900/50 border border-gray-800 rounded-2xl">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="text-yellow-400">📋</span>
-            Prerequisites
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { name: "Linux, macOS, or Windows", desc: "Any OS that runs Docker" },
-              { name: "2GB+ RAM", desc: "Recommended minimum" },
-              { name: "Terminal/Shell access", desc: "To run commands" },
-              { name: "Network access", desc: "LAN connectivity" }
-            ].map((req, i) => (
-              <div key={i} className="flex items-center gap-3 text-gray-400">
-                <span className="text-green-400">✓</span>
-                <div>
-                  <span className="text-white">{req.name}</span>
-                  <span className="text-sm text-gray-500 ml-2">- {req.desc}</span>
+        <FadeIn delay={0.2}>
+          <div className="mb-12 p-6 bg-gray-900/50 border border-gray-800 rounded-2xl">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span className="text-yellow-400">📋</span>
+              Prerequisites
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { name: "Linux, macOS, or Windows", desc: "Any OS that runs Docker" },
+                { name: "2GB+ RAM", desc: "Recommended minimum" },
+                { name: "Terminal/Shell access", desc: "To run commands" },
+                { name: "Network access", desc: "LAN connectivity" }
+              ].map((req, i) => (
+                <div key={i} className="flex items-center gap-3 text-gray-400">
+                  <span className="text-green-400">✓</span>
+                  <div>
+                    <span className="text-white">{req.name}</span>
+                    <span className="text-sm text-gray-500 ml-2">- {req.desc}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <p className="text-sm text-gray-500 mt-4">
+              Docker will be installed automatically if not present on your system.
+            </p>
           </div>
-          <p className="text-sm text-gray-500 mt-4">
-            Docker will be installed automatically if not present on your system.
-          </p>
-        </div>
+        </FadeIn>
 
         {/* Steps */}
-        <div className="space-y-8 mb-12">
+        <StaggerContainer className="space-y-8 mb-12">
           {steps.map((step) => (
-            <div
+            <StaggerItem
               key={step.number}
               className="relative pl-12 sm:pl-16"
             >
@@ -171,43 +176,45 @@ export default function GettingStartedPage() {
                 <p className="text-gray-400">{step.description}</p>
                 {step.content}
               </div>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
 
         {/* Success Message */}
-        <div className="p-6 bg-gradient-to-br from-green-900/20 to-emerald-900/20 border border-green-500/20 rounded-2xl mb-12">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl">🎉</span>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-green-400 mb-2">You&apos;re All Set!</h3>
-              <p className="text-gray-300 mb-4">
-                Congratulations! NexoralDNS is now managing your network&apos;s DNS. All DNS queries from your devices will now be logged, cached, and can be customized from the dashboard.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/docs/dashboard"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
-                  Explore Dashboard →
-                </Link>
-                <Link
-                  href="/docs/features"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
-                  View All Features
-                </Link>
+        <FadeIn delay={0.4}>
+          <div className="p-6 bg-gradient-to-br from-green-900/20 to-emerald-900/20 border border-green-500/20 rounded-2xl mb-12">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">🎉</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-green-400 mb-2">You&apos;re All Set!</h3>
+                <p className="text-gray-300 mb-4">
+                  Congratulations! NexoralDNS is now managing your network&apos;s DNS. All DNS queries from your devices will now be logged, cached, and can be customized from the dashboard.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/docs/dashboard"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    Explore Dashboard →
+                  </Link>
+                  <Link
+                    href="/docs/features"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    View All Features
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Next Steps */}
         <div>
           <h2 className="text-2xl font-bold mb-6 text-center">What&apos;s Next?</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { href: "/docs/configuration", icon: "⚙️", title: "Configuration", desc: "Customize NexoralDNS settings" },
               { href: "/docs/features", icon: "✨", title: "Explore Features", desc: "Discover what you can do" },
@@ -216,17 +223,18 @@ export default function GettingStartedPage() {
               { href: "/docs/security", icon: "🔒", title: "Security", desc: "Best practices for security" },
               { href: "/docs/faq", icon: "❓", title: "FAQ", desc: "Common questions answered" }
             ].map((link, i) => (
-              <Link
-                key={i}
-                href={link.href}
-                className="group p-4 bg-gray-900/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all duration-300"
-              >
-                <span className="text-2xl mb-2 block">{link.icon}</span>
-                <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors">{link.title}</h3>
-                <p className="text-sm text-gray-500">{link.desc}</p>
-              </Link>
+              <StaggerItem key={i}>
+                <Link
+                  href={link.href}
+                  className="group block h-full p-4 bg-gray-900/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all duration-300"
+                >
+                  <span className="text-2xl mb-2 block">{link.icon}</span>
+                  <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors">{link.title}</h3>
+                  <p className="text-sm text-gray-500">{link.desc}</p>
+                </Link>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </div>
     </div>
