@@ -1,26 +1,15 @@
-name: Auto PR Updater
-
+name: Review Buddy
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
-
 permissions:
-  contents: read
   pull-requests: write
-
+  contents: read
 jobs:
-  update-pull-request:
+  review:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Generate and Update Description
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          USER_NAME: ${{ secrets.USER_NAME }}
-          LANGUAGE: ${{ secrets.LANGUAGE }}
-        run: ./Scripts/generate_pr_description.sh
+      - uses: actions/checkout@v4
+      - uses: nexoral/ReviewBuddy@main
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
