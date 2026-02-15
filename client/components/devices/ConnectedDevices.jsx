@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import {
   FiRefreshCw, FiInfo, FiXCircle, FiWifi, FiClock,
   FiServer, FiAlertCircle, FiGlobe, FiActivity,
-  FiShield, FiGrid, FiMonitor
+  FiShield, FiGrid, FiMonitor, FiCheckCircle
 } from 'react-icons/fi';
 import { api } from '../../services/api';
+import BlockDeviceModal from './BlockDeviceModal';
 
 export default function ConnectedDevices() {
   const [devices, setDevices] = useState([]);
@@ -15,12 +16,23 @@ export default function ConnectedDevices() {
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Blocking Feature State
+  const [policies, setPolicies] = useState([]);
+  const [ipGroups, setIpGroups] = useState([]);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+
   // Function to fetch the list of devices
   const fetchDevices = async () => {
     setLoading(true);
     try {
-      const response = await api.getDeviceList();
-      const result = response.data;
+      const [deviceResponse, policiesResponse, ipGroupsResponse] = await Promise.all([
+        api.getDeviceList(),
+        api.getAccessControlPolicies(),
+        api.getIPGroups()
+      ]);
+
+      const result = deviceResponse.data;
 
       if (result.statusCode === 200) {
         setDevices(result.data.List_of_Connected_Devices_Info || []);
@@ -38,6 +50,10 @@ export default function ConnectedDevices() {
       } else {
         throw new Error(result.message || 'Failed to fetch devices');
       }
+
+      setPolicies(policiesResponse.data.data.policies || []);
+      setIpGroups(ipGroupsResponse.data.data.groups || []);
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,6 +88,51 @@ export default function ConnectedDevices() {
   useEffect(() => {
     fetchDevices();
   }, []);
+
+  // Check if a device is blocked by any active policy
+  const isDeviceBlocked = (ip) => {
+    return policies.some(policy => {
+      if (!policy.isActive) return false;
+
+      // Check target type
+      if (policy.targetType === 'all') return true;
+      if (policy.targetType === 'single_ip' && policy.targetIP === ip) return true;
+      if (policy.targetType === 'multiple_ips' && policy.targetIPs?.includes(ip)) return true;
+
+      // Check IP Groups
+      if (policy.targetType === 'ip_group') {
+        const group = ipGroups.find(g => g._id === policy.targetIPGroup);
+        if (group && group.ipAddresses.includes(ip)) return true;
+      }
+
+      if (policy.targetType === 'multiple_ip_groups') {
+        return policy.targetIPGroups?.some(groupId => {
+          const group = ipGroups.find(g => g._id === groupId);
+          return group && group.ipAddresses.includes(ip);
+        });
+      }
+
+      return false;
+    });
+  };
+
+  const handleBlockClick = (device) => {
+    setSelectedDevice(device);
+    setShowBlockModal(true);
+  };
+
+  const handleBlockConfirm = async (policyData) => {
+    try {
+      await api.createAccessControlPolicy(policyData);
+      setShowBlockModal(false);
+      setSelectedDevice(null);
+      // Refresh policies to update UI
+      fetchDevices();
+    } catch (error) {
+      console.error('Failed to create policy:', error);
+      // You might want to show an error toast here
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -217,39 +278,51 @@ export default function ConnectedDevices() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {devices.map((device, index) => (
-                  <tr key={index} className={`hover:bg-blue-50 transition-colors duration-200 animate-fadeIn ${device.ip === serviceInfo.localIp ? 'bg-blue-50' : ''}`} style={{ animationDelay: `${index * 100}ms` }}>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className={`w-2 h-2 rounded-full ${device.status === 'connected' ? 'bg-green-500' : 'bg-red-500'} mr-3 animate-pulse`}></div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {device.ip}
-                          {device.ip === serviceInfo.localIp && (
-                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              <FiMonitor className="mr-1" /> My Machine
-                            </span>
-                          )}
+                {devices.map((device, index) => {
+                  const isBlocked = isDeviceBlocked(device.ip);
+                  return (
+                    <tr key={index} className={`hover:bg-blue-50 transition-colors duration-200 animate-fadeIn ${device.ip === serviceInfo.localIp ? 'bg-blue-50' : ''}`} style={{ animationDelay: `${index * 100}ms` }}>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className={`w-2 h-2 rounded-full ${device.status === 'connected' ? 'bg-green-500' : 'bg-red-500'} mr-3 animate-pulse`}></div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {device.ip}
+                            {device.ip === serviceInfo.localIp && (
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <FiMonitor className="mr-1" /> My Machine
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${device.status === 'connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                        {device.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{new Date(device.lastSeen).toLocaleString()}</div>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap text-sm font-medium">
-                      {device.ip !== serviceInfo.localIp && (
-                        <button className="inline-flex items-center bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 rounded-lg transition-all duration-200 hover:shadow-md">
-                          <FiXCircle className="mr-1" /> Block
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${device.status === 'connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                          {device.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{new Date(device.lastSeen).toLocaleString()}</div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-sm font-medium">
+                        {device.ip !== serviceInfo.localIp && (
+                          isBlocked ? (
+                            <span className="inline-flex items-center bg-gray-100 text-gray-500 px-3 py-1 rounded-lg cursor-not-allowed">
+                              <FiShield className="mr-1" /> Blocked By Policy
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleBlockClick(device)}
+                              className="inline-flex items-center bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 rounded-lg transition-all duration-200 hover:shadow-md"
+                            >
+                              <FiXCircle className="mr-1" /> Block
+                            </button>
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -274,6 +347,15 @@ export default function ConnectedDevices() {
             <FiRefreshCw className="mr-2" /> Check Again
           </button>
         </div>
+      )}
+
+      {/* Block Device Modal */}
+      {showBlockModal && selectedDevice && (
+        <BlockDeviceModal
+          deviceIP={selectedDevice.ip}
+          onClose={() => setShowBlockModal(false)}
+          onSave={handleBlockConfirm}
+        />
       )}
     </div>
   );
