@@ -36,6 +36,9 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
   { ip: "156.154.71.1", name: "Neustar UltraDNS (Standard)", location: "USA (Anycast)" },
 ];
 
+// Shared IO Handler
+const ioHandler = new InputOutputHandler(null as any);
+
 /**
  * Modifies TTL values in a DNS response buffer.
  * 
@@ -107,6 +110,15 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
   return modifiedResponse;
 }
 
+// Fisher-Yates shuffle to randomize DNS servers
+function shuffleArray(array: any[]) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
 // Function to forward DNS query to Global DNS
 /**
  * Forwards a DNS query to a list of global DNS servers in random order until a response is received or all servers fail to respond.
@@ -122,22 +134,12 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
  * If customTTL is provided, all TTL values in the response will be modified to use the custom value.
  */
 export default function GlobalDNSforwarder(msg: Buffer, queryName: string, queryType: string, customTTL: number | null = null, rinfo: dgram.RemoteInfo, start: number): Promise<Buffer | null> {
-  const ioHandler = new InputOutputHandler(null as any);
   return new Promise((resolve) => {
     // Create a copy of the GlobalDNS array to shuffle
     const availableDNS = [...GlobalDNS];
     let client: dgram.Socket | null = null;
     let timeout: NodeJS.Timeout;
     let isClosed = false;
-
-    // Fisher-Yates shuffle to randomize DNS servers
-    function shuffleArray(array: any[]) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-      return array;
-    }
 
     // Shuffle the DNS servers
     shuffleArray(availableDNS);
@@ -204,7 +206,7 @@ export default function GlobalDNSforwarder(msg: Buffer, queryName: string, query
         const duration = end - start; // in milliseconds
         AnalyticsMSgPayload.duration = duration;
         console.log("Publised from Forward", AnalyticsMSgPayload)
-          RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+        RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
 
         // Parse and cache the DNS response
         const parsedRecord = ioHandler.parseDNSResponse(response, queryType);

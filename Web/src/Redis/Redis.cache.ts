@@ -326,7 +326,7 @@ class RedisCacheService {
 
    */
 
-  async set(key: string, value: any, ttl=60): Promise<void> {
+  async set(key: string, value: any, ttl = 60): Promise<void> {
 
     try {
 
@@ -670,20 +670,66 @@ class RedisCacheService {
 
    */
 
+  /**
+   * Close Redis connection
+   */
   async close(): Promise<void> {
-
     if (this.client) {
-
       Console.bright('🔌 Closing Redis connection...');
-
       await this.client.quit();
-
       this.client = null;
-
-      Console.green('✅ Redis connection closed');
-
     }
+    if (this.subscriberClient) {
+      await this.subscriberClient.quit();
+      this.subscriberClient = null;
+    }
+    Console.green('✅ Redis connection closed');
+  }
 
+  // ============================================
+  // PUB/SUB METHODS
+  // ============================================
+
+  private subscriberClient: RedisClientType | null = null;
+
+  /**
+   * Subscribe to a channel
+   * @param channel Channel name in Redis
+   * @param callback Function to execute when message is received
+   */
+  async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
+    try {
+      if (!this.subscriberClient) {
+        // Redis requires a separate connection for subscriptions
+        const redisConfig = this.getRedisConfig();
+        this.subscriberClient = createClient(redisConfig.options);
+        await this.subscriberClient.connect();
+        Console.green('📡 Connected to Redis Subscriber Client');
+      }
+
+      await this.subscriberClient.subscribe(channel, (message) => {
+        callback(message);
+      });
+      Console.bright(`👂 Subscribed to channel: ${channel}`);
+
+    } catch (error) {
+      Console.red(`❌ Failed to subscribe to channel ${channel}:`, error);
+    }
+  }
+
+  /**
+   * Publish a message to a channel
+   * @param channel Channel name
+   * @param message Message to publish
+   */
+  async publish(channel: string, message: string): Promise<number> {
+    try {
+      if (!this.client) await this.connect();
+      return await this.client!.publish(channel, message);
+    } catch (error) {
+      Console.red(`❌ Failed to publish to channel ${channel}:`, error);
+      return 0;
+    }
   }
 
   // ============================================

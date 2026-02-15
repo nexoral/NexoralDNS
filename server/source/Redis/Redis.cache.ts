@@ -326,7 +326,7 @@ class RedisCacheService {
 
    */
 
-  async set(key: string, value: any, ttl=60): Promise<void> {
+  async set(key: string, value: any, ttl = 60): Promise<void> {
 
     try {
 
@@ -784,9 +784,22 @@ class RedisCacheService {
 
   }
 
+  /**
+   * Publish a message to a channel
+   * @param channel Channel name
+   * @param message Message to publish
+   */
+  async publish(channel: string, message: string): Promise<number> {
+    try {
+      if (!this.client) await this.connect();
+      return await this.client!.publish(channel, message);
+    } catch (error) {
+      Console.red(`❌ Failed to publish to channel ${channel}:`, error);
+      return 0;
+    }
+  }
+
 }
-
-
 
 // Export singleton instance
 

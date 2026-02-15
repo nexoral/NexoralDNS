@@ -16,22 +16,21 @@ export type ServiceStatusResult = {
 
 
 export default class ServiceStatusChecker {
-  private readonly IO: InputOutputHandler;
-  private readonly msg: Buffer<ArrayBufferLike>;
-  private readonly rinfo: dgram.RemoteInfo;
-
-  constructor(IO: InputOutputHandler, msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo) {
-    this.IO = IO
-    this.msg = msg
-    this.rinfo = rinfo
-   }
 
   /**
    * Check if the service is active
    * @param queryName 
-   * @returns boolean
+   * @param IO InputOutputHandler instance
+   * @param msg DNS query message buffer
+   * @param rinfo Remote info of the requester
+   * @returns ServiceStatusResult
    */
-  public async checkServiceStatus(queryName: string): Promise<ServiceStatusResult> {
+  public async checkServiceStatus(
+    queryName: string,
+    IO: InputOutputHandler,
+    msg: Buffer<ArrayBufferLike>,
+    rinfo: dgram.RemoteInfo
+  ): Promise<ServiceStatusResult> {
     // Check Redis Cache first
     const serviceStatusCache = await RedisCache.get(CacheKeys.Service_Status);
 
@@ -39,7 +38,7 @@ export default class ServiceStatusChecker {
     if (serviceStatusCache !== null) {
       if (serviceStatusCache.Service_Status !== "active") {
         Console.red("Service is inactive (from cache). DNS query processing is halted.");
-        this.IO.buildSendAnswer(this.msg, this.rinfo, queryName, "0.0.0.0", 10); // Respond with NXDOMAIN
+        IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10); // Respond with NXDOMAIN
         return {
           serviceStatus: false,
           serviceConfig: serviceStatusCache
@@ -76,7 +75,7 @@ export default class ServiceStatusChecker {
     await RedisCache.set(CacheKeys.Service_Status, serviceConfig);
     if (serviceConfig.Service_Status !== "active") {
       Console.red("Service is inactive. DNS query processing is halted.");
-      this.IO.buildSendAnswer(this.msg, this.rinfo, queryName, "0.0.0.0", serviceConfig.DefaultTTL ? serviceConfig.DefaultTTL : 10); // Respond with NXDOMAIN
+      IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceConfig.DefaultTTL ? serviceConfig.DefaultTTL : 10); // Respond with NXDOMAIN
       return {
         serviceStatus: false,
         serviceConfig: serviceConfig
