@@ -36,6 +36,7 @@ export default class StartRulesService {
 
     // Subscribe to Cache Invalidation Channel
     RedisCache.subscribe('cache:invalidate', async (message) => {
+      // Log only on invalidation event (rare)
       Console.yellow(`🔔 Received Cache Invalidation Request: ${message}`);
 
       // Clear BlockList Caches
@@ -58,7 +59,6 @@ export default class StartRulesService {
     const start = performance.now();
 
     if (!msg || !rinfo) {
-      Console.red("Invalid message or remote info received.");
       return;
     }
 
@@ -93,11 +93,9 @@ export default class StartRulesService {
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
-      const end = performance.now();
-      const duration = end - start; // in milliseconds
-      AnalyticsMSgPayload.duration = duration;
-      console.log("Published from Service Down", AnalyticsMSgPayload)
-      RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+      AnalyticsMSgPayload.duration = performance.now() - start;
+
+      this.publishAnalytics(AnalyticsMSgPayload);
       return;
     }
 
@@ -114,21 +112,17 @@ export default class StartRulesService {
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.BLOCKED;
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_BLOCKED;
-      const end = performance.now();
-      const duration = end - start; // in milliseconds
-      AnalyticsMSgPayload.duration = duration;
-      console.log("Published from Blocked Rule", AnalyticsMSgPayload)
-      RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
-      this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
-    }
+      AnalyticsMSgPayload.duration = performance.now() - start;
 
-    Console.bright(`Processing DNS query for ${queryName} (${queryType} Record) from ${rinfo.address}:${rinfo.port} with the help of worker: ${process.pid}`);
+      this.publishAnalytics(AnalyticsMSgPayload);
+      this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
+      return;
+    }
 
     // Taking Record From Cache
     let record;
     const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`)
     if (RecordFromCache !== null) {
-      Console.bright(`Got Response from Cache System`, RecordFromCache)
       record = RecordFromCache;
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_CACHE;
     }
@@ -157,7 +151,6 @@ export default class StartRulesService {
       }
 
       if (NewRecordFromDB) {
-        Console.bright(`Getting Data from DB`, NewRecordFromDB)
         // If Cache Fail then take from MongoDB
         record = NewRecordFromDB;
         AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_DB;
@@ -168,57 +161,47 @@ export default class StartRulesService {
     }
 
     if (queryName === record?.name) {
-      Console.bright(`Responding to ${queryName} (${queryType} Record) with ${record.value} with TTL: ${record.ttl} from database with the help of worker: ${process.pid}`);
-
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.RESOLVED;
-      const end = performance.now();
-      const duration = end - start; // in milliseconds
-      AnalyticsMSgPayload.duration = duration;
-      console.log("Publised from Resolved", AnalyticsMSgPayload)
-      RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+      AnalyticsMSgPayload.duration = performance.now() - start;
+
+      this.publishAnalytics(AnalyticsMSgPayload);
 
       // Use buildSendAnswer method from utilities
       const response = this.IO.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
 
       if (!response) {
-
         // Add to Analytics
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
-        const end = performance.now();
-        const duration = end - start; // in milliseconds
-        AnalyticsMSgPayload.duration = duration;
-        console.log("Publised from Failed Response", AnalyticsMSgPayload)
-        RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+        AnalyticsMSgPayload.duration = performance.now() - start;
 
+        this.publishAnalytics(AnalyticsMSgPayload);
         Console.red(`Failed to respond to ${queryName}`);
       }
     } else {
       // Forward to Global DNS for non-matching domains
+      AnalyticsMSgPayload.From = "Upstream"; // Will be updated by forwarder logic if we wanted, but here we track the request flow
+
       try {
-        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, serviceStatus.serviceConfig.DefaultTTL, rinfo, start); // Set custom TTL to 30 seconds
+        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, serviceStatus.serviceConfig.DefaultTTL, rinfo, start);
         if (forwardedResponse) {
           const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {
             // Add to Analytics
             AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
-            const end = performance.now();
-            const duration = end - start; // in milliseconds
-            AnalyticsMSgPayload.duration = duration;
-            console.log("Publised from Failed Forward", AnalyticsMSgPayload)
-            RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+            AnalyticsMSgPayload.duration = performance.now() - start;
 
+            this.publishAnalytics(AnalyticsMSgPayload);
             Console.red(`Failed to forward ${queryName} to Global DNS`);
           }
+          // Note: GlobalDNSforwarder pushes its own analytics for the forwarding event
         }
         else {
           // Add to Analytics
           AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
-          const end = performance.now();
-          const duration = end - start; // in milliseconds
-          AnalyticsMSgPayload.duration = duration;
-          console.log("Publised from NORESPONSE", AnalyticsMSgPayload)
-          RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+          AnalyticsMSgPayload.duration = performance.now() - start;
+
+          this.publishAnalytics(AnalyticsMSgPayload);
 
           Console.red(`No response received from Global DNS for ${queryName}`);
           this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
@@ -226,14 +209,16 @@ export default class StartRulesService {
       } catch (error) {
         // Add to Analytics
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
-        const end = performance.now();
-        const duration = end - start; // in milliseconds
-        AnalyticsMSgPayload.duration = duration;
-        console.log("Publised from Last Error", AnalyticsMSgPayload)
-        RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+        AnalyticsMSgPayload.duration = performance.now() - start;
 
+        this.publishAnalytics(AnalyticsMSgPayload);
         Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
       }
     }
+  }
+
+  // Helper to publish analytics with optimized settings
+  private publishAnalytics(payload: any) {
+    RabbitMQService.publish(QueueKeys.DNS_Analytics, payload, { persistent: false, priority: 5 });
   }
 }

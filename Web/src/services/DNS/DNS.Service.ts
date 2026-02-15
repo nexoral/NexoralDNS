@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "node:dgram";
 import { Console } from "outers"
 import StartRulesService from "../Start/Rules.service";
@@ -20,7 +21,7 @@ import MongoConnector from "../../Database/mongodb.db";
 export default class DNS {
   private server: dgram.Socket;
   private IO: InputOutputHandler;
-  private startRulesService : StartRulesService;
+  private startRulesService: StartRulesService;
 
   constructor() {
     this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket for IPv4
