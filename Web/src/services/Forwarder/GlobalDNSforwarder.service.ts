@@ -36,12 +36,11 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
   { ip: "156.154.71.1", name: "Neustar UltraDNS (Standard)", location: "USA (Anycast)" },
 ];
 
+// Shared IO Handler
+const ioHandler = new InputOutputHandler(null as any);
+
 /**
  * Modifies TTL values in a DNS response buffer.
- * 
- * @param response - The DNS response buffer to modify.
- * @param newTTL - The new TTL value in seconds.
- * @returns The modified DNS response buffer.
  */
 function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
   // Create a copy to avoid modifying the original
@@ -107,128 +106,191 @@ function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
   return modifiedResponse;
 }
 
-// Function to forward DNS query to Global DNS
+// Fisher-Yates shuffle to randomize DNS servers
+function shuffleArray(array: any[]) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
 /**
- * Forwards a DNS query to a list of global DNS servers in random order until a response is received or all servers fail to respond.
- *
- * @param msg - The DNS query message as a Buffer.
- * @param queryName - The domain name being queried.
- * @param customTTL - Optional custom TTL value in seconds to override the response TTL (defaults to null, keeping original TTL).
- * @returns A Promise that resolves with the DNS response Buffer if successful, or `null` if no server responds.
- *
- * The function randomly selects DNS servers from the `GlobalDNS` array, waiting up to 2 seconds for a response from each.
- * If a server does not respond or an error occurs, it proceeds to another randomly selected server.
- * The process continues until a response is received or all servers have been tried.
- * If customTTL is provided, all TTL values in the response will be modified to use the custom value.
+ * Singleton service to handle DNS forwarding using a single shared socket.
+ * Handles request tracking, ID rewriting, and response matching.
  */
-export default function GlobalDNSforwarder(msg: Buffer, queryName: string, queryType: string, customTTL: number | null = null, rinfo: dgram.RemoteInfo, start: number): Promise<Buffer | null> {
-  const ioHandler = new InputOutputHandler(null as any);
-  return new Promise((resolve) => {
-    // Create a copy of the GlobalDNS array to shuffle
-    const availableDNS = [...GlobalDNS];
-    let client: dgram.Socket | null = null;
-    let timeout: NodeJS.Timeout;
-    let isClosed = false;
+class DNSForwarderService {
+  private static instance: DNSForwarderService;
+  private socket: dgram.Socket;
+  private pendingRequests: Map<number, {
+    resolve: (response: Buffer | null) => void;
+    originalId: number;
+    timeout: NodeJS.Timeout;
+    dnsIP: typeof GlobalDNS[0];
+  }> = new Map();
+  private currentId: number = 1;
 
-    // Fisher-Yates shuffle to randomize DNS servers
-    function shuffleArray(array: any[]) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-      return array;
+  private constructor() {
+    this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    this.init();
+  }
+
+  public static getInstance(): DNSForwarderService {
+    if (!DNSForwarderService.instance) {
+      DNSForwarderService.instance = new DNSForwarderService();
     }
+    return DNSForwarderService.instance;
+  }
 
-    // Shuffle the DNS servers
-    shuffleArray(availableDNS);
+  private init() {
+    this.socket.on('message', (msg) => {
+      if (msg.length < 2) return;
+      const id = msg.readUInt16BE(0);
 
-    function cleanup() {
-      if (!isClosed && client) {
-        isClosed = true;
-        client.close();
+      const pending = this.pendingRequests.get(id);
+      if (pending) {
+        // Clear timeout and remove from map
+        clearTimeout(pending.timeout);
+        this.pendingRequests.delete(id);
+
+        // Restore original Transaction ID
+        const responseWithOriginalId = Buffer.from(msg);
+        responseWithOriginalId.writeUInt16BE(pending.originalId, 0);
+
+        pending.resolve(responseWithOriginalId);
       }
-    }
+    });
 
-    function tryNext() {
-      if (availableDNS.length === 0) {
-        cleanup();
+    this.socket.on('error', (err) => {
+      Console.red(`[Forwarder] Socket error: ${err.message}`);
+      // Usually minimal handling needed for UDP socket error, maybe re-bind if closed
+    });
+
+    // Optional: High buffer size for performance
+    try {
+      this.socket.setRecvBufferSize(4 * 1024 * 1024); // 4MB
+      this.socket.setSendBufferSize(4 * 1024 * 1024);
+    } catch (e) {
+      // Ignore if OS doesn't allow
+    }
+  }
+
+  private getNextId(): number {
+    // Generate a unique 16-bit ID that isn't currently in use
+    let attempts = 0;
+    while (attempts < 65536) {
+      this.currentId = (this.currentId + 1) % 65536;
+      if (this.currentId === 0) continue; // Skip 0
+      if (!this.pendingRequests.has(this.currentId)) {
+        return this.currentId;
+      }
+      attempts++;
+    }
+    throw new Error("DNS Forwarder: pending request pool exhausted");
+  }
+
+  public async resolve(
+    msg: Buffer,
+    queryName: string,
+    queryType: string,
+    customTTL: number | null,
+    rinfo: dgram.RemoteInfo,
+    start: number
+  ): Promise<Buffer | null> {
+    const originalId = msg.readUInt16BE(0);
+    const availableDNS = shuffleArray([...GlobalDNS]);
+
+    const tryNext = async (index: number): Promise<Buffer | null> => {
+      if (index >= availableDNS.length) {
         Console.red(`No response from any DNS server for ${queryName}`);
-        return resolve(null); // no response from any
+        return null;
       }
 
-      // Get the next random DNS server (already shuffled)
-      const dnsIP = availableDNS.pop();
-      if (!dnsIP) {
-        return resolve(null);
+      const dnsIP = availableDNS[index];
+      const newId = this.getNextId();
+
+      // Create a promise for this attempt
+      const attemptPromise = new Promise<Buffer | null>((resolve) => {
+        const timeout = setTimeout(() => {
+          // Timeout occurred
+          this.pendingRequests.delete(newId);
+          resolve(null); // Resolve null to trigger retry
+        }, 2000); // 2 second timeout per server
+
+        this.pendingRequests.set(newId, {
+          resolve,
+          originalId,
+          timeout,
+          dnsIP
+        });
+      });
+
+      // Prepare message with new ID
+      const msgToSend = Buffer.from(msg);
+      msgToSend.writeUInt16BE(newId, 0);
+
+      // Send
+      try {
+        this.socket.send(msgToSend, 53, dnsIP.ip);
+        if (process.env.DEBUG_DNS) {
+          Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
+        }
+      } catch (err) {
+        this.pendingRequests.delete(newId);
+        return tryNext(index + 1);
       }
 
-      // Reset the close flag for new socket
-      isClosed = false;
-      client = dgram.createSocket("udp4");
-      Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip}) location: ${dnsIP.location} with TTL: ${customTTL ?? "original TTL"} With Help of Worker: ${process.pid}`);
+      // Wait for response
+      const response = await attemptPromise;
 
-      timeout = setTimeout(() => {
-        cleanup();
-        tryNext(); // try next random DNS
-      }, 2000); // 2 sec per server
+      if (response) {
+        // Success!
+        // Analytics
+        const end = performance.now();
+        const duration = end - start;
 
-      client.once("message", (response) => {
-        clearTimeout(timeout);
-        cleanup();
-
-
-        // Add to Analytics
-        // Analytics Payload
-        const AnalyticsMSgPayload: {
-          queryName: string,
-          queryType: string,
-          timestamp: number,
-          SourceIP: string,
-          Status: string,
-          From: string,
-          duration: number
-        } = {
-          queryName: queryName,
-          queryType: queryType,
+        // Batch/Simplified Analytics could be done here, but sticking to logic structure
+        const AnalyticsMSgPayload = {
+          queryName,
+          queryType,
           timestamp: Date.now(),
           SourceIP: rinfo.address,
-          Status: "",
-          From: "",
-          duration: 0
-        }
+          Status: DNS_QUERY_STATUS_KEYS.FORWARDED,
+          From: dnsIP.name,
+          duration
+        };
 
-        // Add to Analytics
-        AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FORWARDED;
-        AnalyticsMSgPayload.From = dnsIP.name;
-        const end = performance.now();
-        const duration = end - start; // in milliseconds
-        AnalyticsMSgPayload.duration = duration;
-        console.log("Publised from Forward", AnalyticsMSgPayload)
-          RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: true, priority: 10 })
+        // Fire and forget analytics (non-await)
+        RabbitMQService.publish(QueueKeys.DNS_Analytics, AnalyticsMSgPayload, { persistent: false, priority: 5 });
 
-        // Parse and cache the DNS response
+        // Cache
         const parsedRecord = ioHandler.parseDNSResponse(response, queryType);
         if (parsedRecord) {
           RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, parsedRecord, customTTL ?? parsedRecord.ttl);
         }
-        // Modify TTL if customTTL is provided
+
         if (customTTL !== null) {
-          const modifiedResponse = modifyResponseTTL(response, customTTL);
-          resolve(modifiedResponse);
-        } else {
-          resolve(response); // got an answer ✅
+          return modifyResponseTTL(response, customTTL);
         }
-      });
+        return response;
+      } else {
+        // Failure/Timeout, try next
+        return tryNext(index + 1);
+      }
+    };
 
-      client.once("error", () => {
-        clearTimeout(timeout);
-        cleanup();
-        tryNext(); // try next random DNS
-      });
+    return tryNext(0);
+  }
+}
 
-      client.send(msg, 53, dnsIP.ip);
-    }
-
-    tryNext();
-  });
+// Export the wrapper function to maintain API compatibility
+export default function GlobalDNSforwarder(
+  msg: Buffer,
+  queryName: string,
+  queryType: string,
+  customTTL: number | null = null,
+  rinfo: dgram.RemoteInfo,
+  start: number
+): Promise<Buffer | null> {
+  return DNSForwarderService.getInstance().resolve(msg, queryName, queryType, customTTL, rinfo, start);
 }

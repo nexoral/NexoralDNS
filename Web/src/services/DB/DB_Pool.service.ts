@@ -7,7 +7,7 @@ import { getCollectionClient } from "../../Database/mongodb.db";
 export class DomainDBPoolService {
   private DNSRecordsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
-  constructor() {}
+  constructor() { }
 
   // get domain matched with the name
   public async getDnsRecordByDomainName(domainName: string, maxDepth: number = 10) {
@@ -23,10 +23,8 @@ export class DomainDBPoolService {
       visited.add(currentName);
 
       // Try exact match first
-      const record = await this.DNSRecordsCollection?.aggregate([
-        { $match: { name: currentName } },
-      ]).toArray().then(results => results[0]);
-      
+      const record = await this.DNSRecordsCollection?.findOne({ name: currentName });
+
       if (!record) {
         return null; // Domain not found
       }

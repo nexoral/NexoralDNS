@@ -1,6 +1,4 @@
-import InputOutputHandler from "../../utilities/IO.utls";
 import RedisCache from "../../Redis/Redis.cache";
-import dgram from "dgram";
 
 /**
  * BlockList Service
@@ -9,11 +7,6 @@ import dgram from "dgram";
  * Uses Redis to store and query blocked domains per IP
  */
 export default class BlockList {
-  private readonly IO: InputOutputHandler;
-  private readonly msg: Buffer<ArrayBufferLike>;
-  private readonly rinfo: dgram.RemoteInfo;
-  private readonly clientIP: string;
-
   // In-memory cache for recently checked domains (per instance)
   private readonly localCache: Map<string, { blocked: boolean; timestamp: number }>;
   private readonly CACHE_TTL = 5000; // 5 seconds local cache
@@ -22,11 +15,7 @@ export default class BlockList {
   private static globalCache: Map<string, { blocked: boolean; timestamp: number }> = new Map();
   private static GLOBAL_CACHE_TTL = 3000; // 3 seconds
 
-  constructor(IO: InputOutputHandler, msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo) {
-    this.IO = IO;
-    this.msg = msg;
-    this.rinfo = rinfo;
-    this.clientIP = rinfo.address;
+  constructor() {
     this.localCache = new Map();
   }
 
@@ -46,12 +35,13 @@ export default class BlockList {
    * 2. Redis cache (loaded by cron) - fast, ~1ms
    *
    * @param domain Domain name to check (e.g., "facebook.com")
+   * @param clientIP The client's IP address
    * @returns true if blocked, false if allowed
    */
-  public async checkDomain(domain: string): Promise<boolean> {
+  public async checkDomain(domain: string, clientIP: string): Promise<boolean> {
     // Normalize domain to lowercase
     const normalizedDomain = domain.toLowerCase();
-    const cacheKey = `${this.clientIP}:${normalizedDomain}`;
+    const cacheKey = `${clientIP}:${normalizedDomain}`;
 
     // Layer 1: Check global cache (shared across instances)
     const globalCached = BlockList.globalCache.get(cacheKey);
@@ -67,7 +57,7 @@ export default class BlockList {
 
     // Layer 3: Check Redis (ACL policies loaded by cron)
     try {
-      const isBlocked = await RedisCache.isDomainBlocked(this.clientIP, normalizedDomain);
+      const isBlocked = await RedisCache.isDomainBlocked(clientIP, normalizedDomain);
 
       // Update both caches
       const cacheEntry = {
@@ -89,7 +79,7 @@ export default class BlockList {
       return isBlocked;
 
     } catch (error) {
-      console.error(`[ACL] Error checking domain ${normalizedDomain} for IP ${this.clientIP}:`, error);
+      console.error(`[ACL] Error checking domain ${normalizedDomain} for IP ${clientIP}:`, error);
       // Fail open (allow on error) to prevent blocking all traffic
       return false;
     }
@@ -98,15 +88,16 @@ export default class BlockList {
   /**
    * Check if a domain is blocked and get details
    * @param domain Domain name to check
+   * @param clientIP The client's IP address
    * @returns Object with blocked status and reason
    */
-  public async checkDomainWithDetails(domain: string): Promise<{
+  public async checkDomainWithDetails(domain: string, clientIP: string): Promise<{
     blocked: boolean;
     reason?: string;
     checkedAt: number;
   }> {
     const normalizedDomain = domain.toLowerCase();
-    const isBlocked = await this.checkDomain(normalizedDomain);
+    const isBlocked = await this.checkDomain(normalizedDomain, clientIP);
 
     return {
       blocked: isBlocked,
@@ -118,18 +109,19 @@ export default class BlockList {
   /**
    * Get all blocked domains for the current client IP
    * Useful for debugging and diagnostics
+   * @param clientIP The client's IP address
    * @returns Array of blocked domain patterns
    */
-  public async getBlockedDomainsForClient(): Promise<string[]> {
+  public async getBlockedDomainsForClient(clientIP: string): Promise<string[]> {
     try {
       const [ipBlocks, globalBlocks] = await Promise.all([
-        RedisCache.getBlockedDomainsForIP(this.clientIP),
+        RedisCache.getBlockedDomainsForIP(clientIP),
         RedisCache.getGloballyBlockedDomains()
       ]);
 
       return [...new Set([...ipBlocks, ...globalBlocks])]; // Remove duplicates
     } catch (error) {
-      console.error(`[ACL] Error getting blocked domains for IP ${this.clientIP}:`, error);
+      console.error(`[ACL] Error getting blocked domains for IP ${clientIP}:`, error);
       return [];
     }
   }
@@ -182,25 +174,18 @@ export default class BlockList {
   }
 
   /**
-   * Get the client IP address
-   * @returns Client IP address
-   */
-  public getClientIP(): string {
-    return this.clientIP;
-  }
-
-  /**
    * Batch check multiple domains (for optimization)
    * @param domains Array of domain names to check
+   * @param clientIP The client's IP address
    * @returns Map of domain -> blocked status
    */
-  public async checkDomainsBatch(domains: string[]): Promise<Map<string, boolean>> {
+  public async checkDomainsBatch(domains: string[], clientIP: string): Promise<Map<string, boolean>> {
     const results = new Map<string, boolean>();
 
     // Check all domains in parallel
     await Promise.all(
       domains.map(async (domain) => {
-        const isBlocked = await this.checkDomain(domain);
+        const isBlocked = await this.checkDomain(domain, clientIP);
         results.set(domain, isBlocked);
       })
     );

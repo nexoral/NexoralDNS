@@ -9,6 +9,7 @@ import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware"
 import ServiceToggleService from "../../Services/settings/serviceToggle.service";
 import DefaultTTLService from "../../Services/settings/defaultTTL.service";
 import CacheService from "../../Services/settings/Cache.service";
+import RedisCache from "../../Redis/Redis.cache";
 
 /**
  * SettingsController handles settings-related requests.
@@ -25,12 +26,15 @@ export default class SettingsController {
   constructor() { }
 
   // Toggle service
-  public static toggleService(request: authGuardFastifyRequest, reply: FastifyReply) {
+  public static async toggleService(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Service update failed");
     const serviceToggler = new ServiceToggleService(reply)
     try {
-      return serviceToggler.toggleService()
+      const result = await serviceToggler.toggleService();
+      // Publish Cache Invalidation Event
+      await RedisCache.publish('cache:invalidate', 'service_status');
+      return result;
     } catch (error) {
       return Responser.send(error);
     }
@@ -49,26 +53,29 @@ export default class SettingsController {
   }
 
   // Update Default TTL
-  public static updateDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
+  public static async updateDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to update Default TTL");
     const ttlService = new DefaultTTLService(reply);
     try {
       const { defaultTTL } = request.body as { defaultTTL: number };
-      return ttlService.updateDefaultTTL(defaultTTL);
+      const result = await ttlService.updateDefaultTTL(defaultTTL);
+      // Publish Cache Invalidation Event
+      await RedisCache.publish('cache:invalidate', 'service_status');
+      return result;
     } catch (error) {
       return Responser.send(error);
     }
   }
 
   // Get Cache Stat
-  public static getCacheStat(request: authGuardFastifyRequest, reply: FastifyReply){
+  public static getCacheStat(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to fetch Cache Data");
     const cacheService = new CacheService(reply);
     try {
       // extract skip limit from query
-      const requestQuery = request.query as {skip: string, limit: string}
+      const requestQuery = request.query as { skip: string, limit: string }
       const skip = parseFloat(requestQuery.skip) || 0;
       const limit = parseFloat(requestQuery.limit) || 50;
       return cacheService.getStats(limit, skip);
@@ -78,7 +85,7 @@ export default class SettingsController {
   }
 
   // Delete all DNS Cache
-  public static deleteAllDNSCache(request: authGuardFastifyRequest, reply: FastifyReply){
+  public static deleteAllDNSCache(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to Delete Cache Keys");
     const cacheService = new CacheService(reply);
