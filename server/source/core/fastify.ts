@@ -8,6 +8,8 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import createTCPBroker from "../Broker/TCP.broker";
 import startCronJob from "../CronJob/CronJob";
+import { initializeAdultContentDomainGroup } from "../utilities/InitializeAdultContentGroup.utls";
+import { initializeAdBlockingDomainGroup } from "../utilities/InitializeAdBlockingGroup.utls";
 
 
 export default function FastifyServer() {
@@ -73,6 +75,12 @@ export default function FastifyServer() {
 
   MongoConnector().then(async () => {
     try {
+      // Initialize adult content domain group (anti-porn mode)
+      await initializeAdultContentDomainGroup();
+
+      // Initialize ad blocking domain group (anti-ads mode)
+      await initializeAdBlockingDomainGroup();
+
       NexoralServer.listen({
         port: Number(ServerKeys.PORT),
         host: String(ServerKeys.HOST),
