@@ -115,6 +115,8 @@ NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your n
 - **🐳 Easy Deployment:** One-command installation via Docker
 - **🖥️ Web-based Management:** Intuitive dashboard accessible at `localhost:4000`
 - **🛡️ Security Filtering:** Block unwanted domains and protect your network
+- **🔞 Anti-Porn Mode:** Block 100+ adult content websites with one click - perfect for families and schools
+- **🛡️ Anti-Ads Mode:** Block 200+ advertising and tracking domains - eliminate ads, protect privacy, and speed up browsing
 - **👨‍💻 Developer-Friendly:** Perfect for development environments
  - **📊 Real-time Analytics:** Monitor DNS queries as they happen
  - **☁️ Cloud Integration:** Sync settings across multiple installations
@@ -166,6 +168,8 @@ sudo docker compose up -d
 
 - Use the web interface to create custom internal domains (for example `myapp.ankan`) that resolve only within your LAN.
 - Create blocking rules to block specific domains either for individual IP addresses or for the entire network. This is useful for parental controls, IoT protection, or blocking malicious domains.
+- **Enable Anti-Porn Mode** with one click to automatically block 100+ adult content websites for specific devices, groups, or your entire network (Access Control → Anti-Porn Mode).
+- **Enable Anti-Ads Mode** with one click to automatically block 200+ advertising and tracking domains including Google Ads, Facebook tracking, and more - improve privacy and browsing speed (Access Control → Anti-Ads Mode).
 
 ---
 
@@ -183,10 +187,14 @@ sudo docker compose up -d
 
 ### 🏫 Educational Institutions
 - Manage and monitor student access to web resources
+- **One-click anti-porn mode** to block adult content across campus
+- **One-click anti-ads mode** to block ads and improve network bandwidth
 - Filter inappropriate content automatically
 - Track network usage patterns
 
 ### 🏠 Home Networks
+- **Anti-porn mode for family safety** - protect kids with one click
+- **Anti-ads mode for privacy and speed** - block 200+ ad/tracking domains
 - Parental controls and device monitoring
 - Custom domain management for smart homes
 - Enhanced security for IoT devices
