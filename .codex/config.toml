@@ -1,0 +1,202 @@
+# OpenAI Codex CLI Configuration for NexoralDNS
+# Advanced DNS Management & Surveillance System for LAN
+
+[project]
+name = "NexoralDNS"
+description = "Advanced DNS Management & Surveillance System for Local Area Networks (LAN)"
+language = "TypeScript"
+runtime = "Node.js ≥18.0.0"
+architecture = "7-Layer DNS Query Processing"
+
+[model]
+default = "gpt-4-turbo"
+temperature = 0.2  # Lower for deterministic code
+max_tokens = 4096
+top_p = 0.95
+
+[approval]
+mode = "strict"
+ask_before_install = true
+ask_before_delete = true
+ask_before_network = true
+ask_before_build = true
+
+[sandbox]
+filesystem = "read-write"
+network = "blocked"
+allow_shell_commands = true
+
+[build]
+# Multi-module build commands
+server = "cd server && npm run build"
+web = "cd Web && npm run build"
+dhcp = "cd DHCP && npm run build"
+required = true
+run_after_changes = true
+
+[test]
+command = "cd Test && npm test"
+required = true
+location = "Test/"
+
+[performance]
+# Critical performance targets
+cache_hit_ms = 2
+db_lookup_ms = 5
+upstream_dns_ms = 50
+enforce_targets = true
+
+[deployment]
+# CRITICAL: LAN-ONLY deployment
+allowed = ["lan", "local", "localhost"]
+forbidden = ["cloud", "public", "internet", "aws", "azure", "gcp", "digitalocean"]
+warning = "⚠️ LAN-ONLY: ISPs will block DNS spoofing on cloud/public networks"
+
+[style]
+indent = "spaces"
+indent_size = 2
+quote_style = "single"
+trailing_comma = true
+semicolons = true
+prefer_const = true
+prefer_arrow_functions = true
+use_template_strings = true
+
+[typescript]
+strict_mode = true
+no_any_types = true
+no_implicit_any = true
+strict_null_checks = true
+no_unused_vars = true
+
+[rules]
+# Core principles
+performance_first = true
+backward_compatibility = true
+lan_only_deployment = true
+no_breaking_changes = true
+
+# Architecture
+seven_layer_processing = true
+cache_first = true
+parallel_operations = true
+graceful_error_handling = true
+
+# DNS-specific
+never_throw_in_dns_path = true
+return_valid_dns_responses = true  # NXDOMAIN/SERVFAIL
+validate_dns_queries = true
+rate_limiting = true
+
+[rules.naming]
+files = "{Feature}.service.ts, {Model}.schema.ts, {Feature}.controller.ts"
+classes = "PascalCase"
+methods = "camelCase"
+variables = "camelCase"
+constants = "UPPER_SNAKE_CASE"
+
+[performance]
+use_cache = true
+check_redis_first = true
+batch_db_operations = true
+parallel_not_sequential = true
+connection_pooling = true
+cluster_mode = true
+
+[security]
+validate_dns_queries = true
+rate_limit_per_ip = 100  # queries per minute
+client_authentication = true
+no_log_secrets = true
+lan_only_deployment = true
+
+[documentation]
+update_readme = true
+update_architecture = true  # ARCHITECTURE.md
+update_features = true      # FEATURES.md
+require_jsdoc = true
+
+[commands]
+# Server
+server_build = "cd server && npm run build"
+server_dev = "cd server && npm run dev"
+server_start = "cd server && npm start"
+
+# Web Dashboard
+web_dev = "cd Web && npm run dev"
+web_build = "cd Web && npm run build"
+
+# DHCP Server
+dhcp_build = "cd DHCP && npm run build"
+dhcp_start = "cd DHCP && npm start"
+
+# Testing
+test = "cd Test && npm test"
+test_perf = "cd Test && npm run test:perf"
+
+# Documentation
+docs_dev = "cd Docs && npm run dev"
+
+[antipatterns]
+no_any_types = true
+no_cloud_deployment = true
+no_ignore_performance_targets = true
+no_breaking_changes = true
+no_throw_in_dns_path = true
+no_sequential_when_parallel = true
+no_skip_tests = true
+no_skip_docs = true
+no_hardcoded_values = true
+
+[completion]
+required = [
+  "npm run build passes in affected module",
+  "Tests added/updated in Test/",
+  "npm test passes",
+  "Performance targets met (<5ms DB)",
+  "Documentation updated (README, ARCHITECTURE, FEATURES)",
+  "Backward compatible",
+  "LAN-only deployment emphasized",
+  "No 'any' types",
+  "Proper error handling in DNS path"
+]
+
+[layers]
+# 7-Layer DNS Query Processing Architecture
+[layers.1]
+name = "Cache"
+component = "Redis"
+target_ms = 1
+description = "Check Redis cache first for fastest response"
+
+[layers.2]
+name = "Service Status"
+target_ms = 0.5
+description = "Check if DNS service is active for client"
+
+[layers.3]
+name = "Block List"
+target_ms = 0.5
+description = "Check if domain is blocked (ads, malware, custom)"
+
+[layers.4]
+name = "Client Plan"
+target_ms = 1
+description = "Validate client plan and feature permissions"
+
+[layers.5]
+name = "Custom Records"
+component = "MongoDB"
+target_ms = 2
+description = "Check for custom DNS records in database"
+
+[layers.6]
+name = "Domain Rerouting"
+target_ms = 1
+description = "Apply domain rerouting rules (e.g., google.com → ankan.site)"
+
+[layers.7]
+name = "Upstream DNS"
+component = "External DNS (8.8.8.8, 1.1.1.1)"
+target_ms = 50
+description = "Fallback to upstream DNS servers"
