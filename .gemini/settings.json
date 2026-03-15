@@ -9,14 +9,6 @@
     "runtime": "Node.js ≥18.0.0"
   },
 
-  "model": {
-    "name": "gemini-3-pro",
-    "temperature": 0.2,
-    "maxTokens": 8192,
-    "topP": 0.95,
-    "topK": 40
-  },
-
   "context": {
     "fileName": ["GEMINI.md"],
     "hierarchical": true,
