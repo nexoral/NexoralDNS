@@ -782,6 +782,11 @@ class RedisCacheService {
 
     }
 
+    if (this.subscriberClient) {
+      await this.subscriberClient.quit();
+      this.subscriberClient = null;
+    }
+
   }
 
   /**
@@ -796,6 +801,36 @@ class RedisCacheService {
     } catch (error) {
       Console.red(`❌ Failed to publish to channel ${channel}:`, error);
       return 0;
+    }
+  }
+
+  // ============================================
+  // PUB/SUB SUBSCRIBE METHOD
+  // ============================================
+
+  private subscriberClient: RedisClientType | null = null;
+
+  /**
+   * Subscribe to a Redis Pub/Sub channel.
+   * Uses a dedicated connection (required by Redis for subscribe mode).
+   */
+  async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
+    try {
+      if (!this.subscriberClient) {
+        const redisConfig = this.getRedisConfig();
+        this.subscriberClient = createClient(redisConfig.options) as RedisClientType;
+        this.subscriberClient.on('error', (err) => Console.red(`❌ Redis subscriber error:`, err));
+        this.subscriberClient.on('reconnecting', () => Console.yellow('🔄 Redis subscriber reconnecting...'));
+        await this.subscriberClient.connect();
+        Console.green('✅ Redis subscriber client connected');
+      }
+      await this.subscriberClient.subscribe(channel, (message) => {
+        callback(message);
+      });
+      Console.bright(`👂 Subscribed to channel: ${channel}`);
+    } catch (error) {
+      Console.red(`❌ Failed to subscribe to channel ${channel}:`, error);
+      throw error;
     }
   }
 

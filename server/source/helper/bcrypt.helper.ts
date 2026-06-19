@@ -1,4 +1,4 @@
-import { genSalt } from "bcryptjs";
+import { compare, genSalt } from "bcryptjs";
 import { hash } from "bcryptjs";
 
 export default class Bcrypt {
@@ -27,7 +27,7 @@ export default class Bcrypt {
    * @returns A Promise that resolves to a boolean indicating whether the plain text matches the hash.
    */
   public async Compare(data: string, hashedData: string): Promise<boolean> {
-    const isMatch = await hash(data, hashedData);
-    return isMatch === hashedData;
+    const isMatch = await compare(data, hashedData);
+    return isMatch;
   }
 }

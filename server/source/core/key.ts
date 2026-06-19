@@ -8,8 +8,7 @@ export enum ServerKeys {
   DEFAULT_KEY_AUDIENCE = "Nexoral Client",
   DEFAULT_KEY_REASON = "For Transacting with Nexoral Server",
   DEFAULT_KEY_TIMESTAMP = Date.now(),
-  DEFAULT_KEY_ROUNDS = 1,
-  BROKER_PORT = 56300
+  DEFAULT_KEY_ROUNDS = 1
 }
 
 // Config for CORS
