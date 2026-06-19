@@ -23,7 +23,6 @@ export default async function DHCPRouter(fastify: FastifyInstance, _options: Dhc
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated],
@@ -40,7 +39,6 @@ export default async function DHCPRouter(fastify: FastifyInstance, _options: Dhc
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(18)],

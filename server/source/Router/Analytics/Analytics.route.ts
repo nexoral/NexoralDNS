@@ -24,7 +24,6 @@ export default async function AnalyticsRouter(fastify: FastifyInstance, _options
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated],
@@ -41,7 +40,6 @@ export default async function AnalyticsRouter(fastify: FastifyInstance, _options
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       querystring: {
         type: 'object',

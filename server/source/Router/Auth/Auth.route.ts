@@ -1,19 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FastifyInstance, FastifyPluginOptions } from "fastify";
-
-// Controllers
 import AuthController from "../../Controller/Auth/auth.controller";
-// Middlewares
 import authGuard from "../../Middlewares/authGuard.middleware";
 
-export interface AuthOptions extends FastifyPluginOptions { }
+export interface AuthOptions extends FastifyPluginOptions {}
 
 export default async function authRouter(fastify: FastifyInstance, _options: AuthOptions): Promise<void> {
 
-  // Login Route
+  // Login — strict rate limit: 10 requests per 15 minutes per IP
   fastify.post("/login", {
     schema: {
-      description: 'Authenticate a user and return a JWT token',
+      description: 'Authenticate user and issue httpOnly cookie tokens',
       tags: ['Auth'],
       body: {
         type: 'object',
@@ -24,11 +21,41 @@ export default async function authRouter(fastify: FastifyInstance, _options: Aut
         }
       },
     },
-    preHandler: [],
-    handler: AuthController.login
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } as any,
+    handler: AuthController.login,
   });
 
-  // Change Password Route
+  // Logout — requires valid session cookie
+  fastify.post("/logout", {
+    schema: {
+      description: 'Invalidate session and clear auth cookies',
+      tags: ['Auth'],
+    },
+    preHandler: [authGuard.isAuthenticated],
+    handler: AuthController.logout,
+  });
+
+  // Refresh access token using refresh cookie
+  fastify.post("/refresh-token", {
+    schema: {
+      description: 'Issue a new 30-minute access token using the refresh token cookie',
+      tags: ['Auth'],
+    },
+    config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } as any,
+    handler: AuthController.refreshToken,
+  });
+
+  // Verify session — returns user data from the active session
+  fastify.get("/verify", {
+    schema: {
+      description: 'Verify session validity and return user details',
+      tags: ['Auth'],
+    },
+    preHandler: [authGuard.isAuthenticated],
+    handler: AuthController.verifySession,
+  });
+
+  // Change password — requires valid session
   fastify.post("/change-password", {
     schema: {
       description: 'Change user password',
@@ -43,7 +70,6 @@ export default async function authRouter(fastify: FastifyInstance, _options: Aut
       },
     },
     preHandler: [authGuard.isAuthenticated],
-    handler: AuthController.changePassword
+    handler: AuthController.changePassword,
   });
-
 }

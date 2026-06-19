@@ -1,60 +1,62 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import ResponseBuilder from "../helper/responseBuilder.helper";
-import { StatusCodes, ClassBased } from "outers";
+import { StatusCodes } from "outers";
+import { verifyToken } from "../helper/jwt.helper";
+import { getCollectionClient } from "../Database/mongodb.db";
+import { DB_DEFAULT_CONFIGS } from "../core/key";
 
-// Extend FastifyRequest to include user property
-  export interface authGuardFastifyRequest extends FastifyRequest {
-    user?: any;
-    body: any;
-  }
+export interface authGuardFastifyRequest extends FastifyRequest {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  body: any;
+}
 
 export default class authGuard {
   constructor() {}
 
-  /**
-   * Middleware function to verify if a request is authenticated.
-   * 
-   * This method checks for a valid authentication token in the request headers or query parameters.
-   * The token can be provided in any of the following ways:
-   * - In headers with key 'authorization'
-   * - In headers with key 'auth_token'
-   * - As a query parameter with key 'auth_token'
-   * 
-   * If the token is missing or invalid, it responds with an unauthorized status.
-   * If the token is valid, it allows the request to proceed to the next middleware or route handler.
-   * 
-   * @param {FastifyRequest} fastifyRequest - The Fastify request object
-   * @param {FastifyReply} fastifyReply - The Fastify reply object
-   * @param {() => void} [done] - Optional callback to be executed if authentication succeeds
-   * @returns {void}
-   */
-  public static isAuthenticated(fastifyRequest: authGuardFastifyRequest, fastifyReply: FastifyReply, done?: () => void): void {
+  public static async isAuthenticated(
+    fastifyRequest: authGuardFastifyRequest,
+    fastifyReply: FastifyReply
+  ): Promise<void> {
     const responser = new ResponseBuilder(fastifyReply, StatusCodes.UNAUTHORIZED, "Unauthorized access");
-    const token = fastifyRequest.headers['authorization'] || fastifyRequest.headers['Auth_token'] || (fastifyRequest.query as Record<string, string>)['auth_token'];
+
+    // Read from httpOnly cookie (primary) or Authorization header (fallback)
+    const cookies = (fastifyRequest as unknown as { cookies: Record<string, string> }).cookies;
+    const token: string | undefined =
+      cookies?.access_token ||
+      (fastifyRequest.headers['authorization'] as string | undefined);
 
     if (!token) {
-      return responser.send('Unauthorized, please provide a valid token on headers with any of the keys: authorization, auth_token or as query parameter with key auth_token', StatusCodes.UNAUTHORIZED);
+      return responser.send(
+        'Unauthorized, please provide a valid token',
+        StatusCodes.UNAUTHORIZED
+      );
     }
 
-    // Verify token (placeholder logic)
-    const JWT_MANAGER = new ClassBased.JWT_Manager(process.arch)
-    const decodedInfo = JWT_MANAGER.decode(token as string);
-
-    if(decodedInfo.data){
-      fastifyRequest.user = decodedInfo?.data?.data;
-    }
-    else {
-      fastifyRequest.user = null;
-    }
-    
-    if (decodedInfo.status !== "Success") {
-      return responser.send('Unauthorized, please provide a valid token on headers with any of the keys: authorization, auth_token or as query parameter with key auth_token', StatusCodes.UNAUTHORIZED);
+    // Verify JWT signature and expiry
+    const decoded = verifyToken(token);
+    if (!decoded.valid) {
+      return responser.send(
+        'Unauthorized, token is invalid or expired',
+        StatusCodes.UNAUTHORIZED
+      );
     }
 
-    // If everything is fine, proceed to the next middleware or route handler
-    if (done) {
-      done();
+    // Verify session exists in DB and is active
+    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    if (!sessionCol) {
+      return responser.send('Database connection error', StatusCodes.INTERNAL_SERVER_ERROR);
     }
-    return;
+
+    const session = await sessionCol.findOne({ accessToken: token });
+    if (!session || !session.isLoggedIn) {
+      return responser.send(
+        'Session expired or logged out, please login again',
+        StatusCodes.UNAUTHORIZED
+      );
+    }
+
+    fastifyRequest.user = decoded.data;
   }
 }

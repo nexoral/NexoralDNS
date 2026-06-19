@@ -23,7 +23,6 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
@@ -40,7 +39,6 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       response: {
         200: {
@@ -74,7 +72,6 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       body: {
         type: 'object',
@@ -139,7 +136,6 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       }
     },
     preHandler: [authGuard.isAuthenticated],
@@ -156,7 +152,6 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       }
     },
     preHandler: [authGuard.isAuthenticated],
@@ -173,7 +168,6 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       querystring: {
         type: 'object',

@@ -103,6 +103,8 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS, domainGroupsCol);
     const ipGroupsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS, ipGroupsCol);
+    const sessionManageCol = db.collection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE, sessionManageCol);
 
     // create Indexes
     await serviceCol.createIndex({ Service_Status: 1 }, { unique: true });
@@ -144,6 +146,11 @@ export default async () => {
     // IP Groups
     await ipGroupsCol.createIndex({ name: 1 }, { unique: true })
     await ipGroupsCol.createIndex({ createdAt: -1 })
+
+    // Session Management
+    await sessionManageCol.createIndex({ accessToken: 1 })
+    await sessionManageCol.createIndex({ refreshToken: 1 })
+    await sessionManageCol.createIndex({ userId: 1 })
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();
