@@ -4,6 +4,7 @@ import { StatusCodes } from "outers";
 import { verifyToken } from "../helper/jwt.helper";
 import { getCollectionClient } from "../Database/mongodb.db";
 import { DB_DEFAULT_CONFIGS } from "../core/key";
+import RedisCache from "../Redis/Redis.cache";
 
 export interface authGuardFastifyRequest extends FastifyRequest {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,6 +35,7 @@ export default class authGuard {
       );
     }
 
+    
     // Verify JWT signature and expiry
     const decoded = verifyToken(token);
     if (!decoded.valid) {
@@ -42,14 +44,26 @@ export default class authGuard {
         StatusCodes.UNAUTHORIZED
       );
     }
+    
+    let session;
 
-    // Verify session exists in DB and is active
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
-    if (!sessionCol) {
-      return responser.send('Database connection error', StatusCodes.INTERNAL_SERVER_ERROR);
+    // check  Redis have the token or not
+    const redisTokenData = await RedisCache.get(`session:${token}`)
+    if (redisTokenData) {
+      session = JSON.parse(redisTokenData);
     }
+    else {
+      // Verify session exists in DB and is active
+      const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+      if (!sessionCol) {
+        return responser.send('Database connection error', StatusCodes.INTERNAL_SERVER_ERROR);
+      }
 
-    const session = await sessionCol.findOne({ accessToken: token });
+      session = await sessionCol.findOne({ accessToken: token });
+
+      // Store to  Redis
+      await RedisCache.set(`session:${token}`, session, 1800)
+    }
     if (!session || !session.isLoggedIn) {
       return responser.send(
         'Session expired or logged out, please login again',

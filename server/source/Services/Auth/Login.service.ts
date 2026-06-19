@@ -79,16 +79,22 @@ export default class LoginService {
       return Responser.send("Failed to generate tokens", StatusCodes.INTERNAL_SERVER_ERROR, "Token Generation Failed");
     }
 
-    // Store session in DB
-    await sessionCol.insertOne({
-      userId: new ObjectId(String(user._id)),
-      roleId: user.roleId,
-      accessToken,
-      refreshToken,
-      isLoggedIn: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    // One document per user — upsert replaces the previous session on re-login,
+    // invalidating the old tokens immediately
+    await sessionCol.updateOne(
+      { userId: new ObjectId(String(user._id)) },
+      {
+        $set: {
+          roleId: user.roleId,
+          accessToken,
+          refreshToken,
+          isLoggedIn: true,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true }
+    );
 
     // Set httpOnly cookies
     const reply = this.fastifyReply as unknown as {

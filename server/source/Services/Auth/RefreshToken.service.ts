@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { verifyToken, generateAccessToken } from "../../helper/jwt.helper";
+import RedisCache from "../../Redis/Redis.cache";
 
 export default class RefreshTokenService {
   private readonly fastifyReply: FastifyReply;
@@ -74,6 +75,11 @@ export default class RefreshTokenService {
 
     if (!newAccessToken) {
       return Responser.send("Failed to generate token", StatusCodes.INTERNAL_SERVER_ERROR, "Token Generation Failed");
+    }
+
+    // Evict old access token from Redis before replacing it
+    if (session.accessToken) {
+      await RedisCache.delete(`session:${session.accessToken}`);
     }
 
     // Update session with new access token

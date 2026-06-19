@@ -147,10 +147,10 @@ export default async () => {
     await ipGroupsCol.createIndex({ name: 1 }, { unique: true })
     await ipGroupsCol.createIndex({ createdAt: -1 })
 
-    // Session Management
+    // Session Management — one document per user (unique userId enforces upsert semantics)
+    await sessionManageCol.createIndex({ userId: 1 }, { unique: true })
     await sessionManageCol.createIndex({ accessToken: 1 })
     await sessionManageCol.createIndex({ refreshToken: 1 })
-    await sessionManageCol.createIndex({ userId: 1 })
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();

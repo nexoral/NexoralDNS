@@ -4,6 +4,7 @@ import { StatusCodes } from "outers";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
+import RedisCache from "../../Redis/Redis.cache";
 
 export default class LogoutService {
   private readonly fastifyReply: FastifyReply;
@@ -30,6 +31,9 @@ export default class LogoutService {
         },
       }
     );
+
+    // Evict from Redis immediately so the old token is rejected on next request
+    await RedisCache.delete(`session:${accessToken}`);
 
     const reply = this.fastifyReply as unknown as {
       clearCookie(name: string, options: Record<string, unknown>): void;
