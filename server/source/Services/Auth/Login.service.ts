@@ -23,7 +23,11 @@ export default class LoginService {
       return Responser.send("Database connection error", StatusCodes.INTERNAL_SERVER_ERROR, "Database Error");
     }
 
-    const user = await usersCol.findOne({ username });
+    if (typeof username !== 'string' || typeof password !== 'string' || !username.trim()) {
+      return Responser.send("Invalid username or password", StatusCodes.UNAUTHORIZED, "Authentication Failed");
+    }
+
+    const user = await usersCol.findOne({ username: username.trim() });
     if (!user) {
       return Responser.send("Invalid username or password", StatusCodes.UNAUTHORIZED, "Authentication Failed");
     }
