@@ -50,7 +50,7 @@ export default class authGuard {
     // check  Redis have the token or not
     const redisTokenData = await RedisCache.get(`session:${token}`)
     if (redisTokenData) {
-      session = JSON.parse(redisTokenData);
+      session = redisTokenData;
     }
     else {
       // Verify session exists in DB and is active

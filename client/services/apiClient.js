@@ -75,7 +75,6 @@ apiClient.interceptors.response.use(
           processPendingRequests(refreshError);
           // Refresh failed — session is fully expired, force re-login
           if (typeof window !== 'undefined') {
-            localStorage.clear();
             window.location.href = '/';
           }
           return Promise.reject(refreshError);
@@ -84,14 +83,12 @@ apiClient.interceptors.response.use(
 
       // Already retried once and still 401 — force re-login
       if (typeof window !== 'undefined') {
-        localStorage.clear();
         window.location.href = '/';
       }
     }
 
     if (response?.status === 403) {
       if (typeof window !== 'undefined') {
-        localStorage.clear();
         window.location.href = '/';
       }
     }

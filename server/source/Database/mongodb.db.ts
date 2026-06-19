@@ -148,6 +148,8 @@ export default async () => {
     await ipGroupsCol.createIndex({ createdAt: -1 })
 
     // Session Management — one document per user (unique userId enforces upsert semantics)
+    // Drop the old non-unique index before recreating as unique (idempotent on fresh installs)
+    await sessionManageCol.dropIndex('userId_1').catch(() => {})
     await sessionManageCol.createIndex({ userId: 1 }, { unique: true })
     await sessionManageCol.createIndex({ accessToken: 1 })
     await sessionManageCol.createIndex({ refreshToken: 1 })

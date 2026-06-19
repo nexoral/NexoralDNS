@@ -63,12 +63,13 @@ export default class LoginService {
     const userDetails = fullDetails[0];
     const permissionCodes: number[] = (userDetails.permissions as { code: number }[]).map(p => p.code);
 
-    // Build token payloads
+    // Build token payloads — passwordUpdatedAt included so verifyToken returns it without extra DB call
     const accessPayload = {
       _id: String(user._id),
       username: user.username,
       roleId: String(user.roleId),
       permissionCodes,
+      passwordUpdatedAt: user.passwordUpdatedAt ?? null,
     };
     const refreshPayload = { _id: String(user._id) };
 
