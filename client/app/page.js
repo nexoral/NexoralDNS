@@ -8,6 +8,7 @@ import Toast from '../components/ui/Toast';
 import config from '../config/keys';
 import useAuthStore from '../stores/authStore';
 import { api } from '../services/api';
+// config import kept for APP_NAME / APP_VERSION / UI constants
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,13 +24,16 @@ export default function LoginPage() {
         return;
       }
 
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem(config.AUTH.TOKEN_KEY);
-        if (token) {
-          login({ token });
+      // Verify session via server — access_token cookie is sent automatically
+      try {
+        const response = await api.verifyToken();
+        if (response.data?.statusCode === 200 && response.data?.data?.user) {
+          login({ user: response.data.data.user, data: response.data.data });
           router.replace('/dashboard');
           return;
         }
+      } catch (_) {
+        // No active session — show login form
       }
 
       setIsInitializing(false);
@@ -45,9 +49,8 @@ export default function LoginPage() {
       const responseData = response.data;
 
       if (responseData.statusCode === 200 && responseData.data) {
+        // Tokens are stored as httpOnly cookies by the server — only persist UI data
         login({
-          token: responseData.data.token,
-          refreshToken: responseData.data.refreshToken,
           user: responseData.data.user,
           data: responseData.data
         });

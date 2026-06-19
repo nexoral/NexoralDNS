@@ -1,73 +1,98 @@
 import axios from 'axios';
 import config from '../config/keys';
 
-// Create axios instance with default config
 const apiClient = axios.create({
   baseURL: config.API_BASE_URL,
   timeout: 30000,
+  withCredentials: true, // send httpOnly cookies automatically
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Request interceptor - Add auth token to every request
+// Request interceptor — cookies are sent automatically via withCredentials, no manual token injection
 apiClient.interceptors.request.use(
-  (requestConfig) => {
-    const token = localStorage.getItem(config.AUTH.TOKEN_KEY);
-    if (token) {
-      requestConfig.headers.Authorization = token;
-    }
-    return requestConfig;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (requestConfig) => requestConfig,
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - Handle errors globally
+// Track in-flight refresh to avoid concurrent refresh races
+let isRefreshing = false;
+let pendingRequests = [];
+
+const processPendingRequests = (error) => {
+  pendingRequests.forEach((cb) => cb(error));
+  pendingRequests = [];
+};
+
+// Response interceptor — auto-refresh on 401, then retry original request once
 apiClient.interceptors.response.use(
-  (response) => {
-    // Return successful response as-is
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const { response, config: requestConfig } = error;
 
-    // Handle 401 Unauthorized - Session expired or invalid token
     if (response?.status === 401) {
-      // Don't auto-logout for change-password endpoint (wrong current password is expected)
-      const isChangePasswordEndpoint = requestConfig?.url?.includes('/change-password');
+      const url = requestConfig?.url ?? '';
 
-      if (!isChangePasswordEndpoint) {
-        // Clear auth state
-        localStorage.removeItem(config.AUTH.TOKEN_KEY);
-        localStorage.removeItem(config.AUTH.REFRESH_TOKEN_KEY);
-        localStorage.removeItem('auth-storage');
+      // These endpoints must never trigger a refresh attempt:
+      // - /auth/login: credentials wrong, let caller handle
+      // - /auth/refresh-token: refresh itself failed, no point retrying
+      // - /auth/verify: session-check on page load, caller's try/catch handles it
+      // - /auth/change-password: wrong current password, caller shows validation error
+      const skipRefresh =
+        url.includes('/auth/login') ||
+        url.includes('/auth/refresh-token') ||
+        url.includes('/auth/verify') ||
+        url.includes('/auth/change-password');
 
-        // Redirect to login page
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
+      if (skipRefresh) {
+        return Promise.reject(error);
+      }
+
+      if (!requestConfig._retry) {
+        if (isRefreshing) {
+          // Queue until the in-flight refresh completes
+          return new Promise((resolve, reject) => {
+            pendingRequests.push((err) => {
+              if (err) return reject(err);
+              requestConfig._retry = true;
+              resolve(apiClient(requestConfig));
+            });
+          });
         }
 
-        return Promise.reject(new Error('Session expired. Please login again.'));
+        requestConfig._retry = true;
+        isRefreshing = true;
+
+        try {
+          // Attempt to refresh — refresh_token cookie auto-sent
+          await apiClient.post(config.API_ENDPOINTS.REFRESH_TOKEN);
+          isRefreshing = false;
+          processPendingRequests(null);
+          return apiClient(requestConfig);
+        } catch (refreshError) {
+          isRefreshing = false;
+          processPendingRequests(refreshError);
+          // Refresh failed — session is fully expired, force re-login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
+          return Promise.reject(refreshError);
+        }
       }
-    }
 
-    // Handle 403 Forbidden - Insufficient permissions
-    if (response?.status === 403) {
-      // Clear auth state and redirect
-      localStorage.removeItem(config.AUTH.TOKEN_KEY);
-      localStorage.removeItem(config.AUTH.REFRESH_TOKEN_KEY);
-      localStorage.removeItem('auth-storage');
-
+      // Already retried once and still 401 — force re-login
       if (typeof window !== 'undefined') {
         window.location.href = '/';
       }
-
-      return Promise.reject(new Error('Access denied. Please login again.'));
     }
 
-    // For all other errors, pass them through
+    if (response?.status === 403) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
+
     return Promise.reject(error);
   }
 );

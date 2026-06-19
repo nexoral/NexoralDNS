@@ -35,9 +35,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string', description: 'token for authentication' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(19)],
@@ -59,9 +57,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string', description: 'token for authentication' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(20)],
@@ -92,9 +88,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string', description: 'token for authentication' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(21)],
@@ -117,9 +111,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string', description: 'token for authentication' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(22)],

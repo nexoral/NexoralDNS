@@ -103,6 +103,8 @@ export default async () => {
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS, domainGroupsCol);
     const ipGroupsCol = db.collection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS, ipGroupsCol);
+    const sessionManageCol = db.collection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    Collection_clients.set(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE, sessionManageCol);
 
     // create Indexes
     await serviceCol.createIndex({ Service_Status: 1 }, { unique: true });
@@ -144,6 +146,16 @@ export default async () => {
     // IP Groups
     await ipGroupsCol.createIndex({ name: 1 }, { unique: true })
     await ipGroupsCol.createIndex({ createdAt: -1 })
+
+    // Session Management — one document per user (unique userId enforces upsert semantics)
+    // Drop the old non-unique index before recreating as unique (idempotent on fresh installs)
+    await sessionManageCol.dropIndex('userId_1').catch(() => {})
+    await sessionManageCol.createIndex({ userId: 1 }, { unique: true })
+    await sessionManageCol.createIndex({ accessToken: 1 })
+    await sessionManageCol.createIndex({ refreshToken: 1 })
+    // Auto-expire inactive sessions after 48h (matches refresh token TTL)
+    // Active sessions survive because updatedAt is refreshed on every login/token refresh
+    await sessionManageCol.createIndex({ updatedAt: 1 }, { expireAfterSeconds: 48 * 60 * 60 })
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();

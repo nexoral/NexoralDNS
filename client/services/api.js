@@ -7,6 +7,12 @@ export const api = {
   login: (credentials) =>
     apiClient.post(getApiUrl('LOGIN'), credentials),
 
+  logout: () =>
+    apiClient.post(getApiUrl('LOGOUT')),
+
+  refreshToken: () =>
+    apiClient.post(getApiUrl('REFRESH_TOKEN')),
+
   verifyToken: () =>
     apiClient.get(getApiUrl('VERIFY_TOKEN')),
 

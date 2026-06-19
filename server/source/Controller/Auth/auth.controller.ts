@@ -1,9 +1,10 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import LoginService from "../../Services/Auth/Login.service";
 import ChangePasswordService from "../../Services/Auth/ChangePassword.service";
+import LogoutService from "../../Services/Auth/Logout.service";
+import RefreshTokenService from "../../Services/Auth/RefreshToken.service";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
-
 
 type LoginRequestBody = {
   username: string;
@@ -15,24 +16,13 @@ type ChangePasswordRequestBody = {
   newPassword: string;
 };
 
-/**
- * AuthController handles authentication-related requests.
- * It provides methods for user login and other auth functionalities.
- * @class
- * @method login - Handles user login requests.
- * @method changePassword - Handles user password change requests.
- * @param {FastifyRequest} request - The Fastify request object.
- * @param {FastifyReply} reply - The Fastify reply object for sending responses.
- * @returns {Promise<void>} - A promise that resolves when the process is complete.
- */
 export default class AuthController {
-  constructor() { }
+  constructor() {}
 
   public static async login(
     request: FastifyRequest<{ Body: LoginRequestBody }>,
     reply: FastifyReply
   ): Promise<void> {
-    // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Login failed");
     const { username, password } = request.body;
 
@@ -41,11 +31,8 @@ export default class AuthController {
       return;
     }
 
-    // Initialize LoginService
-    const loginService = new LoginService(reply);
-
     try {
-      return loginService.login(username, password);
+      return new LoginService(reply).login(username, password);
     } catch (error) {
       return Responser.send(error);
     }
@@ -55,7 +42,6 @@ export default class AuthController {
     request: FastifyRequest<{ Body: ChangePasswordRequestBody }>,
     reply: FastifyReply
   ): Promise<void> {
-    // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Password change failed");
     const { currentPassword, newPassword } = request.body;
 
@@ -64,19 +50,62 @@ export default class AuthController {
       return;
     }
 
-    // Get user from request (populated by authGuard middleware)
-    const user = (request as any).user;
+    const user = (request as unknown as { user: Record<string, unknown> }).user;
     if (!user || !user._id) {
       return Responser.send({ message: "Unauthorized" }, StatusCodes.UNAUTHORIZED, "Unauthorized");
     }
 
-    // Initialize ChangePasswordService
-    const changePasswordService = new ChangePasswordService(reply);
-
     try {
-      return changePasswordService.changePassword(user._id, currentPassword, newPassword);
+      return new ChangePasswordService(reply).changePassword(user._id as string, currentPassword, newPassword);
     } catch (error) {
       return Responser.send(error);
     }
+  }
+
+  public static async logout(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Logout failed");
+    const cookies = (request as unknown as { cookies: Record<string, string> }).cookies;
+    const accessToken = cookies?.access_token;
+
+    if (!accessToken) {
+      return Responser.send("No active session found", StatusCodes.UNAUTHORIZED, "Unauthorized");
+    }
+
+    try {
+      return new LogoutService(reply).logout(accessToken);
+    } catch (error) {
+      return Responser.send(error);
+    }
+  }
+
+  public static async refreshToken(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Token refresh failed");
+    const cookies = (request as unknown as { cookies: Record<string, string> }).cookies;
+    const refreshToken = cookies?.refresh_token;
+
+    if (!refreshToken) {
+      return Responser.send("No refresh token found", StatusCodes.UNAUTHORIZED, "Unauthorized");
+    }
+
+    try {
+      return new RefreshTokenService(reply).refresh(refreshToken);
+    } catch (error) {
+      return Responser.send(error);
+    }
+  }
+
+  public static async verifySession(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const user = (request as unknown as { user: Record<string, unknown> }).user;
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Session valid");
+    return Responser.send({ user });
   }
 }

@@ -52,9 +52,7 @@ export default async function mainRouter(
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated],

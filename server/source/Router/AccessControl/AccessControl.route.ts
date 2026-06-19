@@ -27,7 +27,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       body: {
         type: 'object',
@@ -117,7 +116,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       querystring: {
         type: 'object',
@@ -154,7 +152,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -181,7 +178,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -280,7 +276,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -307,7 +302,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -336,7 +330,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       body: {
         type: 'object',
@@ -378,7 +371,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       }
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
@@ -395,7 +387,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -419,7 +410,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -467,7 +457,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -493,7 +482,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       body: {
         type: 'object',
@@ -519,7 +507,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       }
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
@@ -536,7 +523,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -560,7 +546,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',
@@ -592,7 +577,6 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
         properties: {
           authorization: { type: 'string', description: 'Bearer token for authentication' },
         },
-        required: ['authorization'],
       },
       params: {
         type: 'object',

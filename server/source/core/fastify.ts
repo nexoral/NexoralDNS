@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
+import fastifyCookie from "@fastify/cookie";
+import rateLimit from "@fastify/rate-limit";
 import { CORS_CONFIG, ServerKeys } from "./key";
 import mainRouter from "../Router/Router";
 import MongoConnector from "../Database/mongodb.db";
@@ -22,12 +24,22 @@ export default function FastifyServer() {
 
   // Attach Middlewares
   NexoralServer.register(fastifyCors, {
-    origin: CORS_CONFIG.ORIGIN, // Allow all origins
-    methods: CORS_CONFIG.METHODS, // Allow specific methods
-    allowedHeaders: CORS_CONFIG.ALLOWED_HEADERS, // Allow specific headers
-    credentials: CORS_CONFIG.ALLOW_CREDENTIALS, // Allow credentials
-    exposedHeaders: CORS_CONFIG.EXPOSED_HEADERS, // Expose specific headers
-    maxAge: CORS_CONFIG.MAX_AGE, // Cache preflight response for 24 hours
+    origin: CORS_CONFIG.ORIGIN,
+    methods: CORS_CONFIG.METHODS,
+    allowedHeaders: CORS_CONFIG.ALLOWED_HEADERS,
+    credentials: CORS_CONFIG.ALLOW_CREDENTIALS,
+    exposedHeaders: CORS_CONFIG.EXPOSED_HEADERS,
+    maxAge: CORS_CONFIG.MAX_AGE,
+  });
+
+  // Cookie support (must register before routes)
+  NexoralServer.register(fastifyCookie);
+
+  // Global rate limiting: 100 requests per minute per IP
+  NexoralServer.register(rateLimit, {
+    global: true,
+    max: 100,
+    timeWindow: '1 minute',
   });
 
   // Configure JSON parsing

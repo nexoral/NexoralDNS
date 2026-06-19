@@ -30,9 +30,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string', description: 'token for authentication' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(1)],
@@ -47,9 +45,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string', description: 'token for authentication' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(1)],
@@ -71,9 +67,7 @@ export default async function domainRouter(fastify: FastifyInstance, _options: D
       headers: {
         type: 'object',
         properties: {
-          Authorization: { type: 'string', description: 'token for authentication' },
         },
-        required: ['Authorization'],
       },
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(2)],

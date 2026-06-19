@@ -1,41 +1,22 @@
-import net from 'net';
-import { ServerKeys } from '../core/key';
-import { createMessage, parseMessage } from './parser.broker';
+import RedisCache from '../Redis/Redis.cache';
 import { getEventHandler } from './EventMapper.broker';
 
-export default function createTCPBroker() {
-  // Create a TCP server
-  const server = net.createConnection({ port: Number(ServerKeys.BROKER_PORT) }, () => {
-    console.log(`Broker Client server listening on port ${ServerKeys.BROKER_PORT}`);
-  });
+const BROKER_CHANNEL = 'broker:ip_change';
 
-  // send a message to the server
-  server.write(createMessage({ type: 'register', service: 'NexoralDNS' }));
-
-  server.on("data", (data) => {
-    const messageObject = parseMessage(data);
-    if (messageObject.type ==="message") {
-      console.log("Received message:", messageObject.event);
-      const getFunction = getEventHandler(String(messageObject.event));
-      if (getFunction) {
-        getFunction();
+export default function createTCPBroker(): void {
+  RedisCache.subscribe(BROKER_CHANNEL, (message) => {
+    try {
+      const parsed: { event: string; timestamp: number } = JSON.parse(message);
+      const handler = getEventHandler(parsed.event);
+      if (handler) {
+        handler();
       } else {
-        console.log(`No handler found for event: ${messageObject.event}`);
+        console.log(`[Broker] No handler registered for event: ${parsed.event}`);
       }
+    } catch (err) {
+      console.error('[Broker] Failed to process message:', err);
     }
-    else if (messageObject.type === "response") {
-      console.log("Received response:", messageObject);
-    }
-  });
-
-  server.on("end", () => {
-    console.log("Client disconnected");
-    server.destroy();
-  });
-
-  server.on("error", (err) => {
-    console.error("Socket error:", err);
-    server.destroy();
-    setTimeout(createTCPBroker, 1000); // try to reconnect after 1 second
+  }).catch((err) => {
+    console.error('[Broker] Failed to subscribe to channel:', err);
   });
 }

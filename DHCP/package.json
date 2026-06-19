@@ -21,6 +21,7 @@
   "dependencies": {
     "@types/node": "^24.7.2",
     "outers": "^8.6.10",
+    "redis": "^5.9.0",
     "typescript": "^5.9.3"
   }
 }

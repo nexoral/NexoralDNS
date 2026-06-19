@@ -2,7 +2,6 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import config from '../config/keys';
 
 // Skip persist on server side
 const storage = typeof window !== 'undefined'
@@ -14,20 +13,11 @@ const useAuthStore = create(
     (set, get) => ({
       isAuthenticated: false,
       user: null,
-      token: null,
       role: null,
       permissions: [],
       passwordUpdatedAt: null,
 
       login: (data) => {
-        if (data.token && !data.user && !data.data) {
-          set({
-            token: data.token,
-            isAuthenticated: true
-          });
-          return;
-        }
-
         const userData = {
           id: data.data?.user?.id || data.user?.id,
           username: data.data?.user?.username || data.user?.username || 'User',
@@ -52,29 +42,28 @@ const useAuthStore = create(
         const passwordUpdatedAt = newPasswordUpdatedAt || currentState.passwordUpdatedAt;
 
         set({
-          token: data.token || data.data?.token,
           user: userData,
           isAuthenticated: true,
           role: roleData,
           permissions: permissionsData,
           passwordUpdatedAt: passwordUpdatedAt
         });
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(config.AUTH.TOKEN_KEY, data.token || data.data?.token);
-          if (data.refreshToken || data.data?.refreshToken) {
-            localStorage.setItem(config.AUTH.REFRESH_TOKEN_KEY, data.refreshToken || data.data?.refreshToken);
-          }
-        }
       },
 
-      logout: () => {
+      logout: async () => {
+        // Call server to invalidate session and clear httpOnly cookies
+        try {
+          const { api } = await import('../services/api');
+          await api.logout();
+        } catch (_) {
+          // Ignore logout errors — still clear client state
+        }
+
         if (typeof window !== 'undefined') {
           localStorage.clear();
         }
 
         set({
-          token: null,
           user: null,
           isAuthenticated: false,
           role: null,
@@ -100,7 +89,7 @@ const useAuthStore = create(
       storage: storage,
       skipHydration: true,
       partialize: (state) => ({
-        token: state.token,
+        // Tokens are in httpOnly cookies — only persist non-sensitive UI state
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         permissions: state.permissions,

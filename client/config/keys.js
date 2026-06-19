@@ -1,10 +1,11 @@
 export const config = {
   // API Configuration
-  API_BASE_URL: process.env.NODE_ENV === 'development'
-    ? 'http://localhost:4773'
-    : typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4773` : 'http://localhost:4773',
+  // Empty base URL — all /api/* requests go through Next.js rewrite proxy to the Fastify server
+  API_BASE_URL: '',
   API_ENDPOINTS: {
     LOGIN: '/api/auth/login',
+    LOGOUT: '/api/auth/logout',
+    REFRESH_TOKEN: '/api/auth/refresh-token',
     VERIFY_TOKEN: '/api/auth/verify',
     CHANGE_PASSWORD: '/api/auth/change-password',
     GET_ALL_DOMAINS: '/api/domains/all-domains',
