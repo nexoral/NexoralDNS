@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
-import { verifyToken, generateAccessToken } from "../../helper/jwt.helper";
+import { verifyToken, generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
 import RedisCache from "../../Redis/Redis.cache";
 
 export default class RefreshTokenService {
@@ -72,8 +72,10 @@ export default class RefreshTokenService {
       roleId: String(userDetails.roleId),
       permissionCodes,
     });
+    // Rotate refresh token on every use — old one is invalidated immediately
+    const newRefreshToken = generateRefreshToken({ _id: userId });
 
-    if (!newAccessToken) {
+    if (!newAccessToken || !newRefreshToken) {
       return Responser.send("Failed to generate token", StatusCodes.INTERNAL_SERVER_ERROR, "Token Generation Failed");
     }
 
@@ -82,13 +84,12 @@ export default class RefreshTokenService {
       await RedisCache.delete(`session:${session.accessToken}`);
     }
 
-    // Update session with new access token
+    // Replace both tokens in the session document
     await sessionCol.updateOne(
       { refreshToken },
-      { $set: { accessToken: newAccessToken, updatedAt: new Date() } }
+      { $set: { accessToken: newAccessToken, refreshToken: newRefreshToken, updatedAt: new Date() } }
     );
 
-    // Set new access_token cookie
     const reply = this.fastifyReply as unknown as {
       setCookie(name: string, value: string, options: Record<string, unknown>): void;
     };
@@ -98,6 +99,13 @@ export default class RefreshTokenService {
       sameSite: 'lax',
       path: '/',
       maxAge: 30 * 60,
+    });
+    reply.setCookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 48 * 60 * 60,
     });
 
     return Responser.send({ message: "Token refreshed successfully" });

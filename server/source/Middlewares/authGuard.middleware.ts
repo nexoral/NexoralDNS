@@ -62,7 +62,9 @@ export default class authGuard {
       session = await sessionCol.findOne({ accessToken: token });
 
       // Store to  Redis
-      await RedisCache.set(`session:${token}`, session, 1800)
+      if (session){
+        await RedisCache.set(`session:${token}`, session, 1800)
+      }
     }
     if (!session || !session.isLoggedIn) {
       return responser.send(

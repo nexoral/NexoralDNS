@@ -151,6 +151,9 @@ export default async () => {
     await sessionManageCol.createIndex({ userId: 1 }, { unique: true })
     await sessionManageCol.createIndex({ accessToken: 1 })
     await sessionManageCol.createIndex({ refreshToken: 1 })
+    // Auto-expire inactive sessions after 48h (matches refresh token TTL)
+    // Active sessions survive because updatedAt is refreshed on every login/token refresh
+    await sessionManageCol.createIndex({ updatedAt: 1 }, { expireAfterSeconds: 48 * 60 * 60 })
 
     // 1. Insert permissions with numeric codes if empty
     const existingPerms = await permissionsCol.countDocuments();
