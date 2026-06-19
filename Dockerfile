@@ -6,7 +6,6 @@ COPY . .
 
 # Build all components
 RUN cd server && npm ci && npm run build && npm prune --production && \
-    cd ../Broker && npm ci && npm run build && npm prune --production && \
     cd ../client && npm ci && npm run build && npm prune --production && \
     cd ../DHCP && npm ci && npm run build && npm prune --production && \
     cd ../Web && npm ci && npm run build && npm prune --production
@@ -29,10 +28,6 @@ WORKDIR /app
 COPY --from=builder /app/server/lib ./server/lib
 COPY --from=builder /app/server/node_modules ./server/node_modules
 COPY --from=builder /app/server/package.json ./server/
-
-COPY --from=builder /app/Broker/lib ./Broker/lib
-COPY --from=builder /app/Broker/node_modules ./Broker/node_modules
-COPY --from=builder /app/Broker/package.json ./Broker/
 
 COPY --from=builder /app/client/.next ./client/.next
 COPY --from=builder /app/client/node_modules ./client/node_modules
