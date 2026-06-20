@@ -1,685 +1,532 @@
-import Link from "next/link";
-import CopyCodeBlock from "@/components/CopyCodeBlock";
-import { FadeIn, StaggerContainer, StaggerItem, ScaleIn } from "@/components/MotionWrapper";
+import Link from 'next/link';
+import CopyCodeBlock from '@/components/CopyCodeBlock';
+
+const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -';
+const START   = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s start';
+const STOP    = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s stop';
+const REMOVE  = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove';
+
+const pipeline = [
+  { t: 'L1', label: 'Redis cache',  tag: 'miss', c: '#f6b352' },
+  { t: 'L3', label: 'Block list',   tag: 'pass', c: '#5b8cff' },
+  { t: 'L5', label: 'DNS record',   tag: 'pass', c: '#5b8cff' },
+  { t: 'L7', label: 'Upstream DNS', tag: 'hit',  c: '#3ddc84' },
+];
+
+const svcCmds = [
+  { title: 'Start', icon: '▶', flag: 'bash -s start', badgeBg: 'rgba(61,220,132,.12)', badgeFg: '#74e6a4', border: 'rgba(61,220,132,.16)', desc: 'Start NexoralDNS services if they are stopped.', cmd: START, foot: 'Starts all services without reinstalling.' },
+  { title: 'Stop',  icon: '■', flag: 'bash -s stop',  badgeBg: 'rgba(246,179,82,.12)', badgeFg: '#f6b352', border: 'rgba(246,179,82,.16)',  desc: 'Stop all NexoralDNS services gracefully.',   cmd: STOP,   foot: 'Stops services without removing the installation.' },
+  { title: 'Remove',icon: '✕', flag: 'bash -s remove',badgeBg: 'rgba(255,96,113,.12)', badgeFg: '#ff8a96', border: 'rgba(255,96,113,.16)',  desc: 'Completely uninstall NexoralDNS and all data.', cmd: REMOVE, foot: 'Removes all services, containers, images, and data.' },
+];
+
+const transports = [
+  { icon: '📡', port: 'UDP :53',  tag: 'Classic', bg: 'rgba(130,165,220,.06)', border: 'rgba(130,165,220,.16)', tagBg: 'rgba(130,165,220,.14)', tagFg: '#93a1b5' },
+  { icon: '🔗', port: 'TCP :53',  tag: 'New',     bg: 'rgba(91,140,255,.08)',  border: 'rgba(91,140,255,.32)',  tagBg: 'rgba(91,140,255,.2)',   tagFg: '#9db8ff' },
+  { icon: '🔒', port: 'TLS :853', tag: 'New',     bg: 'rgba(52,225,212,.08)', border: 'rgba(52,225,212,.32)', tagBg: 'rgba(52,225,212,.2)',   tagFg: '#6ee9df' },
+];
+
+const features = [
+  { icon: '🌐', title: 'Custom Domains',     desc: 'Create internal domains like myapp.local without external DNS.' },
+  { icon: '📊', title: 'Real-time Analytics',desc: 'Monitor all DNS queries with detailed logs, charts and patterns.' },
+  { icon: '🛡️', title: 'Domain Blocking',    desc: 'Block ads, trackers, malware and set up parental controls.' },
+  { icon: '⚡', title: 'Ultra Fast',          desc: 'Sub-5ms response times with Redis caching and optimized architecture.' },
+  { icon: '🖥️', title: 'Web Dashboard',       desc: 'Beautiful, intuitive dashboard accessible on your local network.' },
+  { icon: '🔧', title: 'Easy Setup',          desc: 'One-command Docker install — up and running in minutes.' },
+  { icon: '👥', title: 'Multi-device',        desc: 'Manage DNS for every device on your network from one place.' },
+  { icon: '🔌', title: 'REST API',            desc: 'Full API access for automation and integration with other tools.' },
+  { icon: '📱', title: 'Responsive UI',       desc: 'Manage from any device — desktop, tablet or mobile.' },
+];
+
+const usecases = [
+  { icon: '👨‍💻', title: 'Developers & Teams', desc: 'Local .dev domains, team collaboration, service discovery.' },
+  { icon: '🏢', title: 'Small Businesses',   desc: 'Central management, usage monitoring, security filtering.' },
+  { icon: '🏠', title: 'Home Networks',      desc: 'Ad blocking, parental controls, IoT management.' },
+  { icon: '🏫', title: 'Education',          desc: 'Content filtering, usage analytics, safe browsing.' },
+];
+
+const explore = [
+  { icon: '🚀', title: 'Getting Started', path: '/docs/getting-started', href: '/docs/getting-started' },
+  { icon: '⚡', title: 'Installation',    path: '/docs/installation',    href: '/docs/installation' },
+  { icon: '🖥️', title: 'Dashboard',       path: '/docs/dashboard',       href: '/docs/dashboard' },
+  { icon: '🔌', title: 'API Reference',   path: '/docs/api',             href: '/docs/api' },
+  { icon: '✨', title: 'Features',        path: '/docs/features',        href: '/docs/features' },
+  { icon: '❓', title: 'FAQ',             path: '/docs/faq',             href: '/docs/faq' },
+  { icon: '🔧', title: 'Troubleshooting', path: '/docs/troubleshooting', href: '/docs/troubleshooting' },
+  { icon: '🧬', title: 'Architecture',    path: '/docs/architecture',    href: '/docs/architecture' },
+];
 
 export default function Home() {
-  const installCommand  = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -";
-  const startCommand   = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s start";
-  const stopCommand    = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s stop";
-  const removeCommand  = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove";
-
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden px-4 sm:px-6 lg:px-12 py-12 sm:py-16 lg:py-24">
-        {/* Background gradient effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500/20 rounded-full blur-3xl"></div>
-        </div>
+    <>
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '64px 56px 0' }} className="home-content">
 
-        <div className="relative max-w-6xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
+        {/* ── HERO ─────────────────────────────────────────────────────── */}
+        <section style={{ display: 'grid', gridTemplateColumns: '1.15fr .95fr', gap: 54, alignItems: 'center' }} className="hero-grid nd-rise">
+          <div>
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-sm text-blue-400 mb-6">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 9,
+              padding: '6px 13px', borderRadius: 999,
+              background: 'rgba(61,220,132,.08)', border: '1px solid rgba(61,220,132,.24)',
+              fontSize: 12.5, color: '#74e6a4', marginBottom: 26,
+            }}>
+              <span style={{ position: 'relative', display: 'flex', width: 8, height: 8 }}>
+                <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#3ddc84' }} className="nd-ring" />
+                <span style={{ position: 'relative', width: 8, height: 8, borderRadius: '50%', background: '#3ddc84' }} className="nd-pulse" />
               </span>
-              Open Source DNS Solution for Local Networks
+              Open-source DNS control plane for local networks
             </div>
 
-            <FadeIn delay={0.1}>
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight mb-6">
-                <span className="bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
-                  Take Control of Your
-                </span>
-                <br />
-                <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                  Network&apos;s DNS
-                </span>
-              </h1>
-            </FadeIn>
+            <h1 style={{ margin: 0, fontSize: 54, lineHeight: 1.04, letterSpacing: '-.03em', fontWeight: 700, color: '#f2f6fb' }}>
+              Take control of your<br />network&apos;s{' '}
+              <span className="nd-shimmer">DNS traffic.</span>
+            </h1>
 
-            <FadeIn delay={0.2}>
-              <p className="text-lg sm:text-xl text-gray-400 max-w-3xl mx-auto mb-8 leading-relaxed">
-                NexoralDNS is a powerful, self-hosted DNS management system that gives you complete visibility
-                and control over your local network&apos;s DNS traffic. Monitor, filter, and create custom domains
-                without any external dependencies.
-              </p>
-            </FadeIn>
-
-            {/* CTA Buttons */}
-            <FadeIn delay={0.3}>
-              <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-                <Link
-                  href="/docs/getting-started"
-                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white hover:text-white no-underline font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-green-500/40"
-                >
-                  Get Started Free
-                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
-                <a
-                  href="https://github.com/nexoral/NexoralDNS"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold rounded-xl transition-all duration-300"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                  </svg>
-                  View on GitHub
-                </a>
-              </div>
-            </FadeIn>
-          </div>
-
-          {/* Quick Install Section */}
-          <ScaleIn delay={0.4}>
-            <div className="max-w-4xl mx-auto mb-16">
-              <div className="relative p-6 sm:p-8 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-2xl">
-                <div className="absolute -top-3 left-6">
-                  <span className="px-3 py-1 bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-semibold rounded-full">
-                    One-Command Install
-                  </span>
-                </div>
-                <p className="text-gray-400 text-sm mb-4 mt-2">
-                  Copy and paste this command into your terminal to install NexoralDNS:
-                </p>
-                <CopyCodeBlock code={installCommand} wrap />
-                <p className="text-xs text-gray-500 mt-4 text-center">
-                  Automatically installs Docker, downloads the latest version, and starts all services.
-                </p>
-              </div>
-            </div>
-          </ScaleIn>
-
-          {/* Additional command cards */}
-          <StaggerContainer className="max-w-4xl mx-auto flex flex-col gap-4">
-
-            {/* Start */}
-            <StaggerItem>
-              <div className="relative p-6 sm:p-8 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-2xl">
-                <div className="absolute -top-3 left-6">
-                  <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1.5">
-                    <span>▶</span> Start Services
-                  </span>
-                </div>
-                <p className="text-gray-400 text-sm mb-4 mt-2">
-                  Start NexoralDNS services if they are stopped:
-                </p>
-                <CopyCodeBlock code={startCommand} wrap />
-                <p className="text-xs text-gray-500 mt-4 text-center">
-                  Starts all services without reinstalling. ▶️
-                </p>
-              </div>
-            </StaggerItem>
-
-            {/* Stop */}
-            <StaggerItem>
-              <div className="relative p-6 sm:p-8 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-2xl">
-                <div className="absolute -top-3 left-6">
-                  <span className="px-3 py-1 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold rounded-full flex items-center gap-1.5">
-                    <span>■</span> Stop Services
-                  </span>
-                </div>
-                <p className="text-gray-400 text-sm mb-4 mt-2">
-                  Stop all NexoralDNS services gracefully:
-                </p>
-                <CopyCodeBlock code={stopCommand} wrap />
-                <p className="text-xs text-gray-500 mt-4 text-center">
-                  Stops services without removing the installation. ⏹️
-                </p>
-              </div>
-            </StaggerItem>
-
-            {/* Remove */}
-            <StaggerItem>
-              <div className="relative p-6 sm:p-8 bg-gradient-to-br from-gray-900 to-red-950/20 border border-gray-800 hover:border-red-900/40 rounded-2xl transition-colors duration-300">
-                <div className="absolute -top-3 left-6">
-                  <span className="px-3 py-1 bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-semibold rounded-full flex items-center gap-1.5">
-                    <span>✕</span> Complete Removal
-                  </span>
-                </div>
-                <p className="text-gray-400 text-sm mb-4 mt-2">
-                  Completely uninstall NexoralDNS and all associated data:
-                </p>
-                <CopyCodeBlock code={removeCommand} wrap />
-                <p className="text-xs text-gray-500 mt-4 text-center">
-                  Removes all services, containers, images, and data. 🗑️
-                </p>
-              </div>
-            </StaggerItem>
-
-          </StaggerContainer>
-        </div>
-      </section>
-
-      {/* ── What's New in v3.5.44 ─────────────────────────────────────────────── */}
-      <section className="px-4 sm:px-6 lg:px-12 py-16 relative overflow-hidden">
-        {/* Ambient glow behind the whole section */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute left-1/4 top-0 w-96 h-96 bg-blue-600/8 rounded-full blur-3xl"></div>
-          <div className="absolute right-1/4 bottom-0 w-96 h-96 bg-teal-600/8 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative max-w-6xl mx-auto">
-          {/* Section header */}
-          <div className="text-center mb-12 slide-up-1">
-            {/* Version badge with animated gradient border */}
-            <div className="inline-flex items-center gap-2.5 mb-5 px-5 py-2 rounded-full text-xs font-bold tracking-widest uppercase text-white badge-flow">
-              <span className="relative flex h-2 w-2 flex-shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-              </span>
-              What&apos;s New · v3.5.44-stable
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4 leading-tight">
-              <span className="animate-shimmer-text">DNS Protocol Expansion</span>
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
-              NexoralDNS now speaks all three major DNS transports — plain UDP, reliable TCP,
-              and encrypted TLS — with zero configuration changes.
+            <p style={{ margin: '22px 0 0', fontSize: 17.5, lineHeight: 1.62, color: '#9aa8bd', maxWidth: 520 }}>
+              A powerful, self-hosted DNS management &amp; surveillance system that gives you complete visibility
+              and control over every query on your local network.
             </p>
+
+            <div style={{ display: 'flex', gap: 13, marginTop: 32, flexWrap: 'wrap' }}>
+              <Link href="/docs/getting-started" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 9,
+                padding: '13px 22px', borderRadius: 11,
+                background: 'linear-gradient(135deg,#3ddc84,#1fae63)',
+                color: '#05130b', fontWeight: 600, fontSize: 15,
+                textDecoration: 'none',
+                boxShadow: '0 16px 40px -18px rgba(61,220,132,.8)',
+              }}>
+                Get started free
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+              <a href="https://github.com/nexoral/NexoralDNS" target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 9,
+                padding: '13px 20px', borderRadius: 11,
+                background: 'rgba(255,255,255,.04)', border: '1px solid rgba(130,165,220,.18)',
+                color: '#dbe4ef', fontWeight: 500, fontSize: 15, textDecoration: 'none',
+              }}>
+                View on GitHub
+              </a>
+            </div>
+
+            <div style={{ display: 'flex', gap: 26, marginTop: 34, fontSize: 13, color: '#6c798e', flexWrap: 'wrap' }}>
+              <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>&lt;2ms</b> cached response</span>
+              <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>7-layer</b> query engine</span>
+              <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>100%</b> self-hosted</span>
+              <span><b style={{ color: '#f6b352', fontWeight: 600 }}>8,050 QPS</b> load tested</span>
+            </div>
           </div>
 
-          {/* Protocol comparison pills */}
-          <div className="flex justify-center flex-wrap gap-3 mb-12 slide-up-2">
-            <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gray-800/70 border border-gray-700 text-gray-400">
-              <span className="text-lg">📡</span>
-              <span className="font-mono font-semibold text-sm">UDP</span>
-              <span className="font-mono text-xs px-2 py-0.5 bg-black/30 rounded text-gray-500">:53</span>
-              <span className="text-xs text-gray-600">Classic</span>
-            </div>
-            <div className="flex items-center gap-2 px-1 text-gray-700">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-            <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-blue-950/60 border border-blue-500/40 text-blue-300 animate-glow-blue">
-              <span className="text-lg">🔗</span>
-              <span className="font-mono font-semibold text-sm">TCP</span>
-              <span className="font-mono text-xs px-2 py-0.5 bg-black/30 rounded text-blue-400">:53</span>
-              <span className="text-xs px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-blue-300">New</span>
-            </div>
-            <div className="flex items-center gap-2 px-1 text-gray-700">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-            <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-teal-950/60 border border-teal-500/40 text-teal-300 animate-glow-teal">
-              <span className="text-lg">🔒</span>
-              <span className="font-mono font-semibold text-sm">TLS</span>
-              <span className="font-mono text-xs px-2 py-0.5 bg-black/30 rounded text-teal-400">:853</span>
-              <span className="text-xs px-2 py-0.5 bg-teal-500/20 border border-teal-500/30 rounded-full text-teal-300">New</span>
-            </div>
-          </div>
-
-          {/* Feature cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-
-            {/* DNS over TCP card */}
-            <div className="slide-up-3 group relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-950/50 via-gray-900 to-gray-900 p-8 animate-glow-blue hover:border-blue-400/50 transition-colors duration-500">
-              {/* Corner accent */}
-              <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-blue-500/15 transition-colors duration-500"></div>
-              {/* Scan line effect */}
-              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent top-0 scan-line"></div>
-
-              <div className="relative">
-                {/* Card header */}
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="w-14 h-14 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-2xl animate-float flex-shrink-0">
-                    🔗
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="text-xl font-bold text-white">DNS over TCP</h3>
-                      <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400">NEW</span>
-                    </div>
-                    <p className="text-xs font-mono text-gray-500">Port 53 TCP · RFC 1035 §4.2.2 · RFC 7766</p>
-                  </div>
-                </div>
-
-                <p className="text-gray-300 text-sm leading-relaxed mb-5">
-                  Full TCP transport for DNS — required for responses over 512 bytes, DNSSEC chains,
-                  and zone transfers. Handles RFC-compliant 2-byte length-prefix framing automatically
-                  so existing DNS clients work without modification.
-                </p>
-
-                {/* Highlights */}
-                <ul className="space-y-2 mb-6">
-                  {[
-                    ["Large response support", "DNSSEC, TXT, many-answer records"],
-                    ["RFC 7766 idle timeout", "30s keepalive, auto-disconnects stale clients"],
-                    ["Singleton architecture", "Shared single-flight cache across all TCP connections"],
-                    ["Zero-config startup", "Starts alongside UDP automatically"],
-                  ].map(([label, detail], i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs">
-                      <span className="text-blue-400 mt-0.5 flex-shrink-0">›</span>
-                      <span>
-                        <span className="text-gray-200 font-medium">{label}</span>
-                        <span className="text-gray-500"> — {detail}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Code snippet */}
-                <div className="p-3 bg-black/50 rounded-lg border border-blue-900/50 font-mono text-xs">
-                  <p className="text-gray-600 mb-1"># Test DNS over TCP</p>
-                  <p>
-                    <span className="text-green-400">dig</span>
-                    <span className="text-gray-300"> +tcp google.com @</span>
-                    <span className="text-blue-400">10.x.x.x</span>
-                  </p>
-                </div>
+          {/* Pipeline widget */}
+          <div style={{ position: 'relative', borderRadius: 18, padding: 1, background: 'linear-gradient(160deg,rgba(91,140,255,.4),rgba(52,225,212,.15),transparent)' }} className="nd-float">
+            <div style={{ borderRadius: 17, background: 'linear-gradient(180deg,#0b0f17,#080b11)', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid rgba(130,165,220,.1)' }}>
+                <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase', color: '#5f6b7d' }}>live query pipeline</span>
+                <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-geist-mono)', fontSize: 11, color: '#3ddc84' }}>● resolving</span>
               </div>
-            </div>
-
-            {/* DNS over TLS card */}
-            <div className="slide-up-4 group relative overflow-hidden rounded-2xl border border-teal-500/30 bg-gradient-to-br from-teal-950/50 via-gray-900 to-gray-900 p-8 animate-glow-teal hover:border-teal-400/50 transition-colors duration-500">
-              <div className="absolute -top-12 -right-12 w-40 h-40 bg-teal-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-teal-500/15 transition-colors duration-500"></div>
-              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-500/40 to-transparent top-0 scan-line" style={{animationDelay: "1.25s"}}></div>
-
-              <div className="relative">
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="w-14 h-14 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-2xl animate-float-late flex-shrink-0">
-                    🔒
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="text-xl font-bold text-white">DNS over TLS</h3>
-                      <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-teal-500/20 border border-teal-500/30 text-teal-400">NEW</span>
-                    </div>
-                    <p className="text-xs font-mono text-gray-500">Port 853 · RFC 7858 · DoT</p>
-                  </div>
+              <div style={{ padding: '18px 16px', fontFamily: 'var(--font-geist-mono)', fontSize: 12.5 }}>
+                <div style={{ color: '#7c8aa0', marginBottom: 14 }}>
+                  <span style={{ color: '#3ddc84' }}>$</span> dig google.com @10.0.0.2
                 </div>
-
-                <p className="text-gray-300 text-sm leading-relaxed mb-5">
-                  Encrypted DNS transport using TLS 1.2+ to prevent eavesdropping and DNS spoofing.
-                  A self-signed certificate is auto-generated via <code className="text-teal-400 bg-teal-900/30 border-teal-800">openssl</code> on first
-                  boot and persisted to disk — no manual certificate setup required.
-                </p>
-
-                <ul className="space-y-2 mb-6">
-                  {[
-                    ["TLS 1.2+ enforced", "TLS 1.3 preferred per RFC 7858 §3.1"],
-                    ["Auto cert generation", "Self-signed via openssl, saved to /etc/nexoral/cert"],
-                    ["Shared across restarts", "Cert persisted on disk — clients won't see cert changes"],
-                    ["Same 7-layer pipeline", "Identical block-list, cache, and upstream logic as UDP"],
-                  ].map(([label, detail], i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs">
-                      <span className="text-teal-400 mt-0.5 flex-shrink-0">›</span>
-                      <span>
-                        <span className="text-gray-200 font-medium">{label}</span>
-                        <span className="text-gray-500"> — {detail}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="p-3 bg-black/50 rounded-lg border border-teal-900/50 font-mono text-xs">
-                  <p className="text-gray-600 mb-1"># Test DNS over TLS</p>
-                  <p>
-                    <span className="text-green-400">kdig</span>
-                    <span className="text-gray-300"> -p 853 @</span>
-                    <span className="text-teal-400">10.x.x.x</span>
-                    <span className="text-gray-300"> +tls google.com</span>
-                  </p>
+                {pipeline.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 0' }}>
+                    <span style={{ width: 46, fontSize: 10, color: '#5f6b7d' }}>{p.t}</span>
+                    <span style={{ position: 'relative', width: 9, height: 9, borderRadius: '50%', background: p.c, boxShadow: `0 0 12px ${p.c}`, display: 'block' }} />
+                    <span style={{ color: '#bcc8d8' }}>{p.label}</span>
+                    <span style={{ marginLeft: 'auto', color: p.c, fontSize: 11 }}>{p.tag}</span>
+                  </div>
+                ))}
+                <div style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid rgba(130,165,220,.1)', display: 'flex', justifyContent: 'space-between', color: '#cdd9e8' }}>
+                  <span>142.250.x.x</span><span style={{ color: '#3ddc84' }}>NOERROR · 1.4ms</span>
                 </div>
               </div>
             </div>
           </div>
+        </section>
 
-          {/* Shared pipeline callout */}
-          <div className="slide-up-4 p-5 bg-gray-900/70 border border-gray-800 rounded-xl text-center">
-            <p className="text-sm text-gray-400">
-              All three transports share the same{" "}
-              <span className="text-white font-semibold">7-layer query processor</span>,{" "}
-              <span className="text-white font-semibold">Redis cache</span>,{" "}
-              <span className="text-white font-semibold">block-list engine</span>, and{" "}
-              <span className="text-white font-semibold">analytics pipeline</span> —
-              consistent behaviour regardless of how a client connects.
-            </p>
+        {/* ── ONE-COMMAND INSTALL ───────────────────────────────────────── */}
+        <section style={{
+          marginTop: 60, position: 'relative', borderRadius: 18,
+          padding: '30px 30px 26px',
+          background: 'linear-gradient(180deg,rgba(91,140,255,.06),rgba(8,11,17,.4))',
+          border: '1px solid rgba(130,165,220,.14)',
+        }} className="nd-glow">
+          <div style={{
+            position: 'absolute', top: -13, left: 30,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '5px 13px', borderRadius: 999,
+            background: 'linear-gradient(135deg,#3ddc84,#1fae63)',
+            color: '#05130b', fontSize: 11.5, fontWeight: 600, letterSpacing: '.02em',
+            boxShadow: '0 10px 24px -12px rgba(61,220,132,.9)',
+          }}>⚡ One-command install</div>
+          <h3 style={{ margin: '6px 0 16px', fontSize: 20, fontWeight: 600, letterSpacing: '-.01em', color: '#eef3f9' }}>
+            Up and running in under a minute
+          </h3>
+          <CopyCodeBlock code={INSTALL} label="install · bash" />
+          <p style={{ margin: '14px 0 0', fontSize: 13.5, color: '#7c8aa0' }}>
+            Automatically installs Docker, downloads the latest version, and starts all services.
+          </p>
+        </section>
+
+        {/* ── SERVICE COMMANDS ─────────────────────────────────────────── */}
+        <section style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+          {svcCmds.map((c, i) => (
+            <div key={i} style={{ borderRadius: 16, padding: 20, background: 'rgba(12,17,26,.6)', border: `1px solid ${c.border}` }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                padding: '4px 11px', borderRadius: 999,
+                background: c.badgeBg, color: c.badgeFg,
+                fontSize: 11, fontWeight: 600, letterSpacing: '.04em',
+                textTransform: 'uppercase', fontFamily: 'var(--font-geist-mono)',
+              }}>{c.icon} {c.title}</div>
+              <p style={{ margin: '13px 0 13px', fontSize: 13.5, color: '#93a1b5', lineHeight: 1.5, minHeight: 40 }}>{c.desc}</p>
+              <CopyCodeBlock code={c.cmd} label={c.flag} />
+              <p style={{ margin: '11px 0 0', fontSize: 12, color: '#62718a' }}>{c.foot}</p>
+            </div>
+          ))}
+        </section>
+
+        {/* ── WHAT'S NEW ───────────────────────────────────────────────── */}
+        <section style={{ marginTop: 80, textAlign: 'center' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+            padding: '6px 14px', borderRadius: 999,
+            background: 'linear-gradient(100deg,rgba(91,140,255,.14),rgba(167,139,250,.14))',
+            border: '1px solid rgba(167,139,250,.28)',
+            fontFamily: 'var(--font-geist-mono)', fontSize: 11.5, letterSpacing: '.08em', color: '#c4b5fd',
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#a78bfa', display: 'block' }} className="nd-pulse" />
+            WHAT&apos;S NEW · v3.5.44-stable
           </div>
-        </div>
-      </section>
 
-      {/* Problem & Solution Section */}
-      <section className="px-4 sm:px-6 lg:px-12 py-16 bg-gradient-to-b from-transparent to-gray-900/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">
-              Why NexoralDNS?
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Traditional DNS solutions leave you blind to what&apos;s happening on your network.
-              NexoralDNS changes that.
-            </p>
-          </div>
+          <h2 style={{ margin: '20px 0 12px', fontSize: 40, letterSpacing: '-.025em', fontWeight: 700, background: 'linear-gradient(100deg,#5b8cff,#34e1d4 40%,#a78bfa 80%)', backgroundSize: '220% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', animation: 'ndShimmer 8s linear infinite' }}>
+            DNS Protocol Expansion
+          </h2>
+          <p style={{ maxWidth: 660, margin: '0 auto', fontSize: 16, lineHeight: 1.6, color: '#93a1b5' }}>
+            NexoralDNS now speaks all three major DNS transports — plain UDP, reliable TCP, and encrypted TLS — with zero configuration changes.
+          </p>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
-            {/* Problem */}
-            <FadeIn direction="right" delay={0.2}>
-              <div className="h-full p-6 sm:p-8 bg-red-500/5 border border-red-500/20 rounded-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-red-400">The Problem</h3>
-                </div>
-                <ul className="space-y-4">
-                  {[
-                    "No visibility into DNS requests on your network",
-                    "Can't create custom internal domains easily",
-                    "Host file modifications needed on each device",
-                    "No way to block malicious or unwanted domains",
-                    "Third-party DNS providers track your data"
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3 text-gray-400">
-                      <span className="text-red-400 mt-1">✕</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
+            {transports.map((t, i) => (
+              <div key={i} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                padding: '10px 18px', borderRadius: 12,
+                background: t.bg, border: `1px solid ${t.border}`,
+              }}>
+                <span style={{ fontSize: 17 }}>{t.icon}</span>
+                <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 13, color: '#dbe4ef', fontWeight: 500 }}>{t.port}</span>
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: t.tagBg, color: t.tagFg, fontWeight: 600 }}>{t.tag}</span>
               </div>
-            </FadeIn>
-
-            {/* Solution */}
-            <FadeIn direction="left" delay={0.4}>
-              <div className="h-full p-6 sm:p-8 bg-green-500/5 border border-green-500/20 rounded-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-green-400">The Solution</h3>
-                </div>
-                <ul className="space-y-4">
-                  {[
-                    "Real-time dashboard showing all DNS queries",
-                    "Create custom domains with one click (e.g., myapp.local)",
-                    "Network-wide DNS settings - configure once",
-                    "Block ads, trackers, and malicious domains",
-                    "100% self-hosted - your data stays private"
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3 text-gray-400">
-                      <span className="text-green-400 mt-1">✓</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </FadeIn>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="px-4 sm:px-6 lg:px-12 py-16">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">
-              Powerful Features
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Everything you need to manage DNS on your local network
-            </p>
-          </div>
-
-          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: "🌐",
-                title: "Custom Domains",
-                description: "Create internal domains like myapp.local, dashboard.home without external DNS",
-                color: "blue"
-              },
-              {
-                icon: "📊",
-                title: "Real-time Analytics",
-                description: "Monitor all DNS queries with detailed logs, charts, and traffic patterns",
-                color: "purple"
-              },
-              {
-                icon: "🛡️",
-                title: "Domain Blocking",
-                description: "Block ads, trackers, malware domains, and set up parental controls",
-                color: "green"
-              },
-              {
-                icon: "⚡",
-                title: "Ultra Fast",
-                description: "Sub-5ms response times with Redis caching and optimized architecture",
-                color: "yellow"
-              },
-              {
-                icon: "🖥️",
-                title: "Web Dashboard",
-                description: "Beautiful, intuitive dashboard accessible at localhost:4000",
-                color: "cyan"
-              },
-              {
-                icon: "🔧",
-                title: "Easy Setup",
-                description: "One command installation with Docker - up and running in minutes",
-                color: "orange"
-              },
-              {
-                icon: "👥",
-                title: "Multi-device",
-                description: "Manage DNS for all devices on your network from one place",
-                color: "pink"
-              },
-              {
-                icon: "🔌",
-                title: "REST API",
-                description: "Full API access for automation and integration with other tools",
-                color: "indigo"
-              },
-              {
-                icon: "📱",
-                title: "Responsive UI",
-                description: "Access and manage from any device - desktop, tablet, or mobile",
-                color: "teal"
-              }
-            ].map((feature, index) => (
-              <StaggerItem
-                key={index}
-                className="group p-6 bg-gray-900/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all duration-300 hover:-translate-y-1"
-              >
-                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">{feature.icon}</div>
-                <h3 className="text-lg font-semibold mb-2 text-gray-100">{feature.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">{feature.description}</p>
-              </StaggerItem>
             ))}
-          </StaggerContainer>
-        </div>
-      </section>
-
-      {/* Use Cases */}
-      <section className="px-4 sm:px-6 lg:px-12 py-16 bg-gradient-to-b from-gray-900/50 to-transparent">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">
-              Perfect For
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              NexoralDNS adapts to your needs, whether at home or work
-            </p>
           </div>
 
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              {
-                emoji: "👨‍💻",
-                title: "Developers & Teams",
-                description: "Create custom development domains, share local services with teammates, and simplify your development workflow without modifying host files on every machine.",
-                highlights: ["Local .dev domains", "Team collaboration", "Service discovery"]
-              },
-              {
-                emoji: "🏢",
-                title: "Small Businesses",
-                description: "Centralized DNS management for your office network. Create internal domains for services, monitor employee network usage, and enhance security.",
-                highlights: ["Central management", "Usage monitoring", "Security filtering"]
-              },
-              {
-                emoji: "🏠",
-                title: "Home Networks",
-                description: "Block ads network-wide, set up parental controls, create domains for smart home devices, and monitor what devices are accessing on your network.",
-                highlights: ["Ad blocking", "Parental controls", "IoT management"]
-              },
-              {
-                emoji: "🏫",
-                title: "Educational Institutions",
-                description: "Control student access to websites, monitor network usage patterns, and provide a safe browsing environment across your campus network.",
-                highlights: ["Content filtering", "Usage analytics", "Safe browsing"]
-              }
-            ].map((useCase, index) => (
-              <StaggerItem
-                key={index}
-                className="p-6 sm:p-8 bg-gray-900 border border-gray-800 rounded-2xl hover:border-gray-700 transition-all duration-300"
-              >
-                <div className="flex items-start gap-4 mb-4">
-                  <span className="text-4xl">{useCase.emoji}</span>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-100">{useCase.title}</h3>
-                  </div>
-                </div>
-                <p className="text-gray-400 mb-4 leading-relaxed">{useCase.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  {useCase.highlights.map((highlight, i) => (
-                    <span key={i} className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs rounded-full">
-                      {highlight}
-                    </span>
-                  ))}
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
-
-      {/* Warning Section */}
-      <section className="px-4 sm:px-6 lg:px-12 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="p-6 sm:p-8 bg-gradient-to-br from-red-900/20 to-orange-900/20 border-2 border-red-500/30 rounded-2xl">
-            <div className="flex flex-col sm:flex-row items-start gap-4">
-              <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="text-2xl">⚠️</span>
+          {/* Proto cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 34, textAlign: 'left' }} className="proto-grid">
+            {/* TCP */}
+            <div style={{ position: 'relative', borderRadius: 18, padding: 26, background: 'linear-gradient(180deg,rgba(91,140,255,.06),rgba(8,11,17,.4))', border: '1px solid rgba(91,140,255,.24)', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,#5b8cff,transparent)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 6 }}>
+                <h3 style={{ margin: 0, fontSize: 21, fontWeight: 600, color: '#eef3f9' }}>DNS over TCP</h3>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', padding: '3px 8px', borderRadius: 6, background: '#5b8cff', color: '#06121a' }}>NEW</span>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-red-400 mb-2">Important: LAN Use Only</h3>
-                <p className="text-gray-300 mb-4">
-                  NexoralDNS is designed exclusively for Local Area Network (LAN) use.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="font-semibold text-red-400 mb-2">❌ Do NOT:</p>
-                    <ul className="space-y-1 text-gray-400">
-                      <li>• Host on cloud platforms</li>
-                      <li>• Expose to public internet</li>
-                      <li>• Use as public DNS resolver</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-green-400 mb-2">✅ Do:</p>
-                    <ul className="space-y-1 text-gray-400">
-                      <li>• Install on local machine</li>
-                      <li>• Configure router to use it</li>
-                      <li>• Keep within private network</li>
-                    </ul>
-                  </div>
+              <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11.5, color: '#5b8cff', marginBottom: 14 }}>Port 53 TCP · RFC 1035 §4.2.2 · RFC 7766</div>
+              <p style={{ margin: '0 0 16px', fontSize: 13.5, lineHeight: 1.6, color: '#9aa8bd' }}>Full TCP transport for DNS — required for responses over 512 bytes, DNSSEC chains, and zone transfers. Handles 2-byte length-prefix framing automatically.</p>
+              {[
+                ['Large response support', 'DNSSEC, TXT, many-answer records'],
+                ['RFC 7766 idle timeout', '30s keepalive, auto-disconnects stale clients'],
+                ['Singleton architecture', 'shared single-flight cache across connections'],
+                ['Zero-config startup', 'starts alongside UDP automatically'],
+              ].map(([k, v], i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '5px 0', fontSize: 13 }}>
+                  <span style={{ color: '#5b8cff', flexShrink: 0, marginTop: 1 }}>▸</span>
+                  <span style={{ color: '#aeb9ca' }}><b style={{ color: '#dbe4ef', fontWeight: 600 }}>{k}</b> — {v}</span>
                 </div>
+              ))}
+              <div style={{ marginTop: 14 }}>
+                <CopyCodeBlock code="dig +tcp google.com @10.x.x.x" label="test" prompt={false} />
+              </div>
+            </div>
+
+            {/* DoT */}
+            <div style={{ position: 'relative', borderRadius: 18, padding: 26, background: 'linear-gradient(180deg,rgba(52,225,212,.06),rgba(8,11,17,.4))', border: '1px solid rgba(52,225,212,.24)', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,#34e1d4,transparent)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 6 }}>
+                <h3 style={{ margin: 0, fontSize: 21, fontWeight: 600, color: '#eef3f9' }}>DNS over TLS</h3>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', padding: '3px 8px', borderRadius: 6, background: '#34e1d4', color: '#06121a' }}>NEW</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11.5, color: '#34e1d4', marginBottom: 14 }}>Port 853 · RFC 7858 · DoT</div>
+              <p style={{ margin: '0 0 16px', fontSize: 13.5, lineHeight: 1.6, color: '#9aa8bd' }}>Encrypted DNS transport using TLS 1.2+ to prevent eavesdropping and spoofing. A self-signed certificate is auto-generated via openssl on first boot.</p>
+              {[
+                ['TLS 1.2+ enforced', 'TLS 1.3 preferred per RFC 7858 §3.1'],
+                ['Auto cert generation', 'self-signed via openssl, saved to /etc/nexoral/cert'],
+                ['Shared across restarts', 'cert persisted on disk'],
+                ['Same 7-layer pipeline', 'identical block, cache & upstream logic'],
+              ].map(([k, v], i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '5px 0', fontSize: 13 }}>
+                  <span style={{ color: '#34e1d4', flexShrink: 0, marginTop: 1 }}>▸</span>
+                  <span style={{ color: '#aeb9ca' }}><b style={{ color: '#dbe4ef', fontWeight: 600 }}>{k}</b> — {v}</span>
+                </div>
+              ))}
+              <div style={{ marginTop: 14 }}>
+                <CopyCodeBlock code="kdig -p 853 @10.x.x.x +tls google.com" label="test" prompt={false} />
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Quick Links */}
-      <section className="px-4 sm:px-6 lg:px-12 py-16">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">
-              Explore Documentation
-            </h2>
-            <p className="text-gray-400">
-              Everything you need to get started and master NexoralDNS
+          <p style={{ margin: '22px auto 0', maxWidth: 720, fontSize: 13.5, color: '#7c8aa0', lineHeight: 1.55, borderTop: '1px solid rgba(130,165,220,.1)', paddingTop: 18 }}>
+            All three transports share the same <b style={{ color: '#bcc8d8' }}>7-layer query processor</b>, Redis cache, block-list engine, and analytics pipeline — consistent behaviour regardless of how a client connects.
+          </p>
+        </section>
+
+        {/* ── BENCHMARK ────────────────────────────────────────────────── */}
+        <section style={{ marginTop: 84 }}>
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.2em', color: '#f6b352', textTransform: 'uppercase' }}>Performance</div>
+            <h2 style={{ margin: '10px 0 12px', fontSize: 34, letterSpacing: '-.02em', fontWeight: 700, color: '#eef3f9' }}>Load test results</h2>
+            <p style={{ maxWidth: 560, margin: '0 auto', fontSize: 15, lineHeight: 1.6, color: '#93a1b5' }}>
+              Benchmarked on a mid-range consumer laptop — no dedicated server hardware required.
             </p>
           </div>
 
-          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { href: "/docs/getting-started", title: "Getting Started", desc: "Quick start guide", icon: "🚀", color: "from-blue-600/20 to-cyan-600/20", border: "border-blue-600/30" },
-              { href: "/docs/installation", title: "Installation", desc: "Detailed setup", icon: "⚡", color: "from-green-600/20 to-emerald-600/20", border: "border-green-600/30" },
-              { href: "/docs/configuration", title: "Configuration", desc: "Customize settings", icon: "⚙️", color: "from-purple-600/20 to-pink-600/20", border: "border-purple-600/30" },
-              { href: "/docs/dashboard", title: "Dashboard Guide", desc: "Using the UI", icon: "🖥️", color: "from-orange-600/20 to-yellow-600/20", border: "border-orange-600/30" },
-              { href: "/docs/api", title: "API Reference", desc: "REST API docs", icon: "🔌", color: "from-cyan-600/20 to-blue-600/20", border: "border-cyan-600/30" },
-              { href: "/docs/features", title: "Features", desc: "All capabilities", icon: "✨", color: "from-pink-600/20 to-rose-600/20", border: "border-pink-600/30" },
-              { href: "/docs/faq", title: "FAQ", desc: "Common questions", icon: "❓", color: "from-indigo-600/20 to-purple-600/20", border: "border-indigo-600/30" },
-              { href: "/docs/troubleshooting", title: "Troubleshooting", desc: "Solve issues", icon: "🔧", color: "from-red-600/20 to-orange-600/20", border: "border-red-600/30" }
-            ].map((link, index) => (
-              <StaggerItem key={index}>
-                <Link
-                  href={link.href}
-                  className={`group block h-full p-5 bg-gradient-to-br ${link.color} border ${link.border} rounded-xl hover:scale-105 transition-all duration-300`}
-                >
-                  <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform">{link.icon}</span>
-                  <h3 className="font-semibold text-white mb-1 group-hover:text-blue-400 transition-colors">{link.title}</h3>
-                  <p className="text-xs text-gray-400">{link.desc}</p>
-                </Link>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
+          {/* Big QPS stat */}
+          <div style={{
+            position: 'relative', borderRadius: 22, padding: '48px 40px',
+            background: 'radial-gradient(640px 260px at 50% 0%,rgba(246,179,82,.12),transparent 70%),linear-gradient(180deg,rgba(14,20,30,.9),rgba(8,11,17,.6))',
+            border: '1px solid rgba(246,179,82,.28)', textAlign: 'center', overflow: 'hidden',
+          }} className="nd-glow">
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,#f6b352,transparent)' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <span style={{
+                fontFamily: 'var(--font-geist-mono)', fontSize: 11.5, letterSpacing: '.12em', color: '#f6b352',
+                textTransform: 'uppercase',
+              }}>Peak throughput · UDP port 53</span>
+              <span style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '.08em', padding: '2px 9px', borderRadius: 999,
+                background: 'rgba(61,220,132,.14)', border: '1px solid rgba(61,220,132,.28)', color: '#74e6a4',
+              }}>Node.js DNS Server</span>
+            </div>
+            <div style={{ fontSize: 88, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1, background: 'linear-gradient(135deg,#f6b352,#ffd580)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+              8,050
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: '#cdd9e8', letterSpacing: '.06em', marginTop: 6 }}>
+              queries / second
+            </div>
+            <div style={{ marginTop: 10, fontSize: 13.5, color: '#7c8aa0' }}>
+              Achieved with a pure <b style={{ color: '#bcc8d8' }}>Node.js</b> DNS server — no C/C++ native bindings, no Rust, no Go.
+            </div>
 
-      {/* CTA Section */}
-      <section className="px-4 sm:px-6 lg:px-12 py-16">
-        <div className="max-w-4xl mx-auto">
-          <ScaleIn>
-            <div className="relative p-8 sm:p-12 bg-gradient-to-br from-blue-900/30 to-cyan-900/30 border border-blue-500/20 rounded-3xl text-center overflow-hidden">
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
-                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl"></div>
-              </div>
-
-              <div className="relative">
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">
-                  Ready to Take Control?
-                </h2>
-                <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-                  Join thousands of users who have transformed their network&apos;s DNS infrastructure with NexoralDNS.
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center gap-4">
-                  <Link
-                    href="/docs/getting-started"
-                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-gray-900 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
-                  >
-                    Start Free
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </Link>
-                  <Link
-                    href="/contact"
-                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-colors"
-                  >
-                    Contact Us
-                  </Link>
+            {/* Sub-stats */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 36, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Avg latency', value: '< 2ms', accent: '#3ddc84' },
+                { label: 'Cache hit rate', value: '~98%', accent: '#5b8cff' },
+                { label: 'Dropped queries', value: '0', accent: '#34e1d4' },
+              ].map((s, i) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: s.accent, letterSpacing: '-.02em' }}>{s.value}</div>
+                  <div style={{ fontSize: 12, color: '#62718a', marginTop: 3 }}>{s.label}</div>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Hardware spec card */}
+          <div style={{
+            marginTop: 18, borderRadius: 18, padding: '24px 28px',
+            background: 'rgba(12,17,26,.6)', border: '1px solid rgba(130,165,220,.12)',
+            display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(246,179,82,.1)', border: '1px solid rgba(246,179,82,.22)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+            }}>💻</div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#dbe4ef', marginBottom: 4 }}>Test hardware</div>
+              <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 12, color: '#7c8aa0' }}>
+                AMD Ryzen 5 5500U · 6 cores / 12 threads · 6.6 GB RAM · x86_64
               </div>
             </div>
-          </ScaleIn>
-        </div>
-      </section>
-    </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {['Consumer laptop', 'No RAID / NVMe tuning', 'Cluster mode enabled'].map((tag, i) => (
+                <span key={i} style={{
+                  fontSize: 11.5, padding: '4px 10px', borderRadius: 999,
+                  background: 'rgba(130,165,220,.08)', border: '1px solid rgba(130,165,220,.14)',
+                  color: '#8b98ac',
+                }}>{tag}</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── PROBLEM / SOLUTION ───────────────────────────────────────── */}
+        <section style={{ marginTop: 84 }}>
+          <div style={{ textAlign: 'center', marginBottom: 34 }}>
+            <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.2em', color: '#34e1d4', textTransform: 'uppercase' }}>Why NexoralDNS</div>
+            <h2 style={{ margin: '10px 0 0', fontSize: 34, letterSpacing: '-.02em', fontWeight: 700, color: '#eef3f9' }}>From DNS chaos to total control</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="problem-grid">
+            <div style={{ borderRadius: 18, padding: 28, background: 'linear-gradient(180deg,rgba(255,96,113,.06),rgba(8,11,17,.3))', border: '1px solid rgba(255,96,113,.2)' }}>
+              <h3 style={{ margin: '0 0 18px', fontSize: 18, color: '#ff8a96', display: 'flex', alignItems: 'center', gap: 9 }}>
+                <span style={{ width: 24, height: 24, borderRadius: 8, background: 'rgba(255,96,113,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>✕</span>The problem
+              </h3>
+              {['No visibility into DNS requests', "Can't create custom internal domains", 'Host file edits on every device', 'No way to block malicious domains', 'Third-party DNS providers track your data'].map((p, i) => (
+                <div key={i} style={{ display: 'flex', gap: 11, padding: '8px 0', fontSize: 14, color: '#b3bdcc', borderTop: '1px solid rgba(255,255,255,.04)' }}>
+                  <span style={{ color: '#ff6071', flexShrink: 0 }}>✕</span>{p}
+                </div>
+              ))}
+            </div>
+            <div style={{ borderRadius: 18, padding: 28, background: 'linear-gradient(180deg,rgba(61,220,132,.06),rgba(8,11,17,.3))', border: '1px solid rgba(61,220,132,.2)' }}>
+              <h3 style={{ margin: '0 0 18px', fontSize: 18, color: '#74e6a4', display: 'flex', alignItems: 'center', gap: 9 }}>
+                <span style={{ width: 24, height: 24, borderRadius: 8, background: 'rgba(61,220,132,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>✓</span>The solution
+              </h3>
+              {['Real-time dashboard of all DNS queries', 'Create custom domains with one click', 'Network-wide DNS settings', 'Block ads, trackers & malicious domains', "100% self-hosted — your data stays yours"].map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: 11, padding: '8px 0', fontSize: 14, color: '#c3cdda', borderTop: '1px solid rgba(255,255,255,.04)' }}>
+                  <span style={{ color: '#3ddc84', flexShrink: 0 }}>✓</span>{s}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FEATURES ─────────────────────────────────────────────────── */}
+        <section style={{ marginTop: 84 }}>
+          <div style={{ textAlign: 'center', marginBottom: 34 }}>
+            <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.2em', color: '#34e1d4', textTransform: 'uppercase' }}>Capabilities</div>
+            <h2 style={{ margin: '10px 0 0', fontSize: 34, letterSpacing: '-.02em', fontWeight: 700, color: '#eef3f9' }}>Powerful features, simple control</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }} className="features-grid">
+            {features.map((f, i) => (
+              <div key={i} style={{ borderRadius: 16, padding: 22, background: 'rgba(12,17,26,.5)', border: '1px solid rgba(130,165,220,.1)', transition: 'all .2s' }} className="card-hover">
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(91,140,255,.1)', border: '1px solid rgba(91,140,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 14 }}>{f.icon}</div>
+                <h3 style={{ margin: '0 0 7px', fontSize: 15.5, fontWeight: 600, color: '#eef3f9' }}>{f.title}</h3>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: '#8b98ac' }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── USE CASES ────────────────────────────────────────────────── */}
+        <section style={{ marginTop: 84 }}>
+          <div style={{ textAlign: 'center', marginBottom: 34 }}>
+            <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.2em', color: '#34e1d4', textTransform: 'uppercase' }}>Perfect for</div>
+            <h2 style={{ margin: '10px 0 0', fontSize: 34, letterSpacing: '-.02em', fontWeight: 700, color: '#eef3f9' }}>Built for every network</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }} className="usecases-grid">
+            {usecases.map((u, i) => (
+              <div key={i} style={{ borderRadius: 16, padding: 22, background: 'linear-gradient(180deg,rgba(14,20,30,.7),rgba(8,11,17,.4))', border: '1px solid rgba(130,165,220,.1)' }}>
+                <div style={{ fontSize: 26, marginBottom: 12 }}>{u.icon}</div>
+                <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: '#eef3f9' }}>{u.title}</h3>
+                <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: '#8b98ac' }}>{u.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── LAN WARNING ──────────────────────────────────────────────── */}
+        <section style={{ marginTop: 60, borderRadius: 18, padding: 30, background: 'linear-gradient(135deg,rgba(255,96,113,.08),rgba(246,179,82,.05))', border: '1px solid rgba(255,96,113,.26)' }}>
+          <h3 style={{ margin: '0 0 6px', fontSize: 19, fontWeight: 700, color: '#ffb3bb', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>LAN use only
+          </h3>
+          <p style={{ margin: '0 0 20px', fontSize: 14, color: '#c3aeb0' }}>
+            NexoralDNS is designed exclusively for Local Area Network use. Never expose it to the public internet.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }} className="lan-grid">
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', color: '#ff8a96', textTransform: 'uppercase', marginBottom: 10 }}>Do not</div>
+              {['Host on cloud platforms', 'Expose to the public internet', 'Use as a public DNS resolver'].map((d, i) => (
+                <div key={i} style={{ display: 'flex', gap: 9, padding: '5px 0', fontSize: 13.5, color: '#b3bdcc' }}>
+                  <span style={{ color: '#ff6071', flexShrink: 0 }}>✕</span>{d}
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', color: '#74e6a4', textTransform: 'uppercase', marginBottom: 10 }}>Do</div>
+              {['Install on a local machine', 'Configure your router to use it', 'Keep it within your private network'].map((d, i) => (
+                <div key={i} style={{ display: 'flex', gap: 9, padding: '5px 0', fontSize: 13.5, color: '#c3cdda' }}>
+                  <span style={{ color: '#3ddc84', flexShrink: 0 }}>✓</span>{d}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── EXPLORE DOCS ─────────────────────────────────────────────── */}
+        <section style={{ marginTop: 84 }}>
+          <div style={{ textAlign: 'center', marginBottom: 34 }}>
+            <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.2em', color: '#34e1d4', textTransform: 'uppercase' }}>Documentation</div>
+            <h2 style={{ margin: '10px 0 0', fontSize: 34, letterSpacing: '-.02em', fontWeight: 700, color: '#eef3f9' }}>Explore the docs</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }} className="explore-grid">
+            {explore.map((e, i) => (
+              <Link key={i} href={e.href} style={{
+                display: 'flex', flexDirection: 'column', gap: 9,
+                borderRadius: 14, padding: 18,
+                background: 'rgba(12,17,26,.5)', border: '1px solid rgba(130,165,220,.1)',
+                textDecoration: 'none', transition: 'all .18s',
+              }} className="explore-card">
+                <span style={{ fontSize: 21 }}>{e.icon}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#dbe4ef' }}>{e.title}</span>
+                <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, color: '#5f6b7d' }}>{e.path}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ── CTA ──────────────────────────────────────────────────────── */}
+        <section style={{
+          margin: '90px 0 0', borderRadius: 22, padding: 54, textAlign: 'center',
+          background: 'radial-gradient(600px 300px at 50% 0%,rgba(91,140,255,.16),transparent 70%),linear-gradient(180deg,rgba(14,20,30,.8),rgba(8,11,17,.6))',
+          border: '1px solid rgba(130,165,220,.16)',
+        }}>
+          <h2 style={{ margin: 0, fontSize: 38, letterSpacing: '-.025em', fontWeight: 700, color: '#eef3f9' }}>Ready to take control?</h2>
+          <p style={{ margin: '16px auto 0', maxWidth: 540, fontSize: 16, color: '#9aa8bd', lineHeight: 1.6 }}>
+            Join thousands of users who have transformed their network&apos;s DNS infrastructure with NexoralDNS.
+          </p>
+          <div style={{ display: 'flex', gap: 13, justifyContent: 'center', marginTop: 30, flexWrap: 'wrap' }}>
+            <Link href="/docs/getting-started" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 9,
+              padding: '13px 24px', borderRadius: 11,
+              background: 'linear-gradient(135deg,#3ddc84,#1fae63)',
+              color: '#05130b', fontWeight: 600, fontSize: 15, textDecoration: 'none',
+              boxShadow: '0 16px 40px -18px rgba(61,220,132,.8)',
+            }}>Start free</Link>
+            <Link href="/contact" style={{
+              display: 'inline-flex', alignItems: 'center',
+              padding: '13px 22px', borderRadius: 11,
+              background: 'rgba(255,255,255,.04)', border: '1px solid rgba(130,165,220,.18)',
+              color: '#dbe4ef', fontWeight: 500, fontSize: 15, textDecoration: 'none',
+            }}>Contact us</Link>
+          </div>
+        </section>
+
+      </div>
+
+      <style>{`
+        @media (max-width: 1023px) {
+          .hero-grid { grid-template-columns: 1fr !important; }
+          .hero-grid > div:last-child { display: none; }
+        }
+        @media (max-width: 767px) {
+          .home-content { padding: 40px 24px 0 !important; }
+          .home-content h1 { font-size: 36px !important; }
+          .features-grid { grid-template-columns: 1fr 1fr !important; }
+          .usecases-grid { grid-template-columns: 1fr 1fr !important; }
+          .explore-grid { grid-template-columns: 1fr 1fr !important; }
+          .proto-grid { grid-template-columns: 1fr !important; }
+          .problem-grid { grid-template-columns: 1fr !important; }
+          .lan-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 479px) {
+          .features-grid { grid-template-columns: 1fr !important; }
+          .usecases-grid { grid-template-columns: 1fr !important; }
+          .explore-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        .card-hover:hover { border-color: rgba(52,225,212,.3) !important; background: rgba(14,20,30,.8) !important; }
+        .explore-card:hover { border-color: rgba(52,225,212,.34) !important; transform: translateY(-2px); }
+      `}</style>
+    </>
   );
 }

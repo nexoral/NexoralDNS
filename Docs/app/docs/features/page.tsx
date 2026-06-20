@@ -1,448 +1,81 @@
-import { FadeIn } from "@/components/MotionWrapper";
+import Link from 'next/link';
 
-export default function Features() {
+export default function FeaturesPage() {
   return (
-    <div className="px-6 py-12 lg:px-12">
-      <FadeIn>
-        <div className="max-w-4xl mx-auto prose prose-invert prose-blue">
-          <h1>Feature Comparison</h1>
+    <>
+      <div style={{ maxWidth: 940, margin: '0 auto', padding: '52px 56px 0', minHeight: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }} className="feat-content">
 
-          <p className="text-xl text-gray-400">
-            NexoralDNS offers a feature-rich free tier with essential DNS management capabilities,
-            and a premium tier that unlocks advanced enterprise features.
-          </p>
+        <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: '#34e1d4', marginBottom: 28 }}>
+          Reference
+        </div>
 
-          <h2>Feature Matrix</h2>
+        <div style={{
+          width: 96, height: 96, borderRadius: 28,
+          background: 'linear-gradient(135deg,rgba(167,139,250,.14),rgba(52,225,212,.08))',
+          border: '1px solid rgba(167,139,250,.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 46, marginBottom: 36,
+          boxShadow: '0 0 0 8px rgba(167,139,250,.06), 0 24px 60px -20px rgba(167,139,250,.4)',
+        }}>✨</div>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th>Free Tier</th>
-                <th>Premium Tier</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan={3} className="bg-gray-800 font-semibold">Core DNS Functionality</td>
-              </tr>
-              <tr>
-                <td>DNS over UDP (Port 53)</td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>
-                  DNS over TCP (Port 53)
-                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-full align-middle">New v3.5.44</span>
-                  <br />
-                  <span className="text-xs text-gray-500">RFC 1035 §4.2.2 · RFC 7766 · auto-enabled</span>
-                </td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>
-                  DNS over TLS — DoT (Port 853)
-                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-teal-500/20 border border-teal-500/30 text-teal-400 rounded-full align-middle">New v3.5.44</span>
-                  <br />
-                  <span className="text-xs text-gray-500">RFC 7858 · TLS 1.2+ · zero-config self-signed cert</span>
-                </td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Web-based Management Dashboard</td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Custom Domain Management</td>
-                <td>✅ Limited (10 domains)</td>
-                <td>✅ Unlimited</td>
-              </tr>
-              <tr>
-                <td>DNS Query Logging</td>
-                <td>✅ 7 days</td>
-                <td>✅ Unlimited history</td>
-              </tr>
-              <tr>
-                <td>Basic Analytics Dashboard</td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td colSpan={3} className="bg-gray-800 font-semibold">Advanced Features</td>
-              </tr>
-              <tr>
-                <td>Access Control Policies</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>IP-based Domain Restrictions</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Domain Group Management</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Advanced Analytics & Reporting</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Real-time Query Monitoring</td>
-                <td>✅ Limited</td>
-                <td>✅ Full</td>
-              </tr>
-              <tr>
-                <td>Custom Blocking Rules</td>
-                <td>✅ Up to 50 rules</td>
-                <td>✅ Unlimited</td>
-              </tr>
-              <tr>
-                <td colSpan={3} className="bg-gray-800 font-semibold">Security & Management</td>
-              </tr>
-              <tr>
-                <td>DHCP Server Integration</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Multi-user Management</td>
-                <td>❌ Single admin</td>
-                <td>✅ Multiple users with roles</td>
-              </tr>
-              <tr>
-                <td>API Access</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Backup & Restore</td>
-                <td>✅ Manual</td>
-                <td>✅ Automated</td>
-              </tr>
-              <tr>
-                <td>Cloud Sync</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td colSpan={3} className="bg-gray-800 font-semibold">Support & Updates</td>
-              </tr>
-              <tr>
-                <td>Software Updates</td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Community Support</td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Priority Email Support</td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Feature Requests</td>
-                <td>✅</td>
-                <td>✅ Priority</td>
-              </tr>
-            </tbody>
-          </table>
+        <h1 style={{
+          margin: '0 0 16px', fontSize: 56, fontWeight: 800,
+          letterSpacing: '-.03em', lineHeight: 1.04,
+          background: 'linear-gradient(120deg,#a78bfa,#34e1d4 45%,#5b8cff 80%)',
+          backgroundSize: '200% auto', WebkitBackgroundClip: 'text',
+          backgroundClip: 'text', color: 'transparent',
+          animation: 'ndShimmer 7s linear infinite',
+        }}>Coming Soon</h1>
 
-          <h2>Free Tier Details</h2>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 9,
+          padding: '6px 16px', borderRadius: 999,
+          background: 'rgba(167,139,250,.1)', border: '1px solid rgba(167,139,250,.28)',
+          fontFamily: 'var(--font-geist-mono)', fontSize: 12, letterSpacing: '.08em', color: '#c4b5fd',
+          marginBottom: 28,
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#a78bfa', display: 'block', animation: 'ndPulse 1.6s ease-in-out infinite' }} />
+          Features & Pricing · Being Finalized
+        </div>
 
-          <h3>What&apos;s Included (Forever Free)</h3>
-          <ul>
-            <li>✅ Full DNS server functionality</li>
-            <li>✅ Web-based management interface at <code>localhost:4000</code></li>
-            <li>✅ Up to 10 custom domains</li>
-            <li>✅ Basic DNS query logging (7-day retention)</li>
-            <li>✅ Up to 50 domain blocking rules</li>
-            <li>✅ Basic analytics dashboard</li>
-            <li>✅ Real-time query monitoring (limited view)</li>
-            <li>✅ Community support via GitHub issues</li>
-            <li>✅ Regular software updates</li>
-          </ul>
+        <p style={{ margin: '0 auto 40px', maxWidth: 560, fontSize: 17, lineHeight: 1.65, color: '#9aa8bd' }}>
+          The full feature comparison and pricing tiers are being finalized. Check back soon for the complete Free vs Premium matrix.
+        </p>
 
-          <h3>Free Tier Limitations</h3>
-          <ul>
-            <li>⚠️ Limited to 10 custom domains</li>
-            <li>⚠️ 7-day log retention only</li>
-            <li>⚠️ No access control policies</li>
-            <li>⚠️ No DHCP server integration</li>
-            <li>⚠️ No API access</li>
-            <li>⚠️ No automated backups</li>
-            <li>⚠️ Single administrator account</li>
-            <li>⚠️ Limited blocking rules (50 max)</li>
-          </ul>
-
-          <div className="bg-blue-900/20 border border-blue-600/50 rounded-lg p-6 my-8">
-            <h4 className="text-blue-400 font-semibold mb-3">Perfect for:</h4>
-            <ul className="space-y-2 mb-0">
-              <li>🏠 Home users and small networks</li>
-              <li>👨‍💻 Individual developers</li>
-              <li>🧪 Testing and learning DNS management</li>
-              <li>📚 Educational purposes</li>
-            </ul>
-          </div>
-
-          <h2>Premium Tier Details</h2>
-
-          <h3>What&apos;s Unlocked with Premium</h3>
-          <ul>
-            <li>🚀 <strong>Unlimited Everything:</strong> No restrictions on domains, rules, or users</li>
-            <li>🛡️ <strong>Advanced Access Control:</strong> IP-based restrictions and domain groups</li>
-            <li>📊 <strong>Enterprise Analytics:</strong> Detailed reporting and insights</li>
-            <li>🔗 <strong>DHCP Integration:</strong> Unified network management</li>
-            <li>👥 <strong>Multi-user Support:</strong> Role-based access control</li>
-            <li>🔌 <strong>API Access:</strong> Programmatic control and automation</li>
-            <li>☁️ <strong>Cloud Sync:</strong> Backup and sync configurations</li>
-            <li>⚡ <strong>Priority Support:</strong> Email support with faster response times</li>
-            <li>📈 <strong>Unlimited History:</strong> Never lose your DNS logs</li>
-          </ul>
-
-          <div className="bg-purple-900/20 border border-purple-600/50 rounded-lg p-6 my-8">
-            <h4 className="text-purple-400 font-semibold mb-3">Perfect for:</h4>
-            <ul className="space-y-2 mb-0">
-              <li>🏢 Small to medium businesses</li>
-              <li>👨‍💼 IT professionals and system administrators</li>
-              <li>🏫 Educational institutions</li>
-              <li>👨‍💻 Development teams requiring advanced features</li>
-              <li>🔒 Organizations with security and compliance requirements</li>
-            </ul>
-          </div>
-
-          <h2>Core Features (All Tiers)</h2>
-
-          <h3>1. Custom Domain Management</h3>
-          <p>
-            Create internal domains like <code>myapp.local</code> that resolve only within your LAN.
-            No need to modify host files on every machine.
-          </p>
-
-          <h3>2. DNS Traffic Monitoring</h3>
-          <p>
-            Comprehensive logging of all DNS queries with detailed analytics. Track which domains are
-            being accessed, when, and by whom.
-          </p>
-
-          <h3>3. Domain Blocking</h3>
-          <p>
-            Block unwanted domains network-wide or for specific devices. Perfect for parental controls,
-            ad blocking, or blocking malicious domains.
-          </p>
-
-          <h3>4. Domain Rerouting</h3>
-          <p>
-            Redirect specific domains to different IP addresses. For example, redirect <code>google.com</code>
-            to your internal server for testing.
-          </p>
-
-          <h3>5. Web-based Dashboard</h3>
-          <p>
-            Intuitive management interface accessible at <code>localhost:4000</code>. No command-line
-            required for basic operations.
-          </p>
-
-          <h3>6. High Performance</h3>
-          <p>
-            Sub-5ms query response times with Redis caching. Optimized for high-volume networks with
-            7-layer query processing.
-          </p>
-
-          <h3>7. DNS Protocol Support — New in v3.5.44</h3>
-          <p>
-            NexoralDNS supports all three major DNS transports. All protocols share the same 7-layer
-            processing pipeline, Redis cache, block-list engine, and query logger.
-          </p>
-
-          <div className="not-prose grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
-            <div className="p-4 bg-gray-800/60 border border-gray-700 rounded-xl">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">📡</span>
-                <span className="font-semibold text-white text-sm">DNS over UDP</span>
-              </div>
-              <p className="text-xs text-gray-400 leading-relaxed">Port 53 · RFC 1035<br />Classic transport. Low latency for small responses.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 48, width: '100%', maxWidth: 680 }} className="feat-cards">
+          {[
+            { icon: '🌐', title: 'DNS over UDP/TCP/TLS', desc: 'All three transports — classic, reliable, encrypted.' },
+            { icon: '🛡️', title: 'Domain Blocking',      desc: 'Ads, trackers, malware, and custom block rules.' },
+            { icon: '📊', title: 'Real-time Analytics',  desc: 'Live query logs, performance metrics, patterns.' },
+          ].map((c, i) => (
+            <div key={i} style={{ borderRadius: 14, padding: 20, background: 'rgba(12,17,26,.5)', border: '1px solid rgba(130,165,220,.1)' }}>
+              <div style={{ fontSize: 22, marginBottom: 10 }}>{c.icon}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: '#dbe4ef', marginBottom: 6 }}>{c.title}</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.5, color: '#8b98ac' }}>{c.desc}</div>
             </div>
-            <div className="p-4 bg-blue-950/50 border border-blue-500/30 rounded-xl">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">🔗</span>
-                <span className="font-semibold text-white text-sm">DNS over TCP</span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-full">New</span>
-              </div>
-              <p className="text-xs text-gray-400 leading-relaxed">Port 53 TCP · RFC 7766<br />Required for DNSSEC, large TXT records, and zone transfers. 2-byte length-prefix framing, 30s idle timeout.</p>
-            </div>
-            <div className="p-4 bg-teal-950/50 border border-teal-500/30 rounded-xl">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">🔒</span>
-                <span className="font-semibold text-white text-sm">DNS over TLS</span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-teal-500/20 border border-teal-500/30 text-teal-400 rounded-full">New</span>
-              </div>
-              <p className="text-xs text-gray-400 leading-relaxed">Port 853 · RFC 7858<br />Encrypted transport. TLS 1.2+ enforced. Self-signed cert auto-generated on first boot — no config needed.</p>
-            </div>
+          ))}
+        </div>
+
+        <div style={{ borderRadius: 16, padding: '22px 28px', background: 'rgba(167,139,250,.06)', border: '1px solid rgba(167,139,250,.2)', maxWidth: 480, width: '100%' }}>
+          <div style={{ fontSize: 14, color: '#8b98ac', marginBottom: 16, lineHeight: 1.6 }}>
+            Want to know what&apos;s included in each tier? Check the architecture overview or get in touch.
           </div>
-
-          <h2>Pricing</h2>
-
-          <h3>Get Your Premium License</h3>
-          <p>
-            Visit <a href="https://nexoral.in" target="_blank" rel="noopener noreferrer">nexoral.in</a> to:
-          </p>
-          <ul>
-            <li>View detailed pricing plans</li>
-            <li>Purchase a commercial license</li>
-            <li>Get activation keys instantly</li>
-            <li>Access premium support</li>
-          </ul>
-
-          <h3>License Terms</h3>
-          <ul>
-            <li>✅ Perpetual licenses available</li>
-            <li>✅ Subscription options for latest features</li>
-            <li>✅ Volume discounts for multiple installations</li>
-            <li>✅ 30-day money-back guarantee</li>
-            <li>✅ Free trial available (contact sales)</li>
-          </ul>
-
-          <h2>How to Upgrade</h2>
-
-          <ol>
-            <li><strong>Purchase License:</strong> Visit <a href="https://nexoral.in">nexoral.in</a> and select your plan</li>
-            <li><strong>Get Activation Key:</strong> You&apos;ll receive your license key via email immediately</li>
-            <li><strong>Activate in Dashboard:</strong>
-              <ul>
-                <li>Open NexoralDNS dashboard at <code>http://localhost:4000</code></li>
-                <li>Navigate to Settings → License</li>
-                <li>Enter your activation key</li>
-                <li>Click &quot;Activate Premium Features&quot;</li>
-              </ul>
-            </li>
-            <li><strong>Enjoy Premium Features:</strong> All premium features will be instantly unlocked!</li>
-          </ol>
-
-          <h2>Frequently Asked Questions</h2>
-
-          <h3>Q: Can I try premium features before buying?</h3>
-          <p>
-            <strong>A:</strong> Contact our sales team at <a href="https://nexoral.in">nexoral.in</a> for a trial key.
-          </p>
-
-          <h3>Q: Is the free tier limited by time?</h3>
-          <p>
-            <strong>A:</strong> No! The free tier is completely free forever with no time restrictions.
-          </p>
-
-          <h3>Q: Can I upgrade from free to premium later?</h3>
-          <p>
-            <strong>A:</strong> Yes! You can upgrade at any time by purchasing a license. Your existing
-            configuration will be preserved.
-          </p>
-
-          <h3>Q: Do I need separate licenses for multiple installations?</h3>
-          <p>
-            <strong>A:</strong> Yes, each installation requires its own license key. Volume discounts are available.
-          </p>
-
-          <h3>Q: What happens if my premium license expires?</h3>
-          <p>
-            <strong>A:</strong> You&apos;ll revert to free tier limitations, but your data remains safe.
-            You can reactivate anytime.
-          </p>
-
-          <h2>Comparison Summary</h2>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Aspect</th>
-                <th>Free</th>
-                <th>Premium</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Price</strong></td>
-                <td>$0 Forever</td>
-                <td>See <a href="https://nexoral.in">nexoral.in</a></td>
-              </tr>
-              <tr>
-                <td><strong>Custom Domains</strong></td>
-                <td>10</td>
-                <td>Unlimited</td>
-              </tr>
-              <tr>
-                <td><strong>Blocking Rules</strong></td>
-                <td>50</td>
-                <td>Unlimited</td>
-              </tr>
-              <tr>
-                <td><strong>Log Retention</strong></td>
-                <td>7 days</td>
-                <td>Unlimited</td>
-              </tr>
-              <tr>
-                <td><strong>Users</strong></td>
-                <td>1 admin</td>
-                <td>Multiple with roles</td>
-              </tr>
-              <tr>
-                <td><strong>Access Control</strong></td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><strong>DHCP Server</strong></td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><strong>API Access</strong></td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><strong>Cloud Sync</strong></td>
-                <td>❌</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><strong>Support</strong></td>
-                <td>Community</td>
-                <td>Priority Email</td>
-              </tr>
-              <tr>
-                <td><strong>Best For</strong></td>
-                <td>Home/Learning</td>
-                <td>Business/Enterprise</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div className="text-center my-12">
-            <h3 className="text-2xl font-bold mb-4">Ready to Upgrade?</h3>
-            <p className="text-gray-400 mb-6">
-              Unlock the full power of NexoralDNS with premium features
-            </p>
-            <a
-              href="https://nexoral.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-            >
-              View Pricing
-            </a>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/docs/architecture" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 9, background: 'linear-gradient(135deg,#a78bfa,#34e1d4)', color: '#06121a', fontWeight: 600, fontSize: 13.5, textDecoration: 'none' }}>View Architecture</Link>
+            <Link href="/contact" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 9, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(130,165,220,.18)', color: '#dbe4ef', fontWeight: 500, fontSize: 13.5, textDecoration: 'none' }}>Contact Us</Link>
           </div>
         </div>
-      </FadeIn>
-    </div>
+
+        <div style={{ height: 80 }} />
+      </div>
+
+      <style>{`
+        @media (max-width: 767px) {
+          .feat-content { padding: 40px 24px 0 !important; }
+          .feat-content h1 { font-size: 38px !important; }
+          .feat-cards { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </>
   );
 }

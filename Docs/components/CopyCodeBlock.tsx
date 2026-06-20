@@ -1,53 +1,92 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 
-interface CopyCodeBlockProps {
+interface Props {
   code: string;
-  language?: string;
-  wrap?: boolean;
+  label?: string;
+  prompt?: boolean;
 }
 
-export default function CopyCodeBlock({ code, language = 'bash', wrap = false }: CopyCodeBlockProps) {
+export default function CopyCodeBlock({ code, label = 'bash', prompt = true }: Props) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
+  const handleCopy = () => {
+    const text = prompt ? code.replace(/^\$ /, '') : code;
+    try { navigator.clipboard.writeText(text); } catch {}
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    clearTimeout((handleCopy as any)._t);
+    (handleCopy as any)._t = setTimeout(() => setCopied(false), 1600);
   };
 
   return (
-    <div className="relative group">
-      <div className="absolute top-3 right-3 z-10">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
+    <div style={{
+      position: 'relative',
+      border: '1px solid rgba(120,160,220,.16)',
+      borderRadius: 14,
+      background: 'linear-gradient(180deg,#0b0f16,#070a10)',
+      overflow: 'hidden',
+      fontFamily: 'var(--font-geist-mono),SF Mono,monospace',
+      boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -28px rgba(0,0,0,.9)',
+    }}>
+      {/* Title bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 14px',
+        borderBottom: '1px solid rgba(120,160,220,.1)',
+        background: 'rgba(255,255,255,.015)',
+      }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57', display: 'block' }} />
+          <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e', display: 'block' }} />
+          <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840', display: 'block' }} />
+        </div>
+        <span style={{ fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5f6b7d', fontWeight: 500 }}>
+          {label}
+        </span>
+        <button
           onClick={handleCopy}
-          className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-2 border border-gray-700"
-          aria-label="Copy code"
+          style={{
+            marginLeft: 'auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontFamily: 'inherit',
+            fontSize: 11,
+            letterSpacing: '.04em',
+            color: copied ? '#3ddc84' : '#9fb0c5',
+            background: 'rgba(120,160,220,.08)',
+            border: '1px solid rgba(120,160,220,.16)',
+            borderRadius: 7,
+            padding: '5px 10px',
+            cursor: 'pointer',
+            transition: 'all .18s ease',
+          }}
         >
-          {copied ? (
-            <>
-              <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-green-400">Copied!</span>
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              <span>Copy</span>
-            </>
-          )}
-        </motion.button>
+          <span style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: copied ? '#3ddc84' : '#5f6b7d',
+            display: 'block',
+          }} />
+          {copied ? 'Copied' : 'Copy'}
+        </button>
       </div>
-      <pre className={`bg-gray-950 border border-gray-800 rounded-lg p-4 ${wrap ? "whitespace-pre-wrap break-all overflow-x-hidden" : "overflow-x-auto"}`}>
-        <code className={`language-${language} text-sm text-gray-300 font-mono`}>
-          {code}
-        </code>
+      {/* Code */}
+      <pre style={{
+        margin: 0,
+        padding: '16px 18px',
+        overflowX: 'auto',
+        fontSize: 13.5,
+        lineHeight: 1.7,
+        color: '#cdd9e8',
+        whiteSpace: 'pre',
+      }}>
+        {prompt && <span style={{ color: '#3ddc84', userSelect: 'none' }}>$ </span>}
+        {code}
       </pre>
     </div>
   );

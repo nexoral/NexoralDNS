@@ -1,54 +1,45 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import Footer from "@/components/Footer";
-import PageTransition from "@/components/PageTransition";
+import type { Metadata } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
+import './globals.css';
+import Sidebar from '@/components/Sidebar';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
+const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "NexoralDNS - Technical Documentation",
-  description: "Advanced DNS Management & Surveillance System - Complete technical documentation for installation, configuration, and API reference.",
-  keywords: ["DNS", "NexoralDNS", "DNS Management", "Network Security", "Documentation"],
+  title: 'NexoralDNS - Technical Documentation',
+  description: 'Advanced DNS Management & Surveillance System — Complete documentation for installation, usage, and API reference.',
+  keywords: ['DNS', 'NexoralDNS', 'DNS Management', 'Network Security', 'Documentation'],
   icons: {
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: 'any' }
+      { url: '/nexoral-icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
     ],
-    apple: '/nexoraldns-logo.svg',
+    apple: '/nexoral-icon.svg',
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100`}
-      >
-        <div className="flex min-h-screen">
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <div style={{ minHeight: '100vh', background: 'radial-gradient(1000px 560px at 82% -8%,rgba(91,140,255,.11),transparent 60%),radial-gradient(760px 520px at -8% 6%,rgba(52,225,212,.07),transparent 56%),#07090e', color: '#e7eef6' }}>
           <Sidebar />
-          <div className="flex-1 lg:pl-72">
-            <main className="min-h-screen">
-              <PageTransition>
-                {children}
-              </PageTransition>
+          <div style={{ marginLeft: 272 }} className="main-content">
+            <Header />
+            <main style={{ flex: 1 }}>
+              {children}
             </main>
             <Footer />
           </div>
         </div>
+        <style>{`
+          @media (max-width: 1023px) {
+            .main-content { margin-left: 0 !important; padding-top: 60px; }
+          }
+        `}</style>
       </body>
     </html>
   );
