@@ -115,6 +115,7 @@ export default function Home() {
               <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>&lt;2ms</b> cached response</span>
               <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>7-layer</b> query engine</span>
               <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>100%</b> self-hosted</span>
+              <span><b style={{ color: '#f6b352', fontWeight: 600 }}>8,050 QPS</b> load tested</span>
             </div>
           </div>
 
@@ -277,6 +278,87 @@ export default function Home() {
           <p style={{ margin: '22px auto 0', maxWidth: 720, fontSize: 13.5, color: '#7c8aa0', lineHeight: 1.55, borderTop: '1px solid rgba(130,165,220,.1)', paddingTop: 18 }}>
             All three transports share the same <b style={{ color: '#bcc8d8' }}>7-layer query processor</b>, Redis cache, block-list engine, and analytics pipeline — consistent behaviour regardless of how a client connects.
           </p>
+        </section>
+
+        {/* ── BENCHMARK ────────────────────────────────────────────────── */}
+        <section style={{ marginTop: 84 }}>
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.2em', color: '#f6b352', textTransform: 'uppercase' }}>Performance</div>
+            <h2 style={{ margin: '10px 0 12px', fontSize: 34, letterSpacing: '-.02em', fontWeight: 700, color: '#eef3f9' }}>Load test results</h2>
+            <p style={{ maxWidth: 560, margin: '0 auto', fontSize: 15, lineHeight: 1.6, color: '#93a1b5' }}>
+              Benchmarked on a mid-range consumer laptop — no dedicated server hardware required.
+            </p>
+          </div>
+
+          {/* Big QPS stat */}
+          <div style={{
+            position: 'relative', borderRadius: 22, padding: '48px 40px',
+            background: 'radial-gradient(640px 260px at 50% 0%,rgba(246,179,82,.12),transparent 70%),linear-gradient(180deg,rgba(14,20,30,.9),rgba(8,11,17,.6))',
+            border: '1px solid rgba(246,179,82,.28)', textAlign: 'center', overflow: 'hidden',
+          }} className="nd-glow">
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,#f6b352,transparent)' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <span style={{
+                fontFamily: 'var(--font-geist-mono)', fontSize: 11.5, letterSpacing: '.12em', color: '#f6b352',
+                textTransform: 'uppercase',
+              }}>Peak throughput · UDP port 53</span>
+              <span style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '.08em', padding: '2px 9px', borderRadius: 999,
+                background: 'rgba(61,220,132,.14)', border: '1px solid rgba(61,220,132,.28)', color: '#74e6a4',
+              }}>Node.js DNS Server</span>
+            </div>
+            <div style={{ fontSize: 88, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1, background: 'linear-gradient(135deg,#f6b352,#ffd580)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+              8,050
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: '#cdd9e8', letterSpacing: '.06em', marginTop: 6 }}>
+              queries / second
+            </div>
+            <div style={{ marginTop: 10, fontSize: 13.5, color: '#7c8aa0' }}>
+              Achieved with a pure <b style={{ color: '#bcc8d8' }}>Node.js</b> DNS server — no C/C++ native bindings, no Rust, no Go.
+            </div>
+
+            {/* Sub-stats */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 36, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Avg latency', value: '< 2ms', accent: '#3ddc84' },
+                { label: 'Cache hit rate', value: '~98%', accent: '#5b8cff' },
+                { label: 'Dropped queries', value: '0', accent: '#34e1d4' },
+              ].map((s, i) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: s.accent, letterSpacing: '-.02em' }}>{s.value}</div>
+                  <div style={{ fontSize: 12, color: '#62718a', marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Hardware spec card */}
+          <div style={{
+            marginTop: 18, borderRadius: 18, padding: '24px 28px',
+            background: 'rgba(12,17,26,.6)', border: '1px solid rgba(130,165,220,.12)',
+            display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(246,179,82,.1)', border: '1px solid rgba(246,179,82,.22)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+            }}>💻</div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#dbe4ef', marginBottom: 4 }}>Test hardware</div>
+              <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 12, color: '#7c8aa0' }}>
+                AMD Ryzen 5 5500U · 6 cores / 12 threads · 6.6 GB RAM · x86_64
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {['Consumer laptop', 'No RAID / NVMe tuning', 'Cluster mode enabled'].map((tag, i) => (
+                <span key={i} style={{
+                  fontSize: 11.5, padding: '4px 10px', borderRadius: 999,
+                  background: 'rgba(130,165,220,.08)', border: '1px solid rgba(130,165,220,.14)',
+                  color: '#8b98ac',
+                }}>{tag}</span>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* ── PROBLEM / SOLUTION ───────────────────────────────────────── */}
