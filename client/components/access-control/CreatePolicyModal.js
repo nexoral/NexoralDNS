@@ -167,15 +167,15 @@ export default function CreatePolicyModal({ onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-[#0d111a] rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-6 border-b border-slate-200">
+        <div className="p-6 border-b border-[rgba(130,165,220,0.14)]">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-slate-800">Create Access Control Policy</h2>
+            <h2 className="text-2xl font-bold text-[#e7eef6]">Create Access Control Policy</h2>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
+              className="text-[#5f6b7d] hover:text-[#9aa8bd] transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -188,7 +188,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center flex-1">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
-                  step >= s ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                  step >= s ? 'bg-blue-600 text-white' : 'bg-slate-200 text-[#9aa8bd]'
                 }`}>
                   {s}
                 </div>
@@ -200,7 +200,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-xs text-slate-600">
+          <div className="flex justify-between mt-2 text-xs text-[#9aa8bd]">
             <span>Who to Block</span>
             <span>What to Block</span>
             <span>Details</span>
@@ -212,13 +212,13 @@ export default function CreatePolicyModal({ onClose, onSave }) {
           {/* Step 1: WHO should be blocked? */}
           {step === 1 && (
             <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-2">WHO should be blocked?</h3>
-              <p className="text-sm text-slate-600 mb-4">Select which users or devices this policy applies to</p>
+              <h3 className="text-lg font-semibold text-[#e7eef6] mb-2">WHO should be blocked?</h3>
+              <p className="text-sm text-[#9aa8bd] mb-4">Select which users or devices this policy applies to</p>
 
               <div className="space-y-4">
                 {/* Single IP */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.targetType === 'single_ip' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.targetType === 'single_ip' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -227,11 +227,11 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="single_ip"
                       checked={formData.targetType === 'single_ip'}
                       onChange={(e) => setFormData({ ...formData, targetType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">Single IP Address</span>
-                      <p className="text-sm text-slate-600">Block a specific device by IP</p>
+                      <span className="font-medium text-[#e7eef6]">Single IP Address</span>
+                      <p className="text-sm text-[#9aa8bd]">Block a specific device by IP</p>
                     </div>
                   </div>
                   {formData.targetType === 'single_ip' && (
@@ -240,14 +240,14 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       placeholder="e.g., 192.168.1.100"
                       value={formData.targetIP}
                       onChange={(e) => setFormData({ ...formData, targetIP: e.target.value })}
-                      className="w-full mt-3 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full mt-3 px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
                     />
                   )}
                 </label>
 
                 {/* Multiple IPs */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.targetType === 'multiple_ips' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.targetType === 'multiple_ips' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -256,11 +256,11 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="multiple_ips"
                       checked={formData.targetType === 'multiple_ips'}
                       onChange={(e) => setFormData({ ...formData, targetType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">Multiple IP Addresses</span>
-                      <p className="text-sm text-slate-600">Block several specific devices</p>
+                      <span className="font-medium text-[#e7eef6]">Multiple IP Addresses</span>
+                      <p className="text-sm text-[#9aa8bd]">Block several specific devices</p>
                     </div>
                   </div>
                   {formData.targetType === 'multiple_ips' && (
@@ -272,7 +272,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                           value={newIP}
                           onChange={(e) => setNewIP(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && addIP()}
-                          className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
                         />
                         <button
                           onClick={addIP}
@@ -284,9 +284,9 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       {formData.targetIPs.length > 0 && (
                         <div className="space-y-2">
                           {formData.targetIPs.map((ip, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                              <span className="text-sm text-slate-700">{ip}</span>
-                              <button onClick={() => removeIP(ip)} className="text-red-600 hover:text-red-700">
+                            <div key={idx} className="flex items-center justify-between p-2 bg-[#07090e] rounded border border-[rgba(130,165,220,0.14)]">
+                              <span className="text-sm text-[#cdd9e8]">{ip}</span>
+                              <button onClick={() => removeIP(ip)} className="text-[#ff6071] hover:text-[#ff6071]">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -301,7 +301,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
 
                 {/* Single IP Group */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.targetType === 'ip_group' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.targetType === 'ip_group' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -310,18 +310,18 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="ip_group"
                       checked={formData.targetType === 'ip_group'}
                       onChange={(e) => setFormData({ ...formData, targetType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">IP Group</span>
-                      <p className="text-sm text-slate-600">Block a pre-defined group of devices</p>
+                      <span className="font-medium text-[#e7eef6]">IP Group</span>
+                      <p className="text-sm text-[#9aa8bd]">Block a pre-defined group of devices</p>
                     </div>
                   </div>
                   {formData.targetType === 'ip_group' && (
                     <select
                       value={formData.targetIPGroup}
                       onChange={(e) => setFormData({ ...formData, targetIPGroup: e.target.value })}
-                      className="w-full mt-3 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full mt-3 px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
                       disabled={loadingGroups}
                     >
                       <option value="">{loadingGroups ? 'Loading...' : 'Select IP Group'}</option>
@@ -334,7 +334,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
 
                 {/* Multiple IP Groups */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.targetType === 'multiple_ip_groups' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.targetType === 'multiple_ip_groups' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -343,38 +343,38 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="multiple_ip_groups"
                       checked={formData.targetType === 'multiple_ip_groups'}
                       onChange={(e) => setFormData({ ...formData, targetType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">Multiple IP Groups</span>
-                      <p className="text-sm text-slate-600">Block multiple pre-defined device groups</p>
+                      <span className="font-medium text-[#e7eef6]">Multiple IP Groups</span>
+                      <p className="text-sm text-[#9aa8bd]">Block multiple pre-defined device groups</p>
                     </div>
                   </div>
                   {formData.targetType === 'multiple_ip_groups' && (
                     <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
                       {loadingGroups ? (
-                        <div className="text-center py-4 text-slate-600">Loading groups...</div>
+                        <div className="text-center py-4 text-[#9aa8bd]">Loading groups...</div>
                       ) : ipGroups.length === 0 ? (
-                        <div className="text-center py-4 text-slate-600">No IP groups available</div>
+                        <div className="text-center py-4 text-[#9aa8bd]">No IP groups available</div>
                       ) : (
                         ipGroups.map((group) => (
                           <label
                             key={group._id}
                             className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
                               formData.targetIPGroups.includes(group._id)
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-slate-200 hover:border-slate-300'
+                                ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]'
+                                : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={formData.targetIPGroups.includes(group._id)}
                               onChange={() => toggleIPGroup(group._id)}
-                              className="w-4 h-4 text-blue-600 rounded"
+                              className="w-4 h-4 text-[#5b8cff] rounded"
                             />
                             <div className="ml-3">
-                              <div className="font-medium text-slate-800">{group.name}</div>
-                              {group.description && <div className="text-sm text-slate-600">{group.description}</div>}
+                              <div className="font-medium text-[#e7eef6]">{group.name}</div>
+                              {group.description && <div className="text-sm text-[#9aa8bd]">{group.description}</div>}
                             </div>
                           </label>
                         ))
@@ -385,7 +385,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
 
                 {/* All Users */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.targetType === 'all' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.targetType === 'all' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -394,11 +394,11 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="all"
                       checked={formData.targetType === 'all'}
                       onChange={(e) => setFormData({ ...formData, targetType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">All Users</span>
-                      <p className="text-sm text-slate-600">Apply to all devices on the network</p>
+                      <span className="font-medium text-[#e7eef6]">All Users</span>
+                      <p className="text-sm text-[#9aa8bd]">Apply to all devices on the network</p>
                     </div>
                   </div>
                 </label>
@@ -409,13 +409,13 @@ export default function CreatePolicyModal({ onClose, onSave }) {
           {/* Step 2: WHAT should be blocked? */}
           {step === 2 && (
             <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-2">WHAT should be blocked?</h3>
-              <p className="text-sm text-slate-600 mb-4">Choose what content or services to block</p>
+              <h3 className="text-lg font-semibold text-[#e7eef6] mb-2">WHAT should be blocked?</h3>
+              <p className="text-sm text-[#9aa8bd] mb-4">Choose what content or services to block</p>
 
               <div className="space-y-4">
                 {/* Specific Domains */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.blockType === 'specific_domains' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.blockType === 'specific_domains' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -424,11 +424,11 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="specific_domains"
                       checked={formData.blockType === 'specific_domains'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">Specific Domains</span>
-                      <p className="text-sm text-slate-600">Block specific websites</p>
+                      <span className="font-medium text-[#e7eef6]">Specific Domains</span>
+                      <p className="text-sm text-[#9aa8bd]">Block specific websites</p>
                     </div>
                   </div>
                   {formData.blockType === 'specific_domains' && (
@@ -440,18 +440,18 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                           value={newDomain}
                           onChange={(e) => setNewDomain(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && addDomain()}
-                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
                         />
-                        <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                        <label className="flex items-center space-x-2 text-sm text-[#cdd9e8] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={newDomainIsWildcard}
                             onChange={(e) => setNewDomainIsWildcard(e.target.checked)}
-                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                            className="w-4 h-4 text-[#5b8cff] border-[rgba(130,165,220,0.2)] rounded focus:ring-[#5b8cff]/50"
                           />
                           <span>
                             Include subdomains (wildcard)
-                            <span className="text-slate-500 ml-1">
+                            <span className="text-[#7c8aa0] ml-1">
                               - e.g., blocks both "facebook.com" and "www.facebook.com"
                             </span>
                           </span>
@@ -466,20 +466,20 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       {formData.domains.length > 0 && (
                         <div className="space-y-2 mt-3">
                           {formData.domains.map((domainEntry, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
+                            <div key={idx} className="flex items-center justify-between p-3 bg-[#07090e] rounded border border-[rgba(130,165,220,0.14)]">
                               <div className="flex-1">
-                                <span className="text-sm font-medium text-slate-700">{domainEntry.domain}</span>
+                                <span className="text-sm font-medium text-[#cdd9e8]">{domainEntry.domain}</span>
                                 <div className="flex items-center mt-1 space-x-2">
                                   <span className={`text-xs px-2 py-0.5 rounded ${
                                     domainEntry.isWildcard
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-slate-200 text-slate-600'
+                                      ? 'bg-[rgba(91,140,255,0.12)] text-[#5b8cff]'
+                                      : 'bg-slate-200 text-[#9aa8bd]'
                                   }`}>
                                     {domainEntry.isWildcard ? '🌐 With Subdomains' : '🎯 Exact Match'}
                                   </span>
                                 </div>
                               </div>
-                              <button onClick={() => removeDomain(domainEntry.domain)} className="text-red-600 hover:text-red-700 ml-2">
+                              <button onClick={() => removeDomain(domainEntry.domain)} className="text-[#ff6071] hover:text-[#ff6071] ml-2">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -494,7 +494,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
 
                 {/* Single Domain Group */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.blockType === 'domain_group' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.blockType === 'domain_group' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -503,18 +503,18 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="domain_group"
                       checked={formData.blockType === 'domain_group'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">Domain Group</span>
-                      <p className="text-sm text-slate-600">Block a pre-defined category of websites</p>
+                      <span className="font-medium text-[#e7eef6]">Domain Group</span>
+                      <p className="text-sm text-[#9aa8bd]">Block a pre-defined category of websites</p>
                     </div>
                   </div>
                   {formData.blockType === 'domain_group' && (
                     <select
                       value={formData.domainGroup}
                       onChange={(e) => setFormData({ ...formData, domainGroup: e.target.value })}
-                      className="w-full mt-3 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full mt-3 px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
                       disabled={loadingGroups}
                     >
                       <option value="">{loadingGroups ? 'Loading...' : 'Select Domain Group'}</option>
@@ -527,7 +527,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
 
                 {/* Multiple Domain Groups */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.blockType === 'multiple_domain_groups' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.blockType === 'multiple_domain_groups' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -536,38 +536,38 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="multiple_domain_groups"
                       checked={formData.blockType === 'multiple_domain_groups'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-[#5b8cff]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">Multiple Domain Groups</span>
-                      <p className="text-sm text-slate-600">Block multiple categories of websites</p>
+                      <span className="font-medium text-[#e7eef6]">Multiple Domain Groups</span>
+                      <p className="text-sm text-[#9aa8bd]">Block multiple categories of websites</p>
                     </div>
                   </div>
                   {formData.blockType === 'multiple_domain_groups' && (
                     <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
                       {loadingGroups ? (
-                        <div className="text-center py-4 text-slate-600">Loading groups...</div>
+                        <div className="text-center py-4 text-[#9aa8bd]">Loading groups...</div>
                       ) : domainGroups.length === 0 ? (
-                        <div className="text-center py-4 text-slate-600">No domain groups available</div>
+                        <div className="text-center py-4 text-[#9aa8bd]">No domain groups available</div>
                       ) : (
                         domainGroups.map((group) => (
                           <label
                             key={group._id}
                             className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
                               formData.domainGroups.includes(group._id)
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-slate-200 hover:border-slate-300'
+                                ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]'
+                                : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={formData.domainGroups.includes(group._id)}
                               onChange={() => toggleDomainGroup(group._id)}
-                              className="w-4 h-4 text-blue-600 rounded"
+                              className="w-4 h-4 text-[#5b8cff] rounded"
                             />
                             <div className="ml-3">
-                              <div className="font-medium text-slate-800">{group.name}</div>
-                              {group.description && <div className="text-sm text-slate-600">{group.description}</div>}
+                              <div className="font-medium text-[#e7eef6]">{group.name}</div>
+                              {group.description && <div className="text-sm text-[#9aa8bd]">{group.description}</div>}
                             </div>
                           </label>
                         ))
@@ -578,7 +578,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
 
                 {/* Full Internet */}
                 <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.blockType === 'full_internet' ? 'border-red-500 bg-red-50' : 'border-slate-200 hover:border-slate-300'
+                  formData.blockType === 'full_internet' ? 'border-red-500 bg-[rgba(255,96,113,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
                 }`}>
                   <div className="flex items-center">
                     <input
@@ -587,11 +587,11 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       value="full_internet"
                       checked={formData.blockType === 'full_internet'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-red-600"
+                      className="w-4 h-4 text-[#ff6071]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-slate-800">Full Internet Access</span>
-                      <p className="text-sm text-slate-600">Block all internet access</p>
+                      <span className="font-medium text-[#e7eef6]">Full Internet Access</span>
+                      <p className="text-sm text-[#9aa8bd]">Block all internet access</p>
                     </div>
                   </div>
                 </label>
@@ -602,24 +602,24 @@ export default function CreatePolicyModal({ onClose, onSave }) {
           {/* Step 3: Policy Details */}
           {step === 3 && (
             <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Policy Details</h3>
+              <h3 className="text-lg font-semibold text-[#e7eef6] mb-4">Policy Details</h3>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Policy Name</label>
+                  <label className="block text-sm font-medium text-[#cdd9e8] mb-2">Policy Name</label>
                   <input
                     type="text"
                     placeholder="e.g., Block Social Media for Guest WiFi"
                     value={formData.policyName}
                     onChange={(e) => setFormData({ ...formData, policyName: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-[#07090e] rounded-lg">
                   <div>
-                    <label className="block font-medium text-slate-800">Active</label>
-                    <p className="text-sm text-slate-600">Enable this policy immediately</p>
+                    <label className="block font-medium text-[#e7eef6]">Active</label>
+                    <p className="text-sm text-[#9aa8bd]">Enable this policy immediately</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -628,14 +628,14 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                       checked={formData.isActive}
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                     />
-                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#0d111a] after:border-[rgba(130,165,220,0.2)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
 
                 {/* Summary */}
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-4 bg-[rgba(91,140,255,0.07)] border border-blue-200 rounded-lg">
                   <h4 className="font-semibold text-blue-900 mb-2">Policy Summary</h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
+                  <ul className="text-sm text-[#5b8cff] space-y-1">
                     <li className="font-medium">• Target:</li>
                     <li className="ml-4">
                       {formData.targetType === 'all' && 'All Users'}
@@ -659,11 +659,11 @@ export default function CreatePolicyModal({ onClose, onSave }) {
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-200 flex items-center justify-between">
+        <div className="p-6 border-t border-[rgba(130,165,220,0.14)] flex items-center justify-between">
           <button
             onClick={step === 1 ? onClose : handleBack}
             disabled={loading}
-            className="px-6 py-2 text-slate-600 hover:text-slate-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-[#9aa8bd] hover:text-[#e7eef6] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
@@ -673,7 +673,7 @@ export default function CreatePolicyModal({ onClose, onSave }) {
             className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
               canProceed() && !loading
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                : 'bg-slate-300 text-[#7c8aa0] cursor-not-allowed'
             }`}
           >
             {loading && step === 3 && (

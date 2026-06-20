@@ -82,7 +82,7 @@ export default function LoginForm({ onSubmit, isLoading }) {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-[#5f6b7d] hover:text-[#e7eef6] transition-colors"
           >
             {showPassword ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

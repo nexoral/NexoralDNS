@@ -21,7 +21,7 @@ export default function AccessControlPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#07090e]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
@@ -34,13 +34,13 @@ export default function AccessControlPage() {
         <main className="p-4 lg:p-6">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">Access Control</h1>
-            <p className="text-slate-600">Manage blocking policies, domain groups, and access restrictions</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">Access Control</h1>
+            <p className="text-[#9aa8bd]">Manage blocking policies, domain groups, and access restrictions</p>
           </div>
 
           {/* Tab Navigation */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="border-b border-slate-200">
+          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] overflow-hidden">
+            <div className="border-b border-[rgba(130,165,220,0.1)]">
               <nav className="flex overflow-x-auto">
                 {tabs.map((tab) => (
                   <button
@@ -49,8 +49,8 @@ export default function AccessControlPage() {
                     className={`
                       px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-2
                       ${activeTab === tab.id
-                        ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                        : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                        ? 'border-b-2 border-blue-500 text-[#5b8cff] bg-[rgba(91,140,255,0.07)]'
+                        : 'text-[#9aa8bd] hover:text-[#e7eef6] hover:bg-[#07090e]'
                       }
                     `}
                   >
@@ -74,7 +74,7 @@ export default function AccessControlPage() {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

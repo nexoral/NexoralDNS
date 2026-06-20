@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }) {
 
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#07090e] flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );

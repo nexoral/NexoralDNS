@@ -22,7 +22,6 @@ export default function Sidebar({ isOpen, onClose }) {
     { id: 'settings', label: 'Server Settings', icon: 'settings', href: '/dashboard/settings', tooltip: 'DNS Server Settings' }
   ];
 
-  // Filter menu items - only show "devices" if on local network
   const menuItems = allMenuItems.filter(item => {
     if (item.localOnly) {
       return isLocalNetwork();
@@ -83,52 +82,55 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <div className={`
-      fixed top-0 left-0 h-full bg-white shadow-xl z-50 transition-all duration-300 ease-in-out flex flex-col
+      fixed top-0 left-0 h-full bg-[#090c12] border-r border-[rgba(130,165,220,0.1)] z-50 transition-all duration-300 ease-in-out flex flex-col
       ${isOpen ? 'w-64' : 'w-20 lg:w-20'}
       lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
     `}>
       {/* Logo */}
-      <div className="flex items-center justify-center h-16 border-b border-slate-200 flex-shrink-0">
+      <div className="flex items-center justify-center h-16 border-b border-[rgba(130,165,220,0.1)] flex-shrink-0">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+          <div className="w-9 h-9 bg-gradient-to-br from-[#5b8cff] to-[#34e1d4] rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
           {isOpen && (
-            <span className="font-bold text-slate-800 animate-fade-in">
+            <span className="font-bold text-[#e7eef6] tracking-tight animate-fade-in">
               {config.APP_NAME}
             </span>
           )}
         </div>
       </div>
 
-      {/* Navigation - flex-1 to take available space */}
-      <nav className="flex-1 mt-8 px-4 overflow-visible">
-        <ul className="space-y-2">
+      {/* Navigation */}
+      <nav className="flex-1 mt-6 px-3 overflow-visible">
+        <ul className="space-y-1">
           {menuItems.map((item) => (
             <li key={item.id} className="relative">
               <Link
                 href={item.href}
                 ref={(el) => (itemRefs.current[item.id] = el)}
                 className={`
-                  w-full flex items-center px-4 py-3 text-left rounded-lg transition-all duration-200 relative
+                  w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-all duration-200 relative
                   ${pathname === item.href
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg transform scale-105'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                    ? 'bg-gradient-to-r from-[#5b8cff]/20 to-[#34e1d4]/10 text-[#5b8cff] border border-[rgba(91,140,255,0.2)]'
+                    : 'text-[#9aa8bd] hover:bg-white/5 hover:text-[#e7eef6]'
                   }
                   ${!isOpen ? 'justify-center' : 'justify-start'}
                 `}
                 onMouseEnter={(e) => handleMouseEnter(item.id, e)}
                 onMouseLeave={handleMouseLeave}
               >
-                <span className={`flex-shrink-0 ${pathname === item.href ? 'animate-pulse' : ''}`}>
+                <span className={`flex-shrink-0 ${pathname === item.href ? 'text-[#5b8cff]' : ''}`}>
                   {icons[item.icon]}
                 </span>
                 {isOpen && (
-                  <span className="ml-3 font-medium animate-fade-in">
+                  <span className="ml-3 text-sm font-medium animate-fade-in">
                     {item.label}
                   </span>
+                )}
+                {pathname === item.href && isOpen && (
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#5b8cff]"></span>
                 )}
               </Link>
             </li>
@@ -136,38 +138,38 @@ export default function Sidebar({ isOpen, onClose }) {
         </ul>
       </nav>
 
-      {/* Logout Button - flex-shrink-0 to prevent overlap */}
-      <div className="flex-shrink-0 p-4 border-t border-slate-200">
+      {/* Logout Button */}
+      <div className="flex-shrink-0 p-3 border-t border-[rgba(130,165,220,0.1)]">
         <button
           className={`
-            w-full flex items-center px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 relative
+            w-full flex items-center px-3 py-2.5 text-[#ff6071] hover:bg-[rgba(255,96,113,0.08)] rounded-lg transition-all duration-200 relative
             ${!isOpen ? 'justify-center' : 'justify-start'}
           `}
           onMouseEnter={(e) => handleMouseEnter('logout', e)}
           onMouseLeave={handleMouseLeave}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
           {isOpen && (
-            <span className="ml-3 font-medium animate-fade-in">Logout</span>
+            <span className="ml-3 text-sm font-medium animate-fade-in">Logout</span>
           )}
         </button>
       </div>
 
-      {/* Single Tooltip Portal - positioned based on hovered item */}
+      {/* Tooltip */}
       {!isOpen && hoveredItem && (
         <div
-          className="fixed left-20 px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-xl z-[9999] whitespace-nowrap animate-fade-in pointer-events-none ml-2"
+          className="fixed left-20 px-3 py-2 bg-[#0d111a] border border-[rgba(130,165,220,0.18)] text-[#e7eef6] text-sm rounded-lg shadow-xl z-[9999] whitespace-nowrap animate-fade-in pointer-events-none ml-2"
           style={{
             top: tooltipPosition.top,
             transform: 'translateY(-50%)'
           }}
         >
           {hoveredItem === 'logout' ? 'Logout' : menuItems.find(item => item.id === hoveredItem)?.tooltip}
-          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45"></div>
+          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-[#0d111a] border-l border-b border-[rgba(130,165,220,0.18)] rotate-45"></div>
         </div>
       )}
     </div>
-  )
+  );
 }

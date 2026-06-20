@@ -58,13 +58,13 @@ export default function UserModal({ user, onClose, onSave, roles }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-        <div className="p-6 border-b border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-800">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0d111a] rounded-xl shadow-xl max-w-md w-full">
+        <div className="p-6 border-b border-[rgba(130,165,220,0.14)]">
+          <h2 className="text-lg font-semibold text-[#e7eef6]">
             {user ? 'Edit User' : 'Add New User'}
           </h2>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-[#9aa8bd] mt-1">
             {user ? 'Update user information and permissions' : 'Create a new user account'}
           </p>
         </div>
@@ -101,12 +101,12 @@ export default function UserModal({ user, onClose, onSave, roles }) {
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+            <label className="block text-sm font-medium text-[#cdd9e8] mb-2">Role</label>
             <select
               name="role"
               value={formData.role}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
             >
               {roles.map(role => (
                 <option key={role} value={role}>{role}</option>
@@ -115,12 +115,12 @@ export default function UserModal({ user, onClose, onSave, roles }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+            <label className="block text-sm font-medium text-[#cdd9e8] mb-2">Status</label>
             <select
               name="status"
               value={formData.status}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>

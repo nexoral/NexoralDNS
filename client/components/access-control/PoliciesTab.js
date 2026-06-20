@@ -60,9 +60,9 @@ export default function PoliciesTab() {
 
   const getTypeBadge = (type) => {
     const badges = {
-      user_domain: { label: 'User → Domain', color: 'bg-blue-100 text-blue-700 border-blue-300' },
-      user_internet: { label: 'User → Internet', color: 'bg-red-100 text-red-700 border-red-300' },
-      domain_all: { label: 'Domain → All', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+      user_domain: { label: 'User → Domain', color: 'bg-[rgba(91,140,255,0.12)] text-[#5b8cff] border-blue-300' },
+      user_internet: { label: 'User → Internet', color: 'bg-[rgba(255,96,113,0.12)] text-[#ff6071] border-red-300' },
+      domain_all: { label: 'Domain → All', color: 'bg-purple-100 text-[#a78bfa] border-purple-300' },
       domain_user: { label: 'Domain → User', color: 'bg-orange-100 text-orange-700 border-orange-300' },
       group_based: { label: 'Advanced', color: 'bg-cyan-100 text-cyan-700 border-cyan-300' }
     };
@@ -175,8 +175,8 @@ export default function PoliciesTab() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-slate-800">Blocking Policies</h3>
-          <p className="text-sm text-slate-600 mt-1">Create and manage access control policies</p>
+          <h3 className="text-lg font-semibold text-[#e7eef6]">Blocking Policies</h3>
+          <p className="text-sm text-[#9aa8bd] mt-1">Create and manage access control policies</p>
         </div>
         <Button onClick={() => setShowModal(true)} variant="primary">
           Create Policy
@@ -190,7 +190,7 @@ export default function PoliciesTab() {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
             filter === 'all'
               ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              : 'bg-white/8 text-[#cdd9e8] hover:bg-slate-200'
           }`}
         >
           All Policies
@@ -200,7 +200,7 @@ export default function PoliciesTab() {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
             filter === 'active'
               ? 'bg-green-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              : 'bg-white/8 text-[#cdd9e8] hover:bg-slate-200'
           }`}
         >
           Active
@@ -210,7 +210,7 @@ export default function PoliciesTab() {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
             filter === 'inactive'
               ? 'bg-slate-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              : 'bg-white/8 text-[#cdd9e8] hover:bg-slate-200'
           }`}
         >
           Inactive
@@ -221,20 +221,20 @@ export default function PoliciesTab() {
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-slate-600">Loading policies...</p>
+          <p className="mt-4 text-[#9aa8bd]">Loading policies...</p>
         </div>
       ) : error ? (
-        <div className="text-center py-12 bg-red-50 rounded-lg border-2 border-red-200">
+        <div className="text-center py-12 bg-[rgba(255,96,113,0.07)] rounded-lg border-2 border-red-200">
           <div className="text-6xl mb-4">⚠️</div>
           <h3 className="text-lg font-medium text-red-800 mb-2">Error loading policies</h3>
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-[#ff6071] mb-4">{error}</p>
           <Button onClick={fetchPolicies}>Retry</Button>
         </div>
       ) : filteredPolicies.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+        <div className="text-center py-12 bg-[#07090e] rounded-lg border-2 border-dashed border-[rgba(130,165,220,0.14)]">
           <div className="text-6xl mb-4">🛡️</div>
-          <h3 className="text-lg font-medium text-slate-800 mb-2">No policies found</h3>
-          <p className="text-slate-600 mb-4">Create your first blocking policy to get started</p>
+          <h3 className="text-lg font-medium text-[#e7eef6] mb-2">No policies found</h3>
+          <p className="text-[#9aa8bd] mb-4">Create your first blocking policy to get started</p>
           <Button onClick={() => setShowModal(true)}>Create Policy</Button>
         </div>
       ) : (
@@ -247,17 +247,17 @@ export default function PoliciesTab() {
             return (
               <div
                 key={policy._id}
-                className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+                className="bg-[#0d111a] border border-[rgba(130,165,220,0.14)] rounded-lg p-5 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="text-base font-semibold text-slate-800">{policy.policyName}</h4>
+                      <h4 className="text-base font-semibold text-[#e7eef6]">{policy.policyName}</h4>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium border ${badge.color}`}>
                         {badge.label}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-6 text-sm text-slate-600">
+                    <div className="flex items-center space-x-6 text-sm text-[#9aa8bd]">
                       <div className="flex items-center space-x-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -282,13 +282,13 @@ export default function PoliciesTab() {
                         checked={policy.isActive}
                         onChange={() => handleTogglePolicy(policy._id)}
                       />
-                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#0d111a] after:border-[rgba(130,165,220,0.2)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
 
                     {/* Delete Button */}
                     <button
                       onClick={() => handleDeletePolicy(policy._id, policy.policyName)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                      className="p-2 text-[#ff6071] hover:bg-[rgba(255,96,113,0.07)] rounded-md transition-colors"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -324,12 +324,12 @@ export default function PoliciesTab() {
           }}
           onConfirm={confirmDeletePolicy}
         >
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="bg-[rgba(255,96,113,0.07)] border border-red-200 rounded-lg p-4">
             <h3 className="font-medium text-red-800 mb-2">Warning</h3>
-            <p className="text-sm text-red-700">
+            <p className="text-sm text-[#ff6071]">
               Are you sure you want to delete the policy <strong>"{policyToDelete.name}"</strong>?
             </p>
-            <p className="text-sm text-red-700 mt-2">
+            <p className="text-sm text-[#ff6071] mt-2">
               This will immediately remove all access control restrictions associated with this policy.
             </p>
           </div>

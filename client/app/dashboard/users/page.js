@@ -54,15 +54,15 @@ export default function UsersPage() {
 
   const roles = {
     'Admin': {
-      color: 'bg-red-100 text-red-800',
+      color: 'bg-[rgba(255,96,113,0.12)] text-red-800',
       permissions: ['Full system access', 'User management', 'System settings', 'All DNS operations']
     },
     'Manager': {
-      color: 'bg-blue-100 text-blue-800',
+      color: 'bg-[rgba(91,140,255,0.12)] text-[#5b8cff]',
       permissions: ['DNS management', 'View analytics', 'Generate reports', 'Manage domains']
     },
     'Viewer': {
-      color: 'bg-green-100 text-green-800',
+      color: 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]',
       permissions: ['View-only access', 'View analytics', 'Export reports']
     }
   };
@@ -94,7 +94,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#07090e]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
@@ -108,8 +108,8 @@ export default function UsersPage() {
           {/* Page Header */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">User Management</h1>
-              <p className="text-slate-600">Manage users and role-based access control</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">User Management</h1>
+              <p className="text-[#9aa8bd]">Manage users and role-based access control</p>
             </div>
             <Button onClick={() => setShowModal(true)} variant="primary">
               Add User
@@ -121,11 +121,11 @@ export default function UsersPage() {
             {Object.entries(roles).map(([role, config]) => {
               const count = users.filter(user => user.role === role).length;
               return (
-                <div key={role} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div key={role} className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-600">{role}s</p>
-                      <p className="text-2xl font-bold text-slate-800">{count}</p>
+                      <p className="text-sm font-medium text-[#9aa8bd]">{role}s</p>
+                      <p className="text-2xl font-bold text-[#e7eef6]">{count}</p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
                       {role}
@@ -137,25 +137,25 @@ export default function UsersPage() {
           </div>
 
           {/* Users Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800">System Users</h2>
+          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)]">
+            <div className="p-6 border-b border-[rgba(130,165,220,0.1)]">
+              <h2 className="text-lg font-semibold text-[#e7eef6]">System Users</h2>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-50">
+                <thead className="bg-[#07090e]">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">User</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Last Login</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Last Login</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+                <tbody className="bg-[#0d111a] divide-y divide-[rgba(130,165,220,0.08)]">
                   {users.map((userData) => (
-                    <tr key={userData.id} className="hover:bg-slate-50">
+                    <tr key={userData.id} className="hover:bg-[#07090e]">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
@@ -164,8 +164,8 @@ export default function UsersPage() {
                             </span>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-slate-900">{userData.name}</div>
-                            <div className="text-sm text-slate-500">{userData.email}</div>
+                            <div className="text-sm font-medium text-[#e7eef6]">{userData.name}</div>
+                            <div className="text-sm text-[#7c8aa0]">{userData.email}</div>
                           </div>
                         </div>
                       </td>
@@ -176,24 +176,24 @@ export default function UsersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${userData.status === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]'
+                            : 'bg-[rgba(255,96,113,0.12)] text-red-800'
                           }`}>
                           {userData.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-900">{userData.lastLogin}</td>
+                      <td className="px-6 py-4 text-sm text-[#e7eef6]">{userData.lastLogin}</td>
                       <td className="px-6 py-4 text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
                             onClick={() => handleEditUser(userData)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-[#5b8cff] hover:text-blue-900"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDeleteUser(userData.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-[#ff6071] hover:text-red-900"
                           >
                             Delete
                           </button>
@@ -207,20 +207,20 @@ export default function UsersPage() {
           </div>
 
           {/* Role Permissions */}
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800">Role Permissions</h2>
+          <div className="mt-8 bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)]">
+            <div className="p-6 border-b border-[rgba(130,165,220,0.1)]">
+              <h2 className="text-lg font-semibold text-[#e7eef6]">Role Permissions</h2>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {Object.entries(roles).map(([role, config]) => (
-                  <div key={role} className="border border-slate-200 rounded-lg p-4">
+                  <div key={role} className="border border-[rgba(130,165,220,0.14)] rounded-lg p-4">
                     <h3 className={`font-semibold mb-3 px-3 py-1 rounded-full text-sm inline-block ${config.color}`}>
                       {role}
                     </h3>
                     <ul className="space-y-2">
                       {config.permissions.map((permission, index) => (
-                        <li key={index} className="flex items-center text-sm text-slate-600">
+                        <li key={index} className="flex items-center text-sm text-[#9aa8bd]">
                           <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
@@ -239,7 +239,7 @@ export default function UsersPage() {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
