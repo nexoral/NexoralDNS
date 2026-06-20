@@ -27,7 +27,27 @@ export default function Features() {
                 <td colSpan={3} className="bg-gray-800 font-semibold">Core DNS Functionality</td>
               </tr>
               <tr>
-                <td>DNS Server (Port 53)</td>
+                <td>DNS over UDP (Port 53)</td>
+                <td>✅</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>
+                  DNS over TCP (Port 53)
+                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-full align-middle">New v3.5.44</span>
+                  <br />
+                  <span className="text-xs text-gray-500">RFC 1035 §4.2.2 · RFC 7766 · auto-enabled</span>
+                </td>
+                <td>✅</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>
+                  DNS over TLS — DoT (Port 853)
+                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-teal-500/20 border border-teal-500/30 text-teal-400 rounded-full align-middle">New v3.5.44</span>
+                  <br />
+                  <span className="text-xs text-gray-500">RFC 7858 · TLS 1.2+ · zero-config self-signed cert</span>
+                </td>
                 <td>✅</td>
                 <td>✅</td>
               </tr>
@@ -238,6 +258,38 @@ export default function Features() {
             Sub-5ms query response times with Redis caching. Optimized for high-volume networks with
             7-layer query processing.
           </p>
+
+          <h3>7. DNS Protocol Support — New in v3.5.44</h3>
+          <p>
+            NexoralDNS supports all three major DNS transports. All protocols share the same 7-layer
+            processing pipeline, Redis cache, block-list engine, and query logger.
+          </p>
+
+          <div className="not-prose grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
+            <div className="p-4 bg-gray-800/60 border border-gray-700 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">📡</span>
+                <span className="font-semibold text-white text-sm">DNS over UDP</span>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">Port 53 · RFC 1035<br />Classic transport. Low latency for small responses.</p>
+            </div>
+            <div className="p-4 bg-blue-950/50 border border-blue-500/30 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">🔗</span>
+                <span className="font-semibold text-white text-sm">DNS over TCP</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-full">New</span>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">Port 53 TCP · RFC 7766<br />Required for DNSSEC, large TXT records, and zone transfers. 2-byte length-prefix framing, 30s idle timeout.</p>
+            </div>
+            <div className="p-4 bg-teal-950/50 border border-teal-500/30 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">🔒</span>
+                <span className="font-semibold text-white text-sm">DNS over TLS</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-teal-500/20 border border-teal-500/30 text-teal-400 rounded-full">New</span>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">Port 853 · RFC 7858<br />Encrypted transport. TLS 1.2+ enforced. Self-signed cert auto-generated on first boot — no config needed.</p>
+            </div>
+          </div>
 
           <h2>Pricing</h2>
 
