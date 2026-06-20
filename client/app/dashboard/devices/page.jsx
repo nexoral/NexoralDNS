@@ -18,7 +18,7 @@ export default function DevicesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#07090e]">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -34,8 +34,8 @@ export default function DevicesPage() {
         {/* Page Content */}
         <main className="p-4 lg:p-6">
           <div className="mb-6">
-            <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">Connected Devices</h1>
-            <p className="text-slate-600">Monitor all devices connected to your network</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">Connected Devices</h1>
+            <p className="text-[#9aa8bd]">Monitor all devices connected to your network</p>
           </div>
 
           <ConnectedDevices />
@@ -45,7 +45,7 @@ export default function DevicesPage() {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

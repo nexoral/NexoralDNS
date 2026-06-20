@@ -56,18 +56,18 @@ export default function TagInput({ value = [], onChange, placeholder = "Enter va
 
   return (
     <div className="w-full">
-      <div className="min-h-[42px] px-3 py-2 border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent bg-white">
+      <div className="min-h-[42px] px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent bg-[#0d111a]">
         <div className="flex flex-wrap gap-2 items-center">
           {tags.map((tag, index) => (
             <span
               key={index}
-              className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-md border border-blue-200"
+              className="inline-flex items-center px-2 py-1 bg-[rgba(91,140,255,0.12)] text-[#5b8cff] text-sm font-medium rounded-md border border-blue-200"
             >
               {tag}
               <button
                 type="button"
                 onClick={() => removeTag(tag)}
-                className="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none"
+                className="ml-2 text-[#5b8cff] hover:text-[#5b8cff] focus:outline-none"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -82,11 +82,11 @@ export default function TagInput({ value = [], onChange, placeholder = "Enter va
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             placeholder={tags.length === 0 ? placeholder : ""}
-            className="flex-1 min-w-[120px] outline-none bg-transparent text-slate-900 placeholder-slate-500"
+            className="flex-1 min-w-[120px] outline-none bg-transparent text-[#e7eef6] placeholder-[#5f6b7d]"
           />
         </div>
       </div>
-      <p className="text-xs text-slate-500 mt-1">
+      <p className="text-xs text-[#7c8aa0] mt-1">
         Press Enter, Tab, or comma to add IP. Example: 192.168.1.100
       </p>
     </div>

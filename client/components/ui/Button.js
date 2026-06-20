@@ -12,15 +12,15 @@ export default function Button({
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent';
 
   const variants = {
-    primary: 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white focus:ring-blue-500',
-    secondary: 'bg-white/10 hover:bg-white/20 text-white border border-white/20 focus:ring-white',
-    danger: 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white focus:ring-red-500'
+    primary: 'bg-gradient-to-r from-[#5b8cff] to-[#34e1d4] hover:from-[#4a7bf0] hover:to-[#28c9bd] text-white focus:ring-[#5b8cff] shadow-md',
+    secondary: 'bg-white/8 hover:bg-white/12 text-[#cdd9e8] border border-[rgba(130,165,220,0.2)] focus:ring-[#5b8cff]',
+    danger: 'bg-[rgba(255,96,113,0.15)] hover:bg-[rgba(255,96,113,0.25)] text-[#ff6071] border border-[rgba(255,96,113,0.3)] focus:ring-[#ff6071]'
   };
 
   const sizes = {
-    sm: 'px-3 py-2 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg'
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-2 text-sm',
+    lg: 'px-6 py-2.5 text-base'
   };
 
   const widthClass = fullWidth ? 'w-full' : '';

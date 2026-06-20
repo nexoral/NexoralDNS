@@ -19,7 +19,7 @@ export default function TopDomains() {
       case 'down':
         return <span className="text-red-500">↘️</span>;
       case 'stable':
-        return <span className="text-slate-500">➡️</span>;
+        return <span className="text-[#7c8aa0]">➡️</span>;
       default:
         return null;
     }
@@ -32,21 +32,21 @@ export default function TopDomains() {
       case 'down':
         return 'text-red-600';
       case 'stable':
-        return 'text-slate-600';
+        return 'text-[#9aa8bd]';
       default:
-        return 'text-slate-600';
+        return 'text-[#9aa8bd]';
     }
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-slate-800">Top Queried Domains</h3>
-          <p className="text-sm text-slate-600">Most requested domains in last 24h</p>
+          <h3 className="text-lg font-semibold text-[#e7eef6]">Top Queried Domains</h3>
+          <p className="text-sm text-[#9aa8bd]">Most requested domains in last 24h</p>
         </div>
-        <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+        <button className="text-sm text-[#5b8cff] hover:text-blue-700 font-medium">
           View Report
         </button>
       </div>
@@ -56,7 +56,7 @@ export default function TopDomains() {
         {domains.map((domain, index) => (
           <div
             key={domain.name}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors animate-fade-in-up"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/3 transition-colors animate-fade-in-up"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             {/* Domain Info */}
@@ -65,15 +65,15 @@ export default function TopDomains() {
                 <span className="text-white font-bold text-sm">{index + 1}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">{domain.name}</p>
-                <p className="text-xs text-slate-500">{domain.queries.toLocaleString()} queries</p>
+                <p className="text-sm font-medium text-[#e7eef6] truncate">{domain.name}</p>
+                <p className="text-xs text-[#7c8aa0]">{domain.queries.toLocaleString()} queries</p>
               </div>
             </div>
 
             {/* Stats */}
             <div className="flex items-center space-x-3">
               <div className="text-right">
-                <p className="text-sm font-semibold text-slate-800">{domain.percentage}%</p>
+                <p className="text-sm font-semibold text-[#e7eef6]">{domain.percentage}%</p>
                 <div className="w-16 bg-slate-200 rounded-full h-1.5 mt-1">
                   <div
                     className="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-1000 ease-out"
@@ -90,10 +90,10 @@ export default function TopDomains() {
       </div>
 
       {/* Summary */}
-      <div className="mt-6 pt-4 border-t border-slate-200">
+      <div className="mt-6 pt-4 border-t border-[rgba(130,165,220,0.14)]">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-600">Total Unique Domains:</span>
-          <span className="font-semibold text-slate-800">2,847</span>
+          <span className="text-[#9aa8bd]">Total Unique Domains:</span>
+          <span className="font-semibold text-[#e7eef6]">2,847</span>
         </div>
       </div>
     </div>

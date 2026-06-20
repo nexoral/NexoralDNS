@@ -113,7 +113,7 @@ export default function DomainsPage() {
   const totalRecords = domains.reduce((sum, d) => sum + d.records, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#07090e]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
@@ -127,8 +127,8 @@ export default function DomainsPage() {
           {/* Page Header */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 mb-2">Create Custom LAN Domain</h1>
-              <p className="text-slate-600">Create and configure custom LAN domains for your network</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">Create Custom LAN Domain</h1>
+              <p className="text-[#9aa8bd]">Create and configure custom LAN domains for your network</p>
             </div>
             <Button onClick={() => setShowDomainModal(true)} variant="primary">
               Add Domain
@@ -137,27 +137,27 @@ export default function DomainsPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Domains</p>
-                  <p className="text-2xl font-bold text-slate-800">{domains.length}</p>
+                  <p className="text-sm font-medium text-[#9aa8bd]">Total Domains</p>
+                  <p className="text-2xl font-bold text-[#e7eef6]">{domains.length}</p>
                 </div>
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-[rgba(91,140,255,0.07)] rounded-lg">
+                  <svg className="w-6 h-6 text-[#5b8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9 3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Active Domains</p>
-                  <p className="text-2xl font-bold text-slate-800">{domains.filter(d => d.status === 'active').length}</p>
+                  <p className="text-sm font-medium text-[#9aa8bd]">Active Domains</p>
+                  <p className="text-2xl font-bold text-[#e7eef6]">{domains.filter(d => d.status === 'active').length}</p>
                 </div>
-                <div className="p-3 bg-green-50 rounded-lg">
+                <div className="p-3 bg-[rgba(61,220,132,0.07)] rounded-lg">
                   <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -165,14 +165,14 @@ export default function DomainsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Total Records</p>
-                  <p className="text-2xl font-bold text-slate-800">{totalRecords}</p>
+                  <p className="text-sm font-medium text-[#9aa8bd]">Total Records</p>
+                  <p className="text-2xl font-bold text-[#e7eef6]">{totalRecords}</p>
                 </div>
                 <div className="p-3 bg-purple-50 rounded-lg">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-[#a78bfa]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
@@ -181,29 +181,29 @@ export default function DomainsPage() {
           </div>
 
           {/* Domains List */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800">Your Domains</h2>
+          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)]">
+            <div className="p-6 border-b border-[rgba(130,165,220,0.1)]">
+              <h2 className="text-lg font-semibold text-[#e7eef6]">Your Domains</h2>
             </div>
 
             {/* Loading State */}
             {isLoading && (
               <div className="p-6 text-center">
                 <LoadingSpinner />
-                <p className="mt-2 text-gray-600">Loading domains...</p>
+                <p className="mt-2 text-[#9aa8bd]">Loading domains...</p>
               </div>
             )}
 
             {/* Error State */}
             {error && !isLoading && (
               <div className="p-6">
-                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+                <div className="bg-[rgba(255,96,113,0.07)] border-l-4 border-[#ff6071] p-4 rounded-md">
                   <div className="flex">
                     <div className="ml-3">
-                      <p className="text-sm text-red-700">{error}</p>
+                      <p className="text-sm text-[#ff6071]">{error}</p>
                       <button
                         onClick={fetchDomains}
-                        className="mt-2 text-sm text-red-700 font-medium underline"
+                        className="mt-2 text-sm text-[#ff6071] font-medium underline"
                       >
                         Try again
                       </button>
@@ -230,8 +230,8 @@ export default function DomainsPage() {
                 {domains.length === 0 && (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">🌐</div>
-                    <h3 className="text-lg font-medium text-slate-800 mb-2">No domains configured</h3>
-                    <p className="text-slate-600 mb-4">Add your first domain to get started</p>
+                    <h3 className="text-lg font-medium text-[#e7eef6] mb-2">No domains configured</h3>
+                    <p className="text-[#9aa8bd] mb-4">Add your first domain to get started</p>
                     <Button onClick={() => setShowDomainModal(true)}>
                       Add First Domain
                     </Button>
@@ -246,7 +246,7 @@ export default function DomainsPage() {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

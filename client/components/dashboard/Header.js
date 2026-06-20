@@ -139,19 +139,19 @@ export default function Header({ onMenuClick, sidebarOpen }) {
   };
 
   return (
-    <header className="bg-white shadow-sm">
-      <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+    <header className="bg-[#090c12] border-b border-[rgba(130,165,220,0.1)]">
+      <div className="px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
         {/* Left Side - Menu Button and Logo */}
         <div className="flex items-center">
           <button
             onClick={onMenuClick}
-            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            className="text-[#9aa8bd] hover:text-[#e7eef6] focus:outline-none transition-colors"
           >
-            <FiMenu className="h-6 w-6" />
+            <FiMenu className="h-5 w-5" />
           </button>
 
           <div className="ml-4">
-            <span className="text-lg font-semibold text-gray-800">
+            <span className="text-base font-semibold text-[#e7eef6] tracking-tight">
               {sidebarOpen ? config.APP_NAME : 'N'}
             </span>
           </div>
@@ -159,42 +159,46 @@ export default function Header({ onMenuClick, sidebarOpen }) {
 
         {/* Right Side - User Dropdown */}
         <div className="flex items-center">
-          {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none"
+              className="flex items-center space-x-2 text-[#cdd9e8] hover:text-[#e7eef6] focus:outline-none transition-colors"
               aria-expanded={dropdownOpen}
               aria-haspopup="true"
             >
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#5b8cff] to-[#34e1d4] flex items-center justify-center text-white text-xs font-bold">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
               <div className="text-left">
                 <span className="block text-sm font-medium">{displayName}</span>
               </div>
-              <FiChevronDown className="h-4 w-4 text-gray-500" />
+              <FiChevronDown className="h-4 w-4 text-[#5f6b7d]" />
             </button>
 
             {/* User Dropdown Menu */}
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                <Link href="/dashboard/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                  <FiUser className="h-4 w-4 mr-2 text-gray-500" />
+              <div className="absolute right-0 mt-2 w-48 bg-[#0d111a] rounded-xl shadow-xl py-1 z-50 border border-[rgba(130,165,220,0.14)] animate-slide-down">
+                <Link href="/dashboard/profile" className="flex items-center px-4 py-2.5 text-sm text-[#cdd9e8] hover:bg-white/5 hover:text-[#e7eef6] transition-colors">
+                  <FiUser className="h-4 w-4 mr-2 text-[#5f6b7d]" />
                   Profile
                 </Link>
-                <Link href="/dashboard/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                  <FiSettings className="h-4 w-4 mr-2 text-gray-500" />
+                <Link href="/dashboard/settings" className="flex items-center px-4 py-2.5 text-sm text-[#cdd9e8] hover:bg-white/5 hover:text-[#e7eef6] transition-colors">
+                  <FiSettings className="h-4 w-4 mr-2 text-[#5f6b7d]" />
                   Settings
                 </Link>
-                <a href="https://dns.nexoral.in" target="_blank" rel="noopener noreferrer" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                  <FiHelpCircle className="h-4 w-4 mr-2 text-gray-500" />
+                <a href="https://dns.nexoral.in" target="_blank" rel="noopener noreferrer" className="flex items-center px-4 py-2.5 text-sm text-[#cdd9e8] hover:bg-white/5 hover:text-[#e7eef6] transition-colors">
+                  <FiHelpCircle className="h-4 w-4 mr-2 text-[#5f6b7d]" />
                   Help
                 </a>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                >
-                  <FiLogOut className="h-4 w-4 mr-2 text-red-500" />
-                  Logout
-                </button>
+                <div className="border-t border-[rgba(130,165,220,0.1)] mt-1 pt-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left flex items-center px-4 py-2.5 text-sm text-[#ff6071] hover:bg-[rgba(255,96,113,0.08)] transition-colors"
+                  >
+                    <FiLogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -212,8 +216,8 @@ export default function Header({ onMenuClick, sidebarOpen }) {
           onClose={() => setShowLogoutModal(false)}
           onConfirm={confirmLogout}
         >
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-700">
+          <div className="bg-[rgba(246,179,82,0.08)] border border-[rgba(246,179,82,0.2)] rounded-lg p-4">
+            <p className="text-sm text-[#f6b352]">
               You will be logged out of your current session and redirected to the login page.
             </p>
           </div>

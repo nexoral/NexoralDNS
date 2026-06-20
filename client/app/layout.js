@@ -25,7 +25,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <body suppressHydrationWarning={true}>
+      <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning={true}>
         {children}
         <ToastContainer
           position="top-right"
@@ -37,7 +37,7 @@ export default function RootLayout({ children }) {
           pauseOnFocusLoss
           draggable
           pauseOnHover
-          theme="light"
+          theme="dark"
         />
         <Toaster
           position="top-right"

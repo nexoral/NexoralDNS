@@ -62,12 +62,12 @@ export default function SystemStatus() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-slate-800">System Status</h3>
-          <p className="text-sm text-slate-600">Real-time server metrics</p>
+          <h3 className="text-lg font-semibold text-[#e7eef6]">System Status</h3>
+          <p className="text-sm text-[#9aa8bd]">Real-time server metrics</p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -82,9 +82,9 @@ export default function SystemStatus() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <span className="text-lg">{metric.icon}</span>
-                <span className="text-sm font-medium text-slate-700">{metric.name}</span>
+                <span className="text-sm font-medium text-[#cdd9e8]">{metric.name}</span>
               </div>
-              <span className="text-sm font-semibold text-slate-800">{metric.value}%</span>
+              <span className="text-sm font-semibold text-[#e7eef6]">{metric.value}%</span>
             </div>
 
             {/* Progress Bar */}
@@ -101,15 +101,15 @@ export default function SystemStatus() {
       </div>
 
       {/* Additional Info */}
-      <div className="mt-6 pt-4 border-t border-slate-200">
+      <div className="mt-6 pt-4 border-t border-[rgba(130,165,220,0.14)]">
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
             <p className="text-2xl font-bold text-green-600">99.9%</p>
-            <p className="text-xs text-slate-600">Uptime</p>
+            <p className="text-xs text-[#9aa8bd]">Uptime</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-blue-600">156ms</p>
-            <p className="text-xs text-slate-600">Avg Response</p>
+            <p className="text-2xl font-bold text-[#5b8cff]">156ms</p>
+            <p className="text-xs text-[#9aa8bd]">Avg Response</p>
           </div>
         </div>
       </div>

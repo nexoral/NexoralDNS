@@ -1,96 +1,149 @@
 @import "tailwindcss";
 
-@layer utilities {
-  .bg-grid-pattern {
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-
-  .animate-slide-in {
-    animation: slideIn 0.3s ease-out;
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
-  }
-
-  .animate-fade-in-up {
-    animation: fadeInUp 0.6s ease-out;
-  }
-
-  .animate-slide-down {
-    animation: slideDown 0.3s ease-out;
-  }
+/* ── Design tokens (matches Docs site) ──────────────────────────────── */
+:root {
+  --bg: #07090e;
+  --sidebar-bg: #090c12;
+  --card-bg: #0d111a;
+  --blue: #5b8cff;
+  --teal: #34e1d4;
+  --green: #3ddc84;
+  --green-dark: #1fae63;
+  --red: #ff6071;
+  --amber: #f6b352;
+  --purple: #a78bfa;
+  --text-1: #e7eef6;
+  --text-2: #cdd9e8;
+  --text-3: #9aa8bd;
+  --text-4: #8b98ac;
+  --text-5: #7c8aa0;
+  --text-6: #5f6b7d;
+  --text-7: #4f5a6e;
+  --border: rgba(130, 165, 220, 0.1);
+  --border-2: rgba(130, 165, 220, 0.14);
+  --border-3: rgba(130, 165, 220, 0.18);
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+/* ── Reset ──────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-geist-sans), 'SF Pro Text', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
+/* ── Selection ──────────────────────────────────────────────────────── */
+::selection { background: rgba(52, 225, 212, 0.25); color: #fff; }
 
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
+/* ── Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.5);
-  border-radius: 3px;
+  background: rgba(130, 165, 220, 0.16);
+  border-radius: 6px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(130, 165, 220, 0.28); }
+
+/* ── Keyframes ──────────────────────────────────────────────────────── */
+@keyframes ndPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+@keyframes ndRing {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes ndShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes ndFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes ndRise {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes ndGlow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(91, 140, 255, 0.18), 0 24px 60px -34px rgba(91, 140, 255, 0.5); }
+  50% { box-shadow: 0 0 0 1px rgba(52, 225, 212, 0.32), 0 24px 70px -30px rgba(52, 225, 212, 0.45); }
+}
+@keyframes ndScan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(2200%); }
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.7);
+/* ── Animation utility classes ──────────────────────────────────────── */
+.nd-rise { animation: ndRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.nd-pulse { animation: ndPulse 1.8s ease-in-out infinite; }
+.nd-ring { animation: ndRing 1.8s ease-out infinite; }
+.nd-shimmer {
+  background: linear-gradient(100deg, var(--blue), var(--teal) 55%, var(--blue));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ndShimmer 7s linear infinite;
+}
+.nd-float { animation: ndFloat 7s ease-in-out infinite; }
+.nd-glow { animation: ndGlow 6s ease-in-out infinite; }
+
+.animate-slide-in { animation: slideIn 0.3s ease-out; }
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.6s ease-out; }
+.animate-slide-down { animation: slideDown 0.3s ease-out; }
+
+/* ── Grid pattern ───────────────────────────────────────────────────── */
+.bg-grid-pattern {
+  background-image: radial-gradient(circle, rgba(130, 165, 220, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-/* Glass morphism effect */
+/* ── Glass ──────────────────────────────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-2);
+}
+
+/* ── Custom scrollbar (thin) ────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+
+/* ── Date/time input dark theme ─────────────────────────────────────── */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* ── Select dark theme ──────────────────────────────────────────────── */
+select option {
+  background: #0d111a;
+  color: #e7eef6;
 }
