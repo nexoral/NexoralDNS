@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Console } from "outers";
-import InputOutputHandler from "../../utilities/IO.utls";
+import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 import { DomainDBPoolService } from "../DB/DB_Pool.service";
 import GlobalDNSforwarder from "../Forwarder/GlobalDNSforwarder.service";
@@ -16,26 +16,28 @@ import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import BlockList from "../Rules/BlockList.service";
 
 export default class StartRulesService {
-  private IO: InputOutputHandler;
-  private server: dgram.Socket;
   private inflight: Map<string, Promise<any>> = new Map(); // Single-flight DB request tracking
+
+  // Ensures the Redis cache:invalidate subscription is registered only once per process
+  // across the 3 singleton instances (UDP, TCP, DoT)
+  static #subscribed = false;
 
   // Service Instances
   private blockList: BlockList;
   private serviceStatusChecker: ServiceStatusChecker;
   private dbPoolService: DomainDBPoolService;
 
-  constructor(IP_handler: InputOutputHandler, server: dgram.Socket) {
-    this.IO = IP_handler;
-    this.server = server;
-
+  constructor() {
     // Initialize services once
     this.blockList = new BlockList();
     this.serviceStatusChecker = new ServiceStatusChecker();
     this.dbPoolService = new DomainDBPoolService();
 
-    // Subscribe to Cache Invalidation Channel
-    RedisCache.subscribe('cache:invalidate', async (message) => {
+    // Subscribe to Cache Invalidation Channel — guarded so only one subscription
+    // is registered per process regardless of how many service instances are created
+    if (!StartRulesService.#subscribed) {
+      StartRulesService.#subscribed = true;
+      RedisCache.subscribe('cache:invalidate', async (message) => {
       // Log only on invalidation event (rare)
       Console.yellow(`🔔 Received Cache Invalidation Request: ${message}`);
 
@@ -51,10 +53,11 @@ export default class StartRulesService {
       }
 
       Console.green('✅ Local Caches Cleared');
-    });
+      });
+    }
   }
 
-  public async execute(msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo): Promise<void | boolean> {
+  public async execute(msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo, io: IDNSIOHandler): Promise<void | boolean> {
     // Start Performance Timer
     const start = performance.now();
 
@@ -63,8 +66,8 @@ export default class StartRulesService {
     }
 
     // Parse query name
-    const queryName: string = this.IO.parseQueryName(msg);
-    const queryType: string = this.IO.parseQueryType(msg);
+    const queryName: string = io.parseQueryName(msg);
+    const queryType: string = io.parseQueryType(msg);
 
     // Analytics Payload
     const AnalyticsMSgPayload: {
@@ -87,7 +90,7 @@ export default class StartRulesService {
 
 
     // Add Rule Checker
-    const serviceStatus: ServiceStatusResult = await this.serviceStatusChecker.checkServiceStatus(queryName, this.IO, msg, rinfo);
+    const serviceStatus: ServiceStatusResult = await this.serviceStatusChecker.checkServiceStatus(queryName, io, msg, rinfo);
 
     if (!serviceStatus.serviceStatus) {
       // Add to Analytics
@@ -115,7 +118,7 @@ export default class StartRulesService {
       AnalyticsMSgPayload.duration = performance.now() - start;
 
       this.publishAnalytics(AnalyticsMSgPayload);
-      this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
+      io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
       return;
     }
 
@@ -168,7 +171,7 @@ export default class StartRulesService {
       this.publishAnalytics(AnalyticsMSgPayload);
 
       // Use buildSendAnswer method from utilities
-      const response = this.IO.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
+      const response = io.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
 
       if (!response) {
         // Add to Analytics
@@ -185,7 +188,7 @@ export default class StartRulesService {
       try {
         const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, serviceStatus.serviceConfig.DefaultTTL, rinfo, start);
         if (forwardedResponse) {
-          const resp: boolean = this.IO.sendRawAnswer(forwardedResponse, rinfo);
+          const resp: boolean = io.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {
             // Add to Analytics
             AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
@@ -204,7 +207,7 @@ export default class StartRulesService {
           this.publishAnalytics(AnalyticsMSgPayload);
 
           Console.red(`No response received from Global DNS for ${queryName}`);
-          this.IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
+          io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
         }
       } catch (error) {
         // Add to Analytics
