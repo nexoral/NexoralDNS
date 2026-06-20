@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import dgram from 'dgram';
+import { IDNSIOHandler } from './IDNSIOHandler';
 
 
 /**
@@ -7,7 +8,7 @@ import dgram from 'dgram';
  * This class provides methods to build and send DNS answer packets
  * in response to incoming DNS queries, as well as to send raw DNS messages.
  */
-export default class InputOutputHandler {
+export default class InputOutputHandler implements IDNSIOHandler {
   private readonly udpInstance: dgram.Socket;
 
   constructor(udpInstance: dgram.Socket) {

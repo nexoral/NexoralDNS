@@ -26,7 +26,7 @@ export default class DNS {
   constructor() {
     this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket for IPv4
     this.IO = new InputOutputHandler(this.server);
-    this.startRulesService = new StartRulesService(this.IO, this.server);
+    this.startRulesService = new StartRulesService();
   }
 
   /**
@@ -59,7 +59,7 @@ export default class DNS {
 
       // IMPORTANT: Recreate StartRulesService with new socket and IO handler
       // This prevents ERR_SOCKET_DGRAM_NOT_RUNNING errors on pending queries
-      this.startRulesService = new StartRulesService(this.IO, this.server);
+      this.startRulesService = new StartRulesService();
 
       // Re-attach event listeners for the new socket
       this.listen();
@@ -91,7 +91,7 @@ export default class DNS {
    */
   public listen(): this {
     this.server.on("message", async (msg, rinfo) => {
-      await this.startRulesService.execute(msg, rinfo);
+      await this.startRulesService.execute(msg, rinfo, this.IO);
     });
     return this;
   }

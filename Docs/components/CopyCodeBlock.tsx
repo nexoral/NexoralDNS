@@ -6,9 +6,10 @@ import { motion } from 'framer-motion';
 interface CopyCodeBlockProps {
   code: string;
   language?: string;
+  wrap?: boolean;
 }
 
-export default function CopyCodeBlock({ code, language = 'bash' }: CopyCodeBlockProps) {
+export default function CopyCodeBlock({ code, language = 'bash', wrap = false }: CopyCodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -43,7 +44,7 @@ export default function CopyCodeBlock({ code, language = 'bash' }: CopyCodeBlock
           )}
         </motion.button>
       </div>
-      <pre className="bg-gray-950 border border-gray-800 rounded-lg p-4 overflow-x-auto">
+      <pre className={`bg-gray-950 border border-gray-800 rounded-lg p-4 ${wrap ? "whitespace-pre-wrap break-all overflow-x-hidden" : "overflow-x-auto"}`}>
         <code className={`language-${language} text-sm text-gray-300 font-mono`}>
           {code}
         </code>

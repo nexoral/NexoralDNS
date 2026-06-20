@@ -2,7 +2,7 @@
 import { Console } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
-import InputOutputHandler from "../../utilities/IO.utls";
+import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 
 // Cache Settings
@@ -27,7 +27,7 @@ export default class ServiceStatusChecker {
    */
   public async checkServiceStatus(
     queryName: string,
-    IO: InputOutputHandler,
+    IO: IDNSIOHandler,
     msg: Buffer<ArrayBufferLike>,
     rinfo: dgram.RemoteInfo
   ): Promise<ServiceStatusResult> {

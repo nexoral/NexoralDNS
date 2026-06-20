@@ -3,7 +3,10 @@ import CopyCodeBlock from "@/components/CopyCodeBlock";
 import { FadeIn, StaggerContainer, StaggerItem, ScaleIn } from "@/components/MotionWrapper";
 
 export default function Home() {
-  const installCommand = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -";
+  const installCommand  = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -";
+  const startCommand   = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s start";
+  const stopCommand    = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s stop";
+  const removeCommand  = "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove";
 
   return (
     <div className="min-h-screen">
@@ -85,13 +88,263 @@ export default function Home() {
                 <p className="text-gray-400 text-sm mb-4 mt-2">
                   Copy and paste this command into your terminal to install NexoralDNS:
                 </p>
-                <CopyCodeBlock code={installCommand} />
+                <CopyCodeBlock code={installCommand} wrap />
                 <p className="text-xs text-gray-500 mt-4 text-center">
                   Automatically installs Docker, downloads the latest version, and starts all services.
                 </p>
               </div>
             </div>
           </ScaleIn>
+
+          {/* Additional command cards */}
+          <StaggerContainer className="max-w-4xl mx-auto flex flex-col gap-4">
+
+            {/* Start */}
+            <StaggerItem>
+              <div className="relative p-6 sm:p-8 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-2xl">
+                <div className="absolute -top-3 left-6">
+                  <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1.5">
+                    <span>▶</span> Start Services
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm mb-4 mt-2">
+                  Start NexoralDNS services if they are stopped:
+                </p>
+                <CopyCodeBlock code={startCommand} wrap />
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                  Starts all services without reinstalling. ▶️
+                </p>
+              </div>
+            </StaggerItem>
+
+            {/* Stop */}
+            <StaggerItem>
+              <div className="relative p-6 sm:p-8 bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-2xl">
+                <div className="absolute -top-3 left-6">
+                  <span className="px-3 py-1 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold rounded-full flex items-center gap-1.5">
+                    <span>■</span> Stop Services
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm mb-4 mt-2">
+                  Stop all NexoralDNS services gracefully:
+                </p>
+                <CopyCodeBlock code={stopCommand} wrap />
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                  Stops services without removing the installation. ⏹️
+                </p>
+              </div>
+            </StaggerItem>
+
+            {/* Remove */}
+            <StaggerItem>
+              <div className="relative p-6 sm:p-8 bg-gradient-to-br from-gray-900 to-red-950/20 border border-gray-800 hover:border-red-900/40 rounded-2xl transition-colors duration-300">
+                <div className="absolute -top-3 left-6">
+                  <span className="px-3 py-1 bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-semibold rounded-full flex items-center gap-1.5">
+                    <span>✕</span> Complete Removal
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm mb-4 mt-2">
+                  Completely uninstall NexoralDNS and all associated data:
+                </p>
+                <CopyCodeBlock code={removeCommand} wrap />
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                  Removes all services, containers, images, and data. 🗑️
+                </p>
+              </div>
+            </StaggerItem>
+
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* ── What's New in v3.5.44 ─────────────────────────────────────────────── */}
+      <section className="px-4 sm:px-6 lg:px-12 py-16 relative overflow-hidden">
+        {/* Ambient glow behind the whole section */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute left-1/4 top-0 w-96 h-96 bg-blue-600/8 rounded-full blur-3xl"></div>
+          <div className="absolute right-1/4 bottom-0 w-96 h-96 bg-teal-600/8 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative max-w-6xl mx-auto">
+          {/* Section header */}
+          <div className="text-center mb-12 slide-up-1">
+            {/* Version badge with animated gradient border */}
+            <div className="inline-flex items-center gap-2.5 mb-5 px-5 py-2 rounded-full text-xs font-bold tracking-widest uppercase text-white badge-flow">
+              <span className="relative flex h-2 w-2 flex-shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+              </span>
+              What&apos;s New · v3.5.44-stable
+            </div>
+
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4 leading-tight">
+              <span className="animate-shimmer-text">DNS Protocol Expansion</span>
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
+              NexoralDNS now speaks all three major DNS transports — plain UDP, reliable TCP,
+              and encrypted TLS — with zero configuration changes.
+            </p>
+          </div>
+
+          {/* Protocol comparison pills */}
+          <div className="flex justify-center flex-wrap gap-3 mb-12 slide-up-2">
+            <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gray-800/70 border border-gray-700 text-gray-400">
+              <span className="text-lg">📡</span>
+              <span className="font-mono font-semibold text-sm">UDP</span>
+              <span className="font-mono text-xs px-2 py-0.5 bg-black/30 rounded text-gray-500">:53</span>
+              <span className="text-xs text-gray-600">Classic</span>
+            </div>
+            <div className="flex items-center gap-2 px-1 text-gray-700">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-blue-950/60 border border-blue-500/40 text-blue-300 animate-glow-blue">
+              <span className="text-lg">🔗</span>
+              <span className="font-mono font-semibold text-sm">TCP</span>
+              <span className="font-mono text-xs px-2 py-0.5 bg-black/30 rounded text-blue-400">:53</span>
+              <span className="text-xs px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-blue-300">New</span>
+            </div>
+            <div className="flex items-center gap-2 px-1 text-gray-700">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-teal-950/60 border border-teal-500/40 text-teal-300 animate-glow-teal">
+              <span className="text-lg">🔒</span>
+              <span className="font-mono font-semibold text-sm">TLS</span>
+              <span className="font-mono text-xs px-2 py-0.5 bg-black/30 rounded text-teal-400">:853</span>
+              <span className="text-xs px-2 py-0.5 bg-teal-500/20 border border-teal-500/30 rounded-full text-teal-300">New</span>
+            </div>
+          </div>
+
+          {/* Feature cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+            {/* DNS over TCP card */}
+            <div className="slide-up-3 group relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-950/50 via-gray-900 to-gray-900 p-8 animate-glow-blue hover:border-blue-400/50 transition-colors duration-500">
+              {/* Corner accent */}
+              <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-blue-500/15 transition-colors duration-500"></div>
+              {/* Scan line effect */}
+              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent top-0 scan-line"></div>
+
+              <div className="relative">
+                {/* Card header */}
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-14 h-14 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-2xl animate-float flex-shrink-0">
+                    🔗
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h3 className="text-xl font-bold text-white">DNS over TCP</h3>
+                      <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400">NEW</span>
+                    </div>
+                    <p className="text-xs font-mono text-gray-500">Port 53 TCP · RFC 1035 §4.2.2 · RFC 7766</p>
+                  </div>
+                </div>
+
+                <p className="text-gray-300 text-sm leading-relaxed mb-5">
+                  Full TCP transport for DNS — required for responses over 512 bytes, DNSSEC chains,
+                  and zone transfers. Handles RFC-compliant 2-byte length-prefix framing automatically
+                  so existing DNS clients work without modification.
+                </p>
+
+                {/* Highlights */}
+                <ul className="space-y-2 mb-6">
+                  {[
+                    ["Large response support", "DNSSEC, TXT, many-answer records"],
+                    ["RFC 7766 idle timeout", "30s keepalive, auto-disconnects stale clients"],
+                    ["Singleton architecture", "Shared single-flight cache across all TCP connections"],
+                    ["Zero-config startup", "Starts alongside UDP automatically"],
+                  ].map(([label, detail], i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs">
+                      <span className="text-blue-400 mt-0.5 flex-shrink-0">›</span>
+                      <span>
+                        <span className="text-gray-200 font-medium">{label}</span>
+                        <span className="text-gray-500"> — {detail}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Code snippet */}
+                <div className="p-3 bg-black/50 rounded-lg border border-blue-900/50 font-mono text-xs">
+                  <p className="text-gray-600 mb-1"># Test DNS over TCP</p>
+                  <p>
+                    <span className="text-green-400">dig</span>
+                    <span className="text-gray-300"> +tcp google.com @</span>
+                    <span className="text-blue-400">10.x.x.x</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* DNS over TLS card */}
+            <div className="slide-up-4 group relative overflow-hidden rounded-2xl border border-teal-500/30 bg-gradient-to-br from-teal-950/50 via-gray-900 to-gray-900 p-8 animate-glow-teal hover:border-teal-400/50 transition-colors duration-500">
+              <div className="absolute -top-12 -right-12 w-40 h-40 bg-teal-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-teal-500/15 transition-colors duration-500"></div>
+              <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-500/40 to-transparent top-0 scan-line" style={{animationDelay: "1.25s"}}></div>
+
+              <div className="relative">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-14 h-14 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-2xl animate-float-late flex-shrink-0">
+                    🔒
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h3 className="text-xl font-bold text-white">DNS over TLS</h3>
+                      <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-teal-500/20 border border-teal-500/30 text-teal-400">NEW</span>
+                    </div>
+                    <p className="text-xs font-mono text-gray-500">Port 853 · RFC 7858 · DoT</p>
+                  </div>
+                </div>
+
+                <p className="text-gray-300 text-sm leading-relaxed mb-5">
+                  Encrypted DNS transport using TLS 1.2+ to prevent eavesdropping and DNS spoofing.
+                  A self-signed certificate is auto-generated via <code className="text-teal-400 bg-teal-900/30 border-teal-800">openssl</code> on first
+                  boot and persisted to disk — no manual certificate setup required.
+                </p>
+
+                <ul className="space-y-2 mb-6">
+                  {[
+                    ["TLS 1.2+ enforced", "TLS 1.3 preferred per RFC 7858 §3.1"],
+                    ["Auto cert generation", "Self-signed via openssl, saved to /etc/nexoral/cert"],
+                    ["Shared across restarts", "Cert persisted on disk — clients won't see cert changes"],
+                    ["Same 7-layer pipeline", "Identical block-list, cache, and upstream logic as UDP"],
+                  ].map(([label, detail], i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs">
+                      <span className="text-teal-400 mt-0.5 flex-shrink-0">›</span>
+                      <span>
+                        <span className="text-gray-200 font-medium">{label}</span>
+                        <span className="text-gray-500"> — {detail}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="p-3 bg-black/50 rounded-lg border border-teal-900/50 font-mono text-xs">
+                  <p className="text-gray-600 mb-1"># Test DNS over TLS</p>
+                  <p>
+                    <span className="text-green-400">kdig</span>
+                    <span className="text-gray-300"> -p 853 @</span>
+                    <span className="text-teal-400">10.x.x.x</span>
+                    <span className="text-gray-300"> +tls google.com</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Shared pipeline callout */}
+          <div className="slide-up-4 p-5 bg-gray-900/70 border border-gray-800 rounded-xl text-center">
+            <p className="text-sm text-gray-400">
+              All three transports share the same{" "}
+              <span className="text-white font-semibold">7-layer query processor</span>,{" "}
+              <span className="text-white font-semibold">Redis cache</span>,{" "}
+              <span className="text-white font-semibold">block-list engine</span>, and{" "}
+              <span className="text-white font-semibold">analytics pipeline</span> —
+              consistent behaviour regardless of how a client connects.
+            </p>
+          </div>
         </div>
       </section>
 

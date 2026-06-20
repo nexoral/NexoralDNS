@@ -212,3 +212,86 @@ hr {
   background: var(--accent-blue);
   color: white;
 }
+
+/* ── What's New — Pure CSS Animations ─────────────────────────────────────── */
+
+@keyframes shimmer-text {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes glow-blue {
+  0%, 100% { box-shadow: 0 0 18px rgba(59,130,246,0.25), 0 0 36px rgba(59,130,246,0.08); }
+  50%       { box-shadow: 0 0 32px rgba(59,130,246,0.50), 0 0 64px rgba(59,130,246,0.18); }
+}
+
+@keyframes glow-teal {
+  0%, 100% { box-shadow: 0 0 18px rgba(20,184,166,0.25), 0 0 36px rgba(20,184,166,0.08); }
+  50%       { box-shadow: 0 0 32px rgba(20,184,166,0.50), 0 0 64px rgba(20,184,166,0.18); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes badge-flow {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+@keyframes scan {
+  0%   { transform: translateY(0%);   opacity: 0.7; }
+  100% { transform: translateY(400%); opacity: 0;   }
+}
+
+@keyframes border-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Utility classes */
+.animate-shimmer-text {
+  background: linear-gradient(90deg, #60a5fa, #22d3ee, #a78bfa, #22d3ee, #60a5fa);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer-text 4s linear infinite;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-float-late {
+  animation: float 4s ease-in-out 2s infinite;
+}
+
+.animate-glow-blue {
+  animation: glow-blue 3s ease-in-out infinite;
+}
+
+.animate-glow-teal {
+  animation: glow-teal 3s ease-in-out infinite;
+}
+
+.slide-up-1 { animation: slide-up 0.55s ease-out 0.05s both; }
+.slide-up-2 { animation: slide-up 0.55s ease-out 0.15s both; }
+.slide-up-3 { animation: slide-up 0.55s ease-out 0.25s both; }
+.slide-up-4 { animation: slide-up 0.55s ease-out 0.35s both; }
+
+.badge-flow {
+  background: linear-gradient(270deg, #3b82f6, #06b6d4, #8b5cf6, #06b6d4, #3b82f6);
+  background-size: 300% 300%;
+  animation: badge-flow 5s ease infinite;
+}
+
+.scan-line {
+  animation: scan 2.5s linear infinite;
+}

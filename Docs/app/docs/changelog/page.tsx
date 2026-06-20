@@ -8,10 +8,22 @@ export const metadata: Metadata = {
 
 const changelog = [
   {
-    version: "1.2.0",
-    date: "January 15, 2024",
+    version: "3.5.44-stable",
+    date: "June 20, 2026",
     tag: "Latest",
     tagColor: "green",
+    changes: [
+      { type: "feature", text: "DNS over TCP (port 53) — RFC 1035 §4.2.2 / RFC 7766 compliant; per-connection 2-byte length-prefix framing with 30s idle timeout" },
+      { type: "feature", text: "DNS over TLS / DoT (port 853) — RFC 7858 compliant; TLS 1.2+ enforced, self-signed certificate auto-generated via openssl on first boot" },
+      { type: "feature", text: "IDNSIOHandler interface — unified IO contract enabling UDP, TCP, and TLS to share the same 7-layer processing pipeline with zero code duplication" },
+      { type: "improvement", text: "StartRulesService refactored to singleton per transport — shared single-flight inflight Map across all connections, reducing redundant upstream calls" },
+      { type: "improvement", text: "Static Redis subscription guard (static #subscribed) — prevents duplicate cache:invalidate listeners in cluster/multi-transport mode" },
+      { type: "improvement", text: "TLS cert persisted to disk at /etc/nexoral/cert — shared across restarts and all cluster workers, no repeated cert generation" },
+    ]
+  },
+  {
+    version: "1.2.0",
+    date: "January 15, 2024",
     changes: [
       { type: "feature", text: "Added support for wildcard domain blocking (e.g., *.ads.com)" },
       { type: "feature", text: "Introduced \"Staggered Animations\" in the documentation site" },
