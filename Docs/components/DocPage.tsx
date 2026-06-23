@@ -133,39 +133,43 @@ function Table({ b }: { b: Extract<Block, { type: 'table' }> }) {
       overflow: 'hidden',
       background: 'rgba(12,17,26,.4)',
     }}>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: b.grid,
-        gap: 14,
-        padding: '11px 18px',
-        background: 'rgba(255,255,255,.02)',
-        borderBottom: '1px solid rgba(130,165,220,.12)',
-      }}>
-        {b.head.map((h, i) => (
-          <span key={i} style={{
-            fontFamily: 'var(--font-geist-mono)',
-            fontSize: 10.5,
-            letterSpacing: '.12em',
-            textTransform: 'uppercase',
-            color: '#5f6b7d',
-          }}>{h}</span>
-        ))}
-      </div>
-      {b.rows.map((row, i) => (
-        <div key={i} style={{
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{
           display: 'grid',
           gridTemplateColumns: b.grid,
           gap: 14,
           padding: '11px 18px',
-          borderTop: '1px solid rgba(130,165,220,.06)',
-          alignItems: 'center',
+          background: 'rgba(255,255,255,.02)',
+          borderBottom: '1px solid rgba(130,165,220,.12)',
+          minWidth: 420,
         }}>
-          <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 12.5, color: '#6ee9df', fontWeight: 500 }}>{row.key}</span>
-          {row.cells.map((cell, ci) => (
-            <span key={ci} style={{ fontSize: 13, color: '#aeb9ca' }}>{cell}</span>
+          {b.head.map((h, i) => (
+            <span key={i} style={{
+              fontFamily: 'var(--font-geist-mono)',
+              fontSize: 10.5,
+              letterSpacing: '.12em',
+              textTransform: 'uppercase',
+              color: '#5f6b7d',
+            }}>{h}</span>
           ))}
         </div>
-      ))}
+        {b.rows.map((row, i) => (
+          <div key={i} style={{
+            display: 'grid',
+            gridTemplateColumns: b.grid,
+            gap: 14,
+            padding: '11px 18px',
+            borderTop: '1px solid rgba(130,165,220,.06)',
+            alignItems: 'center',
+            minWidth: 420,
+          }}>
+            <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 12.5, color: '#6ee9df', fontWeight: 500 }}>{row.key}</span>
+            {row.cells.map((cell, ci) => (
+              <span key={ci} style={{ fontSize: 13, color: '#aeb9ca' }}>{cell}</span>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -222,7 +226,7 @@ function KV({ b }: { b: Extract<Block, { type: 'kv' }> }) {
           background: 'rgba(12,17,26,.3)',
           flexWrap: 'wrap',
         }}>
-          <span style={{ flexShrink: 0, width: 200, fontWeight: 600, color: '#dbe4ef', fontSize: 14 }}>{kv.k}</span>
+          <span style={{ flexShrink: 0, minWidth: 140, maxWidth: 220, fontWeight: 600, color: '#dbe4ef', fontSize: 14 }}>{kv.k}</span>
           <span style={{ fontSize: 13.5, color: '#9aa8bd', lineHeight: 1.55 }}>{kv.v}</span>
         </div>
       ))}
@@ -250,18 +254,20 @@ function Matrix({ b }: { b: Extract<Block, { type: 'matrix' }> }) {
         }}>{b.heading}</div>
       )}
       <div style={{ border: '1px solid rgba(130,165,220,.12)', borderRadius: 13, overflow: 'hidden', background: 'rgba(12,17,26,.4)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.7fr .8fr .8fr', gap: 14, padding: '11px 18px', background: 'rgba(255,255,255,.02)', borderBottom: '1px solid rgba(130,165,220,.12)' }}>
-          <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5f6b7d' }}>Feature</span>
-          <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5f6b7d' }}>Free</span>
-          <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, letterSpacing: '.12em', textTransform: 'uppercase', color: '#74e6a4' }}>Premium</span>
-        </div>
-        {b.rows.map(([label, free, prem], i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.7fr .8fr .8fr', gap: 14, padding: '12px 18px', borderTop: '1px solid rgba(130,165,220,.06)', alignItems: 'center' }}>
-            <span style={{ fontSize: 13.5, color: '#cdd9e8' }}>{label}</span>
-            <span style={{ fontSize: 13, color: colOf(free), fontWeight: 500 }}>{free}</span>
-            <span style={{ fontSize: 13, color: colOf(prem), fontWeight: 500 }}>{prem}</span>
+        <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.7fr .8fr .8fr', gap: 14, padding: '11px 18px', background: 'rgba(255,255,255,.02)', borderBottom: '1px solid rgba(130,165,220,.12)', minWidth: 380 }}>
+            <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5f6b7d' }}>Feature</span>
+            <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, letterSpacing: '.12em', textTransform: 'uppercase', color: '#5f6b7d' }}>Free</span>
+            <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 10.5, letterSpacing: '.12em', textTransform: 'uppercase', color: '#74e6a4' }}>Premium</span>
           </div>
-        ))}
+          {b.rows.map(([label, free, prem], i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.7fr .8fr .8fr', gap: 14, padding: '12px 18px', borderTop: '1px solid rgba(130,165,220,.06)', alignItems: 'center', minWidth: 380 }}>
+              <span style={{ fontSize: 13.5, color: '#cdd9e8' }}>{label}</span>
+              <span style={{ fontSize: 13, color: colOf(free), fontWeight: 500 }}>{free}</span>
+              <span style={{ fontSize: 13, color: colOf(prem), fontWeight: 500 }}>{prem}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -486,13 +492,21 @@ export default function DocPage({ group, title, badge, intro, blocks }: DocPageP
       </div>
 
       <style>{`
+        @media (max-width: 1023px) {
+          .doc-content { padding: 40px 32px 0 !important; }
+          .doc-content h1 { font-size: 32px !important; }
+          .responsive-cards { grid-template-columns: 1fr 1fr !important; }
+          .responsive-next { grid-template-columns: 1fr 1fr !important; }
+        }
         @media (max-width: 767px) {
-          .doc-content { padding: 32px 24px 0 !important; }
-          .doc-content h1 { font-size: 28px !important; }
+          .doc-content { padding: 32px 20px 0 !important; }
+          .doc-content h1 { font-size: 26px !important; }
           .responsive-cards { grid-template-columns: 1fr !important; }
           .responsive-next { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 479px) {
+          .doc-content { padding: 24px 16px 0 !important; }
+          .doc-content h1 { font-size: 22px !important; }
           .responsive-next { grid-template-columns: 1fr !important; }
         }
         .card-hover:hover { border-color: rgba(52,225,212,.3) !important; }
