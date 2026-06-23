@@ -25,8 +25,9 @@
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────── */
-* { box-sizing: border-box; }
+* { box-sizing: border-box; min-width: 0; }
 html, body { margin: 0; padding: 0; }
+html { overflow-x: hidden; }
 body {
   background: var(--bg);
   color: var(--text-1);

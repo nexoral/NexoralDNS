@@ -58,7 +58,7 @@ const explore = [
 export default function Home() {
   return (
     <>
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '64px 56px 0' }} className="home-content">
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '64px 56px 0', overflow: 'hidden' }} className="home-content">
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <section style={{ display: 'grid', gridTemplateColumns: '1.15fr .95fr', gap: 54, alignItems: 'center' }} className="hero-grid nd-rise">
@@ -171,9 +171,9 @@ export default function Home() {
         </section>
 
         {/* ── SERVICE COMMANDS ─────────────────────────────────────────── */}
-        <section style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+        <section style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr', gap: 16, overflow: 'hidden' }}>
           {svcCmds.map((c, i) => (
-            <div key={i} style={{ borderRadius: 16, padding: 20, background: 'rgba(12,17,26,.6)', border: `1px solid ${c.border}` }}>
+            <div key={i} style={{ borderRadius: 16, padding: 20, background: 'rgba(12,17,26,.6)', border: `1px solid ${c.border}`, minWidth: 0, overflow: 'hidden' }}>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
                 padding: '4px 11px', borderRadius: 999,
@@ -223,9 +223,9 @@ export default function Home() {
           </div>
 
           {/* Proto cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 34, textAlign: 'left' }} className="proto-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 34, textAlign: 'left', overflow: 'hidden' }} className="proto-grid">
             {/* TCP */}
-            <div style={{ position: 'relative', borderRadius: 18, padding: 26, background: 'linear-gradient(180deg,rgba(91,140,255,.06),rgba(8,11,17,.4))', border: '1px solid rgba(91,140,255,.24)', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', borderRadius: 18, padding: 26, background: 'linear-gradient(180deg,rgba(91,140,255,.06),rgba(8,11,17,.4))', border: '1px solid rgba(91,140,255,.24)', overflow: 'hidden', minWidth: 0 }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,#5b8cff,transparent)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 6 }}>
                 <h3 style={{ margin: 0, fontSize: 21, fontWeight: 600, color: '#eef3f9' }}>DNS over TCP</h3>
@@ -250,7 +250,7 @@ export default function Home() {
             </div>
 
             {/* DoT */}
-            <div style={{ position: 'relative', borderRadius: 18, padding: 26, background: 'linear-gradient(180deg,rgba(52,225,212,.06),rgba(8,11,17,.4))', border: '1px solid rgba(52,225,212,.24)', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', borderRadius: 18, padding: 26, background: 'linear-gradient(180deg,rgba(52,225,212,.06),rgba(8,11,17,.4))', border: '1px solid rgba(52,225,212,.24)', overflow: 'hidden', minWidth: 0 }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,#34e1d4,transparent)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 6 }}>
                 <h3 style={{ margin: 0, fontSize: 21, fontWeight: 600, color: '#eef3f9' }}>DNS over TLS</h3>
@@ -307,7 +307,7 @@ export default function Home() {
                 background: 'rgba(61,220,132,.14)', border: '1px solid rgba(61,220,132,.28)', color: '#74e6a4',
               }}>Node.js DNS Server</span>
             </div>
-            <div style={{ fontSize: 88, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1, background: 'linear-gradient(135deg,#f6b352,#ffd580)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+            <div className="qps-stat" style={{ fontSize: 88, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1, background: 'linear-gradient(135deg,#f6b352,#ffd580)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
               8,050
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: '#cdd9e8', letterSpacing: '.06em', marginTop: 6 }}>
@@ -508,21 +508,31 @@ export default function Home() {
         @media (max-width: 1023px) {
           .hero-grid { grid-template-columns: 1fr !important; }
           .hero-grid > div:last-child { display: none; }
-        }
-        @media (max-width: 767px) {
-          .home-content { padding: 40px 24px 0 !important; }
-          .home-content h1 { font-size: 36px !important; }
+          .home-content { padding: 48px 36px 0 !important; }
+          .home-content h1 { font-size: 42px !important; }
+          .home-content h2 { font-size: 28px !important; }
           .features-grid { grid-template-columns: 1fr 1fr !important; }
           .usecases-grid { grid-template-columns: 1fr 1fr !important; }
           .explore-grid { grid-template-columns: 1fr 1fr !important; }
+          .qps-stat { font-size: 64px !important; }
+        }
+        @media (max-width: 767px) {
+          .home-content { padding: 36px 20px 0 !important; }
+          .home-content h1 { font-size: 32px !important; }
+          .home-content h2 { font-size: 24px !important; }
           .proto-grid { grid-template-columns: 1fr !important; }
           .problem-grid { grid-template-columns: 1fr !important; }
           .lan-grid { grid-template-columns: 1fr !important; }
+          .qps-stat { font-size: 52px !important; }
         }
         @media (max-width: 479px) {
+          .home-content { padding: 28px 16px 0 !important; }
+          .home-content h1 { font-size: 26px !important; }
+          .home-content h2 { font-size: 22px !important; }
           .features-grid { grid-template-columns: 1fr !important; }
           .usecases-grid { grid-template-columns: 1fr !important; }
           .explore-grid { grid-template-columns: 1fr 1fr !important; }
+          .qps-stat { font-size: 44px !important; }
         }
         .card-hover:hover { border-color: rgba(52,225,212,.3) !important; background: rgba(14,20,30,.8) !important; }
         .explore-card:hover { border-color: rgba(52,225,212,.34) !important; transform: translateY(-2px); }

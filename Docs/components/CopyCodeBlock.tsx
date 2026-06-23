@@ -28,6 +28,8 @@ export default function CopyCodeBlock({ code, label = 'bash', prompt = true }: P
       overflow: 'hidden',
       fontFamily: 'var(--font-geist-mono),SF Mono,monospace',
       boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -28px rgba(0,0,0,.9)',
+      maxWidth: '100%',
+      minWidth: 0,
     }}>
       {/* Title bar */}
       <div style={{

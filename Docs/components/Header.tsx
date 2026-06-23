@@ -56,7 +56,7 @@ export default function Header() {
 
   return (
     <>
-      <header style={{
+      <header className="nd-header" style={{
         position: 'sticky',
         top: 0,
         zIndex: 30,
@@ -80,6 +80,7 @@ export default function Header() {
         {/* Search */}
         <button
           onClick={() => { setOpen(true); setQ(''); }}
+          className="nd-search-btn"
           style={{
             marginLeft: 'auto',
             display: 'flex',
@@ -100,8 +101,8 @@ export default function Header() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
           </svg>
-          <span>Search docs</span>
-          <span style={{
+          <span className="nd-search-text">Search docs</span>
+          <span className="nd-search-kbd" style={{
             fontFamily: 'var(--font-geist-mono)',
             fontSize: 11,
             color: '#5f6b7d',
@@ -116,6 +117,7 @@ export default function Header() {
           href="https://github.com/nexoral/NexoralDNS"
           target="_blank"
           rel="noopener noreferrer"
+          className="nd-github-btn"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -242,6 +244,17 @@ export default function Header() {
 
       <style>{`
         .palette-item:hover { background: rgba(91,140,255,.1); }
+        @media (max-width: 1023px) {
+          .nd-header { padding: 0 16px 0 72px !important; gap: 12px !important; }
+        }
+        @media (max-width: 599px) {
+          .nd-search-text { display: none !important; }
+          .nd-search-kbd { display: none !important; }
+          .nd-header { padding: 0 12px 0 68px !important; gap: 8px !important; }
+        }
+        @media (max-width: 479px) {
+          .nd-github-btn { display: none !important; }
+        }
       `}</style>
     </>
   );
