@@ -22,7 +22,11 @@ export default function DomainsPage() {
   const [domains, setDomains] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { user } = useAuthStore();
+  const { user, hasAnyPermission } = useAuthStore();
+  // Mirrors the server's PermissionGuard.canAccess(...) gates: canAccess(1) to create,
+  // canAccess(2) to delete — these differ, so each action is gated independently
+  const canAddDomain = hasAnyPermission([4, 1]);
+  const canDeleteDomain = hasAnyPermission([4, 2]);
 
   // Fetch domains from API
   const fetchDomains = async () => {
@@ -130,9 +134,11 @@ export default function DomainsPage() {
               <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">Create Custom LAN Domain</h1>
               <p className="text-[#9aa8bd]">Create and configure custom LAN domains for your network</p>
             </div>
-            <Button onClick={() => setShowDomainModal(true)} variant="primary">
-              Add Domain
-            </Button>
+            {canAddDomain && (
+              <Button onClick={() => setShowDomainModal(true)} variant="primary">
+                Add Domain
+              </Button>
+            )}
           </div>
 
           {/* Stats */}
@@ -221,7 +227,7 @@ export default function DomainsPage() {
                     <DomainCard
                       key={domain.id}
                       domain={domain}
-                      onDelete={() => handleDeleteDomain(domain)}
+                      onDelete={canDeleteDomain ? () => handleDeleteDomain(domain) : undefined}
                       onManageRecords={() => handleManageRecords(domain)}
                     />
                   ))}
@@ -232,9 +238,11 @@ export default function DomainsPage() {
                     <div className="text-6xl mb-4">🌐</div>
                     <h3 className="text-lg font-medium text-[#e7eef6] mb-2">No domains configured</h3>
                     <p className="text-[#9aa8bd] mb-4">Add your first domain to get started</p>
-                    <Button onClick={() => setShowDomainModal(true)}>
-                      Add First Domain
-                    </Button>
+                    {canAddDomain && (
+                      <Button onClick={() => setShowDomainModal(true)}>
+                        Add First Domain
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

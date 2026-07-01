@@ -148,6 +148,44 @@ export const api = {
 
   deleteIPGroup: (groupId) =>
     apiClient.delete(`${getApiUrl('DELETE_IP_GROUP')}/${groupId}`),
+
+  // User Management
+  createUser: (data) =>
+    apiClient.post(getApiUrl('CREATE_USER'), data),
+
+  getUsers: (params) =>
+    apiClient.get(getApiUrl('GET_USERS'), { params }),
+
+  getUserById: (userId) =>
+    apiClient.get(`${getApiUrl('GET_USER')}/${userId}`),
+
+  updateUser: (userId, data) =>
+    apiClient.put(`${getApiUrl('UPDATE_USER')}/${userId}`, data),
+
+  resetUserPassword: (userId, newPassword) =>
+    apiClient.patch(`${getApiUrl('RESET_USER_PASSWORD')}/${userId}/reset-password`, { newPassword }),
+
+  deleteUser: (userId) =>
+    apiClient.delete(`${getApiUrl('DELETE_USER')}/${userId}`),
+
+  // Role Management
+  createRole: (data) =>
+    apiClient.post(getApiUrl('CREATE_ROLE'), data),
+
+  getRoles: (params) =>
+    apiClient.get(getApiUrl('GET_ROLES'), { params }),
+
+  getRoleById: (roleId) =>
+    apiClient.get(`${getApiUrl('GET_ROLE')}/${roleId}`),
+
+  updateRole: (roleId, data) =>
+    apiClient.put(`${getApiUrl('UPDATE_ROLE')}/${roleId}`, data),
+
+  deleteRole: (roleId) =>
+    apiClient.delete(`${getApiUrl('DELETE_ROLE')}/${roleId}`),
+
+  getPermissions: () =>
+    apiClient.get(getApiUrl('GET_PERMISSIONS')),
 };
 
 export default api;

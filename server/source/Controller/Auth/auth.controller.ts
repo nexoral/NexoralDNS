@@ -3,6 +3,7 @@ import LoginService from "../../Services/Auth/Login.service";
 import ChangePasswordService from "../../Services/Auth/ChangePassword.service";
 import LogoutService from "../../Services/Auth/Logout.service";
 import RefreshTokenService from "../../Services/Auth/RefreshToken.service";
+import VerifySessionService from "../../Services/Auth/VerifySession.service";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 
@@ -104,8 +105,18 @@ export default class AuthController {
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Session invalid");
     const user = (request as unknown as { user: Record<string, unknown> }).user;
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "Session valid");
-    return Responser.send({ user });
+
+    if (!user) {
+      return Responser.send({ message: "Unauthorized" }, StatusCodes.UNAUTHORIZED, "Unauthorized");
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return new VerifySessionService(reply).verify(user as any);
+    } catch (error) {
+      return Responser.send(error);
+    }
   }
 }

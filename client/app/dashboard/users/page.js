@@ -1,97 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
-import Button from '../../../components/ui/Button';
-import UserModal from '../../../components/users/UserModal';
+import useAuthStore from '../../../stores/authStore';
+import UsersTab from '../../../components/users/UsersTab';
+import RolesTab from '../../../components/users/RolesTab';
+
+// Mirrors the server's PermissionGuard.canAccess(...) gates on /api/users and /api/roles
+const USERS_TAB_PERMISSIONS = [4, 5];
+const ROLES_TAB_PERMISSIONS = [4, 6];
 
 export default function UsersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [user] = useState({ name: 'Admin User', email: 'admin@nexoraldns.com' });
+  const { user, hasAnyPermission } = useAuthStore();
 
-  // Dummy users data with RBAC
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'John Admin',
-      email: 'john@nexoraldns.com',
-      role: 'Admin',
-      status: 'active',
-      lastLogin: '2024-01-20 14:30',
-      created: '2024-01-01'
-    },
-    {
-      id: 2,
-      name: 'Sarah Manager',
-      email: 'sarah@nexoraldns.com',
-      role: 'Manager',
-      status: 'active',
-      lastLogin: '2024-01-20 09:15',
-      created: '2024-01-05'
-    },
-    {
-      id: 3,
-      name: 'Mike Viewer',
-      email: 'mike@nexoraldns.com',
-      role: 'Viewer',
-      status: 'active',
-      lastLogin: '2024-01-19 16:45',
-      created: '2024-01-10'
-    },
-    {
-      id: 4,
-      name: 'Lisa Operator',
-      email: 'lisa@nexoraldns.com',
-      role: 'Manager',
-      status: 'inactive',
-      lastLogin: '2024-01-15 11:20',
-      created: '2024-01-08'
-    }
-  ]);
+  const tabs = useMemo(() => {
+    const allTabs = [
+      { id: 'users', label: 'Users', icon: '👤', requiredPermissions: USERS_TAB_PERMISSIONS },
+      { id: 'roles', label: 'Roles', icon: '🛡️', requiredPermissions: ROLES_TAB_PERMISSIONS }
+    ];
+    return allTabs.filter(tab => hasAnyPermission(tab.requiredPermissions));
+  }, [hasAnyPermission]);
 
-  const roles = {
-    'Admin': {
-      color: 'bg-[rgba(255,96,113,0.12)] text-red-800',
-      permissions: ['Full system access', 'User management', 'System settings', 'All DNS operations']
-    },
-    'Manager': {
-      color: 'bg-[rgba(91,140,255,0.12)] text-[#5b8cff]',
-      permissions: ['DNS management', 'View analytics', 'Generate reports', 'Manage domains']
-    },
-    'Viewer': {
-      color: 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]',
-      permissions: ['View-only access', 'View analytics', 'Export reports']
-    }
-  };
-
-  const handleAddUser = (newUser) => {
-    const userWithId = {
-      ...newUser,
-      id: Date.now(),
-      created: new Date().toISOString().split('T')[0],
-      lastLogin: 'Never'
-    };
-    setUsers(prev => [...prev, userWithId]);
-  };
-
-  const handleDeleteUser = (id) => {
-    setUsers(prev => prev.filter(user => user.id !== id));
-  };
-
-  const handleEditUser = (user) => {
-    setSelectedUser(user);
-    setShowModal(true);
-  };
-
-  const handleUpdateUser = (updatedUser) => {
-    setUsers(prev => prev.map(user =>
-      user.id === updatedUser.id ? { ...user, ...updatedUser } : user
-    ));
-    setSelectedUser(null);
-  };
+  const [activeTab, setActiveTab] = useState(null);
+  const currentTab = activeTab && tabs.some(t => t.id === activeTab) ? activeTab : tabs[0]?.id;
 
   return (
     <div className="min-h-screen bg-[#07090e]">
@@ -105,155 +38,50 @@ export default function UsersPage() {
         />
 
         <main className="p-4 lg:p-6">
-          {/* Page Header */}
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">User Management</h1>
-              <p className="text-[#9aa8bd]">Manage users and role-based access control</p>
-            </div>
-            <Button onClick={() => setShowModal(true)} variant="primary">
-              Add User
-            </Button>
+          <div className="mb-8">
+            <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">Users & Roles</h1>
+            <p className="text-[#9aa8bd]">Manage user accounts and role-based access control</p>
           </div>
 
-          {/* Role Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {Object.entries(roles).map(([role, config]) => {
-              const count = users.filter(user => user.role === role).length;
-              return (
-                <div key={role} className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-[#9aa8bd]">{role}s</p>
-                      <p className="text-2xl font-bold text-[#e7eef6]">{count}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
-                      {role}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Users Table */}
-          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)]">
-            <div className="p-6 border-b border-[rgba(130,165,220,0.1)]">
-              <h2 className="text-lg font-semibold text-[#e7eef6]">System Users</h2>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#07090e]">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">User</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Last Login</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-[#0d111a] divide-y divide-[rgba(130,165,220,0.08)]">
-                  {users.map((userData) => (
-                    <tr key={userData.id} className="hover:bg-[#07090e]">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
-                              {userData.name.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-[#e7eef6]">{userData.name}</div>
-                            <div className="text-sm text-[#7c8aa0]">{userData.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${roles[userData.role].color}`}>
-                          {userData.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${userData.status === 'active'
-                            ? 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]'
-                            : 'bg-[rgba(255,96,113,0.12)] text-red-800'
-                          }`}>
-                          {userData.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-[#e7eef6]">{userData.lastLogin}</td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEditUser(userData)}
-                            className="text-[#5b8cff] hover:text-blue-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(userData.id)}
-                            className="text-[#ff6071] hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] overflow-hidden">
+            {tabs.length > 1 && (
+              <div className="border-b border-[rgba(130,165,220,0.1)]">
+                <nav className="flex overflow-x-auto">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`
+                        px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-2
+                        ${currentTab === tab.id
+                          ? 'border-b-2 border-blue-500 text-[#5b8cff] bg-[rgba(91,140,255,0.07)]'
+                          : 'text-[#9aa8bd] hover:text-[#e7eef6] hover:bg-[#07090e]'
+                        }
+                      `}
+                    >
+                      <span className="text-lg">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Role Permissions */}
-          <div className="mt-8 bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)]">
-            <div className="p-6 border-b border-[rgba(130,165,220,0.1)]">
-              <h2 className="text-lg font-semibold text-[#e7eef6]">Role Permissions</h2>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {Object.entries(roles).map(([role, config]) => (
-                  <div key={role} className="border border-[rgba(130,165,220,0.14)] rounded-lg p-4">
-                    <h3 className={`font-semibold mb-3 px-3 py-1 rounded-full text-sm inline-block ${config.color}`}>
-                      {role}
-                    </h3>
-                    <ul className="space-y-2">
-                      {config.permissions.map((permission, index) => (
-                        <li key={index} className="flex items-center text-sm text-[#9aa8bd]">
-                          <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          {permission}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+                </nav>
               </div>
+            )}
+
+            <div className="p-6">
+              {currentTab === 'users' && <UsersTab />}
+              {currentTab === 'roles' && <RolesTab />}
+              {!currentTab && (
+                <p className="text-sm text-[#9aa8bd]">You don't have permission to manage users or roles.</p>
+              )}
             </div>
           </div>
         </main>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* User Modal */}
-      {showModal && (
-        <UserModal
-          user={selectedUser}
-          onClose={() => {
-            setShowModal(false);
-            setSelectedUser(null);
-          }}
-          onSave={selectedUser ? handleUpdateUser : handleAddUser}
-          roles={Object.keys(roles)}
         />
       )}
     </div>

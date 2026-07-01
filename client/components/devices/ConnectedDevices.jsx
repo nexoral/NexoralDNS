@@ -8,8 +8,16 @@ import {
 } from 'react-icons/fi';
 import { api } from '../../services/api';
 import BlockDeviceModal from './BlockDeviceModal';
+import useAuthStore from '../../stores/authStore';
 
 export default function ConnectedDevices() {
+  const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
+  // Mirrors the server's PermissionGuard.canAccess(...) gates: blocking a device requires
+  // Access Control permission (8), refreshing the list requires (18) — viewing devices itself
+  // needs no permission, so those calls must never block the base device list from loading
+  const canManageAccessControl = hasAnyPermission([4, 8]);
+  const canRefreshDevices = hasAnyPermission([4, 18]);
+
   const [devices, setDevices] = useState([]);
   const [serviceInfo, setServiceInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +36,8 @@ export default function ConnectedDevices() {
     try {
       const [deviceResponse, policiesResponse, ipGroupsResponse] = await Promise.all([
         api.getDeviceList(),
-        api.getAccessControlPolicies(),
-        api.getIPGroups()
+        canManageAccessControl ? api.getAccessControlPolicies() : Promise.resolve({ data: { data: { policies: [] } } }),
+        canManageAccessControl ? api.getIPGroups() : Promise.resolve({ data: { data: { groups: [] } } })
       ]);
 
       const result = deviceResponse.data;
@@ -158,14 +166,16 @@ export default function ConnectedDevices() {
                 }`}>
                   {serviceInfo.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
-                <button
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className={`flex items-center bg-[rgba(91,140,255,0.08)] text-[#5b8cff] hover:bg-[rgba(91,140,255,0.15)] border border-[rgba(91,140,255,0.2)] px-4 py-2 rounded-lg transition-all duration-200 ${isRefreshing ? 'opacity-70' : ''}`}
-                >
-                  <FiRefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
-                </button>
+                {canRefreshDevices && (
+                  <button
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className={`flex items-center bg-[rgba(91,140,255,0.08)] text-[#5b8cff] hover:bg-[rgba(91,140,255,0.15)] border border-[rgba(91,140,255,0.2)] px-4 py-2 rounded-lg transition-all duration-200 ${isRefreshing ? 'opacity-70' : ''}`}
+                  >
+                    <FiRefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -307,7 +317,7 @@ export default function ConnectedDevices() {
                         <div className="text-sm text-[#7c8aa0]">{new Date(device.lastSeen).toLocaleString()}</div>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap text-sm font-medium">
-                        {device.ip !== serviceInfo.localIp && (
+                        {device.ip !== serviceInfo.localIp && canManageAccessControl && (
                           isBlocked ? (
                             <span className="inline-flex items-center bg-white/8 text-[#7c8aa0] px-3 py-1 rounded-lg cursor-not-allowed">
                               <FiShield className="mr-1" /> Blocked By Policy
@@ -343,7 +353,7 @@ export default function ConnectedDevices() {
           <h3 className="text-xl font-semibold text-[#e7eef6] mb-2">No Connected Devices</h3>
           <p className="text-[#7c8aa0] mb-6 max-w-md mx-auto">No devices are currently connected to your network. Devices will appear here when they connect.</p>
           <button
-            onClick={handleRefresh} // Changed from fetchDevices to handleRefresh
+            onClick={canRefreshDevices ? handleRefresh : fetchDevices}
             className="inline-flex items-center bg-[rgba(91,140,255,0.12)] hover:bg-[rgba(91,140,255,0.15)] text-[#5b8cff] px-4 py-2 rounded-lg transition-colors duration-300"
           >
             <FiRefreshCw className="mr-2" /> Check Again

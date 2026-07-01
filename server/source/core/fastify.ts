@@ -8,7 +8,6 @@ import mainRouter from "../Router/Router";
 import MongoConnector from "../Database/mongodb.db";
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import createTCPBroker from "../Broker/TCP.broker";
 import startCronJob from "../CronJob/CronJob";
 import { initializeAdultContentDomainGroup } from "../utilities/InitializeAdultContentGroup.utls";
 import { initializeAdBlockingDomainGroup } from "../utilities/InitializeAdBlockingGroup.utls";
@@ -100,8 +99,6 @@ export default function FastifyServer() {
       console.log(
         `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
       );
-      // Initialize TCP Broker Client
-      createTCPBroker();
       startCronJob()
     } catch (err) {
       NexoralServer.log.error(err);

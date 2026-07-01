@@ -48,7 +48,21 @@ export const config = {
     GET_IP_GROUPS: '/api/access-control/ip-groups',
     GET_IP_GROUP: '/api/access-control/ip-group',
     UPDATE_IP_GROUP: '/api/access-control/ip-group',
-    DELETE_IP_GROUP: '/api/access-control/ip-group'
+    DELETE_IP_GROUP: '/api/access-control/ip-group',
+    // User Management
+    CREATE_USER: '/api/users',
+    GET_USERS: '/api/users',
+    GET_USER: '/api/users',
+    UPDATE_USER: '/api/users',
+    RESET_USER_PASSWORD: '/api/users',
+    DELETE_USER: '/api/users',
+    // Role Management
+    CREATE_ROLE: '/api/roles',
+    GET_ROLES: '/api/roles',
+    GET_ROLE: '/api/roles',
+    UPDATE_ROLE: '/api/roles',
+    DELETE_ROLE: '/api/roles',
+    GET_PERMISSIONS: '/api/roles/permissions'
   },
 
   // Application Configuration

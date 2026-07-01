@@ -10,9 +10,6 @@ import RequestControllerHelper from "../../helper/Request_Controller.helper";
 import { parse } from "path";
 
 
-// Singleton instance for request deduplication
-const requestHelper = new RequestControllerHelper();
-
 export default class LogsController {
   constructor() { }
   
