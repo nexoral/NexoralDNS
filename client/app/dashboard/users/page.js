@@ -1,21 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import useAuthStore from '../../../stores/authStore';
 import UsersTab from '../../../components/users/UsersTab';
 import RolesTab from '../../../components/users/RolesTab';
 
+// Mirrors the server's PermissionGuard.canAccess(...) gates on /api/users and /api/roles
+const USERS_TAB_PERMISSIONS = [4, 5];
+const ROLES_TAB_PERMISSIONS = [4, 6];
+
 export default function UsersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('users');
-  const { user } = useAuthStore();
+  const { user, hasAnyPermission } = useAuthStore();
 
-  const tabs = [
-    { id: 'users', label: 'Users', icon: '👤' },
-    { id: 'roles', label: 'Roles', icon: '🛡️' }
-  ];
+  const tabs = useMemo(() => {
+    const allTabs = [
+      { id: 'users', label: 'Users', icon: '👤', requiredPermissions: USERS_TAB_PERMISSIONS },
+      { id: 'roles', label: 'Roles', icon: '🛡️', requiredPermissions: ROLES_TAB_PERMISSIONS }
+    ];
+    return allTabs.filter(tab => hasAnyPermission(tab.requiredPermissions));
+  }, [hasAnyPermission]);
+
+  const [activeTab, setActiveTab] = useState(null);
+  const currentTab = activeTab && tabs.some(t => t.id === activeTab) ? activeTab : tabs[0]?.id;
 
   return (
     <div className="min-h-screen bg-[#07090e]">
@@ -35,30 +44,35 @@ export default function UsersPage() {
           </div>
 
           <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] overflow-hidden">
-            <div className="border-b border-[rgba(130,165,220,0.1)]">
-              <nav className="flex overflow-x-auto">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`
-                      px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-2
-                      ${activeTab === tab.id
-                        ? 'border-b-2 border-blue-500 text-[#5b8cff] bg-[rgba(91,140,255,0.07)]'
-                        : 'text-[#9aa8bd] hover:text-[#e7eef6] hover:bg-[#07090e]'
-                      }
-                    `}
-                  >
-                    <span className="text-lg">{tab.icon}</span>
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
+            {tabs.length > 1 && (
+              <div className="border-b border-[rgba(130,165,220,0.1)]">
+                <nav className="flex overflow-x-auto">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`
+                        px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-2
+                        ${currentTab === tab.id
+                          ? 'border-b-2 border-blue-500 text-[#5b8cff] bg-[rgba(91,140,255,0.07)]'
+                          : 'text-[#9aa8bd] hover:text-[#e7eef6] hover:bg-[#07090e]'
+                        }
+                      `}
+                    >
+                      <span className="text-lg">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            )}
 
             <div className="p-6">
-              {activeTab === 'users' && <UsersTab />}
-              {activeTab === 'roles' && <RolesTab />}
+              {currentTab === 'users' && <UsersTab />}
+              {currentTab === 'roles' && <RolesTab />}
+              {!currentTab && (
+                <p className="text-sm text-[#9aa8bd]">You don't have permission to manage users or roles.</p>
+              )}
             </div>
           </div>
         </main>

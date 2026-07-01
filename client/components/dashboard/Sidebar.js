@@ -7,9 +7,6 @@ import config from '../../config/keys';
 import { isLocalNetwork } from '../../services/networkDetection';
 import useAuthStore from '../../stores/authStore';
 
-// Full Access (4) or Manage Users (5) — matches the server's PermissionGuard.canAccess(4, 5) on /api/users and /api/roles
-const USERS_NAV_PERMISSION_CODES = [4, 5];
-
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const [hoveredItem, setHoveredItem] = useState(null);
@@ -17,19 +14,23 @@ export default function Sidebar({ isOpen, onClose }) {
   const itemRefs = useRef({});
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
 
+  // Permission codes mirror each page's backend PermissionGuard.canAccess(...) gate exactly —
+  // 4 (Full Access) is included everywhere since it bypasses every check server-side too.
+  // Items with no `requiredPermissions` have no backend permission gate (any authenticated
+  // user can load them), so they're always shown.
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard', tooltip: 'Main Dashboard' },
-    { id: 'domains', label: 'Create Custom LAN Domain', icon: 'domains', href: '/dashboard/domains', tooltip: 'Create Custom LAN Domains' },
-    { id: 'access-control', label: 'Access Control', icon: 'access-control', href: '/dashboard/access-control', tooltip: 'Manage Access & Blocking' },
+    { id: 'domains', label: 'Create Custom LAN Domain', icon: 'domains', href: '/dashboard/domains', tooltip: 'Create Custom LAN Domains', requiredPermissions: [4, 1] },
+    { id: 'access-control', label: 'Access Control', icon: 'access-control', href: '/dashboard/access-control', tooltip: 'Manage Access & Blocking', requiredPermissions: [4, 8] },
     { id: 'cache', label: 'DNS Cache', icon: 'cache', href: '/dashboard/cache', tooltip: 'View & Manage DNS Cache' },
     { id: 'logs', label: 'Query Logs', icon: 'logs', href: '/dashboard/logs', tooltip: 'View DNS Query Logs' },
     { id: 'devices', label: 'Connected Devices', icon: 'devices', href: '/dashboard/devices', tooltip: 'View Connected Devices', localOnly: true },
-    { id: 'users', label: 'Users & Roles', icon: 'users', href: '/dashboard/users', tooltip: 'Manage Users & Roles', requiresPermission: true },
-    { id: 'settings', label: 'Server Settings', icon: 'settings', href: '/dashboard/settings', tooltip: 'DNS Server Settings' }
+    { id: 'users', label: 'Users & Roles', icon: 'users', href: '/dashboard/users', tooltip: 'Manage Users & Roles', requiredPermissions: [4, 5, 6] },
+    { id: 'settings', label: 'Server Settings', icon: 'settings', href: '/dashboard/settings', tooltip: 'DNS Server Settings', requiredPermissions: [4, 8] }
   ];
 
   const menuItems = allMenuItems.filter(item => {
-    if (item.requiresPermission && !hasAnyPermission(USERS_NAV_PERMISSION_CODES)) {
+    if (item.requiredPermissions && !hasAnyPermission(item.requiredPermissions)) {
       return false;
     }
     if (item.localOnly) {
