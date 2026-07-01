@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Console } from "outers";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
@@ -89,28 +90,51 @@ export default class StartRulesService {
     }
 
 
-    // Add Rule Checker
-    const serviceStatus: ServiceStatusResult = await this.serviceStatusChecker.checkServiceStatus(queryName, io, msg, rinfo);
+    // Add Rule Checker with Fail-Safe
+    let serviceStatus: ServiceStatusResult;
+    let databaseOffline = false;
 
-    if (!serviceStatus.serviceStatus) {
-      // Add to Analytics
-      AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
-      AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
-      AnalyticsMSgPayload.duration = performance.now() - start;
-
-      this.publishAnalytics(AnalyticsMSgPayload);
-      return;
+    try {
+      serviceStatus = await this.serviceStatusChecker.checkServiceStatus(queryName, io, msg, rinfo);
+      if (!serviceStatus.serviceStatus) {
+        if (!serviceStatus.serviceConfig) {
+          // MongoDB offline/uninitialized returns false with config = null
+          throw new Error("Service config missing — database offline");
+        }
+        // Service is explicitly set to inactive
+        AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
+        AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
+        AnalyticsMSgPayload.duration = performance.now() - start;
+        this.publishAnalytics(AnalyticsMSgPayload);
+        return;
+      }
+    } catch (error) {
+      Console.yellow(`⚠️ Fail-Safe Active: Database offline for query ${queryName}. Bypassing access controls.`);
+      databaseOffline = true;
+      serviceStatus = {
+        serviceStatus: true,
+        serviceConfig: { DefaultTTL: 10 }
+      };
     }
 
     // Check Service Status Document is perfect or not
     if (!serviceStatus.serviceConfig || serviceStatus.serviceConfig == null) {
       serviceStatus.serviceConfig = {
         DefaultTTL: 10
+      };
+    }
+
+    // Check Access Control Policy Check with Fail-Safe
+    let PolicyCheckRuleStatus = false;
+    if (!databaseOffline) {
+      try {
+        PolicyCheckRuleStatus = await this.blockList.checkDomain(queryName, rinfo.address);
+      } catch (err) {
+        databaseOffline = true;
+        Console.yellow(`⚠️ Fail-Safe Active: Block list check failed due to DB error. Bypassing.`);
       }
     }
 
-    // Check Access Control Policy Check
-    const PolicyCheckRuleStatus = await this.blockList.checkDomain(queryName, rinfo.address);
     if (PolicyCheckRuleStatus) {
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.BLOCKED;
@@ -122,48 +146,55 @@ export default class StartRulesService {
       return;
     }
 
-    // Taking Record From Cache
+    // Taking Record From Cache / DB with Fail-Safe
     let record;
-    const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`)
-    if (RecordFromCache !== null) {
-      record = RecordFromCache;
-      AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_CACHE;
-    }
-    else {
-      // Single-flight DB request: if multiple requests for same domain arrive, they share one DB call
-      let NewRecordFromDB = null;
+    if (!databaseOffline) {
+      try {
+        const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`);
+        if (RecordFromCache !== null) {
+          record = RecordFromCache;
+          AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_CACHE;
+        } else {
+          // Single-flight DB request: if multiple requests for same domain arrive, they share one DB call
+          let NewRecordFromDB = null;
 
-      if (this.inflight.has(queryName)) {
-        // Join existing DB call
-        NewRecordFromDB = await this.inflight.get(queryName);
-      } else {
-        // Create new DB call promise
-        const promise = (async () => {
-          try {
-            return await this.dbPoolService.getDnsRecordByDomainName(queryName);
-          } catch (error) {
-            Console.red(`Error fetching DNS record for ${queryName} from DB:`, error);
-            return null;
-          } finally {
-            this.inflight.delete(queryName);
+          if (this.inflight.has(queryName)) {
+            // Join existing DB call
+            NewRecordFromDB = await this.inflight.get(queryName);
+          } else {
+            // Create new DB call promise
+            const promise = (async () => {
+              try {
+                return await this.dbPoolService.getDnsRecordByDomainName(queryName);
+              } catch (error) {
+                databaseOffline = true;
+                Console.yellow(`⚠️ Fail-Safe Active: DB query error for record ${queryName}. Bypassing.`);
+                return null;
+              } finally {
+                this.inflight.delete(queryName);
+              }
+            })();
+
+            this.inflight.set(queryName, promise);
+            NewRecordFromDB = await promise;
           }
-        })();
 
-        this.inflight.set(queryName, promise);
-        NewRecordFromDB = await promise;
-      }
+          if (NewRecordFromDB) {
+            // If Cache Fail then take from MongoDB
+            record = NewRecordFromDB;
+            AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_DB;
 
-      if (NewRecordFromDB) {
-        // If Cache Fail then take from MongoDB
-        record = NewRecordFromDB;
-        AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_DB;
-
-        // Add the new Document to the Cache with Domain's Default TTL
-        RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl)
+            // Add the new Document to the Cache with Domain's Default TTL
+            RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl);
+          }
+        }
+      } catch (err) {
+        databaseOffline = true;
+        Console.yellow(`⚠️ Fail-Safe Active: Cache/DB record lookup failed. Bypassing.`);
       }
     }
 
-    if (queryName === record?.name) {
+    if (!databaseOffline && queryName === record?.name) {
       // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.RESOLVED;
       AnalyticsMSgPayload.duration = performance.now() - start;
@@ -182,39 +213,52 @@ export default class StartRulesService {
         Console.red(`Failed to respond to ${queryName}`);
       }
     } else {
-      // Forward to Global DNS for non-matching domains
-      AnalyticsMSgPayload.From = "Upstream"; // Will be updated by forwarder logic if we wanted, but here we track the request flow
+      // Forward to Global DNS for non-matching domains (or when database is offline)
+      if (!databaseOffline) {
+        AnalyticsMSgPayload.From = "Upstream"; // Will be updated by forwarder logic
+      }
 
       try {
-        const forwardedResponse = await GlobalDNSforwarder(msg, queryName, queryType, serviceStatus.serviceConfig.DefaultTTL, rinfo, start);
+        const forwardedResponse = await GlobalDNSforwarder(
+          msg,
+          queryName,
+          queryType,
+          serviceStatus.serviceConfig.DefaultTTL,
+          rinfo,
+          start,
+          databaseOffline
+        );
         if (forwardedResponse) {
           const resp: boolean = io.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {
             // Add to Analytics
-            AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
-            AnalyticsMSgPayload.duration = performance.now() - start;
-
-            this.publishAnalytics(AnalyticsMSgPayload);
+            if (!databaseOffline) {
+              AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
+              AnalyticsMSgPayload.duration = performance.now() - start;
+              this.publishAnalytics(AnalyticsMSgPayload);
+            }
             Console.red(`Failed to forward ${queryName} to Global DNS`);
           }
           // Note: GlobalDNSforwarder pushes its own analytics for the forwarding event
         }
         else {
           // Add to Analytics
-          AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
-          AnalyticsMSgPayload.duration = performance.now() - start;
-
-          this.publishAnalytics(AnalyticsMSgPayload);
+          if (!databaseOffline) {
+            AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
+            AnalyticsMSgPayload.duration = performance.now() - start;
+            this.publishAnalytics(AnalyticsMSgPayload);
+          }
 
           Console.red(`No response received from Global DNS for ${queryName}`);
           io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
         }
       } catch (error) {
         // Add to Analytics
-        AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
-        AnalyticsMSgPayload.duration = performance.now() - start;
-
-        this.publishAnalytics(AnalyticsMSgPayload);
+        if (!databaseOffline) {
+          AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
+          AnalyticsMSgPayload.duration = performance.now() - start;
+          this.publishAnalytics(AnalyticsMSgPayload);
+        }
         Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
       }
     }
