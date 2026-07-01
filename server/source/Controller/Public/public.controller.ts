@@ -25,9 +25,17 @@ export default class PublicInfoController {
   }
 
   static async getHealth(reply: FastifyReply): Promise<any> {
-    const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS is healthy");
-    return FastifyResponse.send(
-      await HealthService.checkHealth(),
-    );
+    try {
+      const health = await HealthService.checkHealth();
+      if (health.status === "unhealthy") {
+        const FastifyResponse = new buildResponse(reply, StatusCodes.SERVICE_UNAVAILABLE, "NexoralDNS is unhealthy");
+        return FastifyResponse.send(health);
+      }
+      const FastifyResponse = new buildResponse(reply, StatusCodes.OK, "NexoralDNS is healthy");
+      return FastifyResponse.send(health);
+    } catch (error: any) {
+      const FastifyResponse = new buildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Health check failed");
+      return FastifyResponse.send({ error: error.message || error });
     }
+  }
 }
