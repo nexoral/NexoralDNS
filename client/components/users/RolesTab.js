@@ -95,8 +95,8 @@ export default function RolesTab() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-[#e7eef6]">Roles</h3>
-          <p className="text-sm text-[#9aa8bd] mt-1">Create roles by choosing from the available permissions</p>
+          <h3 className="text-lg font-semibold text-[var(--text-1)]">Roles</h3>
+          <p className="text-sm text-[var(--text-3)] mt-1">Create roles by choosing from the available permissions</p>
         </div>
         <Button onClick={() => setShowModal(true)} variant="primary">
           Create Role
@@ -106,11 +106,11 @@ export default function RolesTab() {
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-[#9aa8bd]">Loading roles...</p>
+          <p className="mt-4 text-[var(--text-3)]">Loading roles...</p>
         </div>
       ) : error ? (
         <div className="text-center py-12 bg-[rgba(255,96,113,0.07)] rounded-lg border-2 border-red-200">
-          <p className="text-[#ff6071] mb-4">{error}</p>
+          <p className="text-[var(--red)] mb-4">{error}</p>
           <Button onClick={fetchRoles}>Retry</Button>
         </div>
       ) : (
@@ -118,14 +118,14 @@ export default function RolesTab() {
           {roles.map((role) => (
             <div
               key={role._id}
-              className="bg-[#0d111a] border border-[rgba(130,165,220,0.14)] rounded-lg p-5 hover:shadow-md transition-all"
+              className="bg-[var(--card-bg)] border border-[var(--border-2)] rounded-lg p-5 hover:shadow-md transition-all"
             >
               <div className="flex items-start justify-between mb-3">
-                <h4 className="font-semibold text-[#e7eef6]">{role.name}</h4>
+                <h4 className="font-semibold text-[var(--text-1)]">{role.name}</h4>
                 <div className="flex items-center space-x-1">
                   <button
                     onClick={() => setEditingRole(role)}
-                    className="p-1.5 text-[#5b8cff] hover:bg-[rgba(91,140,255,0.07)] rounded transition-colors"
+                    className="p-1.5 text-[var(--blue)] hover:bg-[rgba(91,140,255,0.07)] rounded transition-colors"
                     title="Edit"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +134,7 @@ export default function RolesTab() {
                   </button>
                   <button
                     onClick={() => { setDeletingRole(role); setDeleteError(null); }}
-                    className="p-1.5 text-[#ff6071] hover:bg-[rgba(255,96,113,0.07)] rounded transition-colors"
+                    className="p-1.5 text-[var(--red)] hover:bg-[rgba(255,96,113,0.07)] rounded transition-colors"
                     title="Delete"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,15 +143,15 @@ export default function RolesTab() {
                   </button>
                 </div>
               </div>
-              <div className="text-xs text-[#9aa8bd] mb-2">{role.permissions?.length || 0} permission(s)</div>
+              <div className="text-xs text-[var(--text-3)] mb-2">{role.permissions?.length || 0} permission(s)</div>
               <div className="flex flex-wrap gap-1">
                 {role.permissions?.slice(0, 4).map((p) => (
-                  <span key={p._id} className="text-[10px] px-2 py-0.5 rounded bg-[rgba(91,140,255,0.1)] text-[#5b8cff]">
+                  <span key={p._id} className="text-[10px] px-2 py-0.5 rounded bg-[rgba(91,140,255,0.1)] text-[var(--blue)]">
                     {p.name}
                   </span>
                 ))}
                 {role.permissions?.length > 4 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-white/6 text-[#7c8aa0]">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text-5)]">
                     +{role.permissions.length - 4} more
                   </span>
                 )}
@@ -189,7 +189,7 @@ export default function RolesTab() {
           onConfirm={handleDeleteRole}
         >
           {deleteError && (
-            <p className="text-sm text-[#ff6071] bg-[rgba(255,96,113,0.07)] border border-red-200 rounded-lg p-3">
+            <p className="text-sm text-[var(--red)] bg-[rgba(255,96,113,0.07)] border border-red-200 rounded-lg p-3">
               {deleteError}
             </p>
           )}

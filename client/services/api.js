@@ -81,6 +81,16 @@ export const api = {
       }
     }),
 
+  // Log Export (async, queued)
+  requestLogExport: (data) =>
+    apiClient.post(getApiUrl('REQUEST_LOG_EXPORT'), data),
+
+  getExportStatus: () =>
+    apiClient.get(getApiUrl('GET_EXPORT_STATUS')),
+
+  downloadExport: () =>
+    apiClient.get(getApiUrl('DOWNLOAD_EXPORT'), { responseType: 'blob' }),
+
   // Default TTL Management
   getDefaultTTL: () =>
     apiClient.get(getApiUrl('GET_DEFAULT_TTL')),

@@ -296,11 +296,11 @@ export default function RecordModal({ domain, onClose }) {
 
   const getRecordTypeColor = (type) => {
     const colors = {
-      'A': 'bg-[rgba(91,140,255,0.12)] text-[#5b8cff]',
+      'A': 'bg-[rgba(91,140,255,0.12)] text-[var(--blue)]',
       'AAAA': 'bg-purple-100 text-purple-800',
-      'CNAME': 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]'
+      'CNAME': 'bg-[rgba(61,220,132,0.12)] text-[var(--green)]'
     };
-    return colors[type] || 'bg-white/8 text-[#e7eef6]';
+    return colors[type] || 'bg-[var(--surface-3)] text-[var(--text-1)]';
   };
 
   const getPlaceholder = (type) => {
@@ -318,12 +318,12 @@ export default function RecordModal({ domain, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0d111a] rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="p-6 border-b border-[rgba(130,165,220,0.14)]">
+      <div className="bg-[var(--card-bg)] rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b border-[var(--border-2)]">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[#e7eef6]">Manage DNS Records</h2>
-              <p className="text-sm text-[#9aa8bd] mt-1">Domain: {domain.name}</p>
+              <h2 className="text-lg font-semibold text-[var(--text-1)]">Manage DNS Records</h2>
+              <p className="text-sm text-[var(--text-3)] mt-1">Domain: {domain.name}</p>
             </div>
             <button
               onClick={() => {
@@ -332,7 +332,7 @@ export default function RecordModal({ domain, onClose }) {
                   onClose();
                 }, 100);
               }}
-              className="p-2 text-[#5f6b7d] hover:text-[#9aa8bd] transition-colors rounded-lg hover:bg-white/8"
+              className="p-2 text-[var(--text-6)] hover:text-[var(--text-3)] transition-colors rounded-lg hover:bg-[var(--surface-3)]"
               aria-label="Close modal"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,7 +345,7 @@ export default function RecordModal({ domain, onClose }) {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-[#e7eef6]">DNS Records (A, AAAA, CNAME only)</h3>
+              <h3 className="text-lg font-semibold text-[var(--text-1)]">DNS Records (A, AAAA, CNAME only)</h3>
               {records.some(record => record.type === 'A') && (
                 <p className="text-xs text-orange-600 mt-1">⚠️ A record exists - A and AAAA types are disabled</p>
               )}
@@ -366,12 +366,12 @@ export default function RecordModal({ domain, onClose }) {
 
           {/* Add Record Form */}
           {showAddRecord && (
-            <div className="bg-[#07090e] rounded-lg p-4 mb-6">
+            <div className="bg-[var(--bg)] rounded-lg p-4 mb-6">
               <form onSubmit={handleAddRecord} className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <select
                   value={newRecord.type}
                   onChange={(e) => setNewRecord(prev => ({ ...prev, type: e.target.value, value: '' }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                 >
                   {getAvailableRecordTypes().map(type => (
                     <option key={type} value={type}>{type}</option>
@@ -383,7 +383,7 @@ export default function RecordModal({ domain, onClose }) {
                   placeholder="Name (@ for root)"
                   value={newRecord.name}
                   onChange={(e) => setNewRecord(prev => ({ ...prev, name: e.target.value }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                   required
                 />
 
@@ -392,7 +392,7 @@ export default function RecordModal({ domain, onClose }) {
                   placeholder={getPlaceholder(newRecord.type)}
                   value={newRecord.value}
                   onChange={(e) => setNewRecord(prev => ({ ...prev, value: e.target.value }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                   required
                 />
 
@@ -401,7 +401,7 @@ export default function RecordModal({ domain, onClose }) {
                   placeholder="TTL"
                   value={newRecord.ttl}
                   onChange={(e) => setNewRecord(prev => ({ ...prev, ttl: parseInt(e.target.value) }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                   min="1"
                   max="86400"
                   required
@@ -427,12 +427,12 @@ export default function RecordModal({ domain, onClose }) {
           {/* Edit Record Form */}
           {editingRecord && (
             <div className="bg-[rgba(91,140,255,0.07)] rounded-lg p-4 mb-6 border-2 border-blue-200">
-              <h4 className="text-sm font-semibold text-[#5b8cff] mb-3">Edit DNS Record</h4>
+              <h4 className="text-sm font-semibold text-[var(--blue)] mb-3">Edit DNS Record</h4>
               <form onSubmit={handleUpdateRecord} className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <select
                   value={editingRecord.type}
                   onChange={(e) => setEditingRecord(prev => ({ ...prev, type: e.target.value, value: '' }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                   disabled={editingRecord.type === 'A'}
                 >
                   {editingRecord.type === 'A' ? (
@@ -451,7 +451,7 @@ export default function RecordModal({ domain, onClose }) {
                   placeholder="Name (@ for root)"
                   value={editingRecord.name}
                   onChange={(e) => setEditingRecord(prev => ({ ...prev, name: e.target.value }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                   required
                 />
 
@@ -460,7 +460,7 @@ export default function RecordModal({ domain, onClose }) {
                   placeholder={getPlaceholder(editingRecord.type)}
                   value={editingRecord.value}
                   onChange={(e) => setEditingRecord(prev => ({ ...prev, value: e.target.value }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                   required
                 />
 
@@ -469,7 +469,7 @@ export default function RecordModal({ domain, onClose }) {
                   placeholder="TTL"
                   value={editingRecord.ttl}
                   onChange={(e) => setEditingRecord(prev => ({ ...prev, ttl: parseInt(e.target.value) }))}
-                  className="px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50"
+                  className="px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50"
                   min="60"
                   max="86400"
                   required
@@ -496,7 +496,7 @@ export default function RecordModal({ domain, onClose }) {
           {isLoading && (
             <div className="py-10 text-center">
               <LoadingSpinner />
-              <p className="mt-2 text-[#9aa8bd]">Loading DNS records...</p>
+              <p className="mt-2 text-[var(--text-3)]">Loading DNS records...</p>
             </div>
           )}
 
@@ -517,10 +517,10 @@ export default function RecordModal({ domain, onClose }) {
                     )}
                   </div>
                   <div className="ml-3">
-                    <p className={`text-sm ${error.includes('Conflict Error') ? 'text-orange-700' : 'text-[#ff6071]'}`}>{error}</p>
+                    <p className={`text-sm ${error.includes('Conflict Error') ? 'text-orange-700' : 'text-[var(--red)]'}`}>{error}</p>
                     <button
                       onClick={fetchDnsRecords}
-                      className={`mt-2 text-sm font-medium underline ${error.includes('Conflict Error') ? 'text-orange-700' : 'text-[#ff6071]'}`}
+                      className={`mt-2 text-sm font-medium underline ${error.includes('Conflict Error') ? 'text-orange-700' : 'text-[var(--red)]'}`}
                     >
                       {error.includes('Conflict Error') ? 'Refresh records' : 'Try again'}
                     </button>
@@ -532,40 +532,40 @@ export default function RecordModal({ domain, onClose }) {
 
           {/* Records Table */}
           {!isLoading && !error && (
-            <div className="border border-[rgba(130,165,220,0.14)] rounded-lg overflow-hidden">
+            <div className="border border-[var(--border-2)] rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-[#07090e]">
+                <thead className="bg-[var(--bg)]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Value</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">TTL</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Value</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">TTL</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-[#0d111a] divide-y divide-[rgba(130,165,220,0.08)]">
+                <tbody className="bg-[var(--card-bg)] divide-y divide-[var(--border)]">
                   {records.length > 0 ? (
                     records.map((record) => (
-                      <tr key={record.id} className="hover:bg-[#07090e]">
+                      <tr key={record.id} className="hover:bg-[var(--bg)]">
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRecordTypeColor(record.type)}`}>
                             {record.type}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#e7eef6]">{record.name || '@'}</td>
-                        <td className="px-4 py-3 text-sm text-[#e7eef6] max-w-xs truncate">{record.value}</td>
-                        <td className="px-4 py-3 text-sm text-[#e7eef6]">{record.ttl}</td>
+                        <td className="px-4 py-3 text-sm text-[var(--text-1)]">{record.name || '@'}</td>
+                        <td className="px-4 py-3 text-sm text-[var(--text-1)] max-w-xs truncate">{record.value}</td>
+                        <td className="px-4 py-3 text-sm text-[var(--text-1)]">{record.ttl}</td>
                         <td className="px-4 py-3">
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleEditRecord(record)}
-                              className="text-[#5b8cff] hover:text-[#5b8cff] text-sm"
+                              className="text-[var(--blue)] hover:text-[var(--blue)] text-sm"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleDeleteRecord(record.id)}
-                              className="text-[#ff6071] hover:text-red-800 text-sm"
+                              className="text-[var(--red)] hover:text-red-800 text-sm"
                             >
                               Delete
                             </button>
@@ -575,7 +575,7 @@ export default function RecordModal({ domain, onClose }) {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-4 py-8 text-center text-[#7c8aa0]">
+                      <td colSpan="5" className="px-4 py-8 text-center text-[var(--text-5)]">
                         No DNS records found for this domain. Add your first record to get started.
                       </td>
                     </tr>
@@ -586,7 +586,7 @@ export default function RecordModal({ domain, onClose }) {
           )}
 
           {/* Footer with Done button */}
-          <div className="mt-6 border-t border-[rgba(130,165,220,0.14)] pt-6 flex justify-end">
+          <div className="mt-6 border-t border-[var(--border-2)] pt-6 flex justify-end">
             <Button
               variant="primary"
               onClick={() => {

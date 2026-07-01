@@ -38,12 +38,12 @@ export default function ChangePasswordModal({
     if (/\d/.test(password)) strength += 1;
     if (/[^a-zA-Z\d]/.test(password)) strength += 1;
     const strengthMap = {
-      0: { label: 'Too weak', color: 'bg-[#ff6071]' },
-      1: { label: 'Weak', color: 'bg-[#ff6071]' },
-      2: { label: 'Fair', color: 'bg-[#f6b352]' },
-      3: { label: 'Good', color: 'bg-[#f6b352]' },
-      4: { label: 'Strong', color: 'bg-[#3ddc84]' },
-      5: { label: 'Very Strong', color: 'bg-[#3ddc84]' }
+      0: { label: 'Too weak', color: 'bg-[var(--red)]' },
+      1: { label: 'Weak', color: 'bg-[var(--red)]' },
+      2: { label: 'Fair', color: 'bg-[var(--amber)]' },
+      3: { label: 'Good', color: 'bg-[var(--amber)]' },
+      4: { label: 'Strong', color: 'bg-[var(--green)]' },
+      5: { label: 'Very Strong', color: 'bg-[var(--green)]' }
     };
     return { strength, ...strengthMap[strength] };
   };
@@ -110,29 +110,29 @@ export default function ChangePasswordModal({
   );
 
   const inputClass = (hasError) => `w-full px-3 py-2.5 border ${
-    hasError ? 'border-[rgba(255,96,113,0.5)]' : 'border-[rgba(130,165,220,0.2)]'
-  } rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-[#5b8cff]/60 bg-white/6 text-[#e7eef6] placeholder-[#5f6b7d] text-sm pr-10`;
+    hasError ? 'border-[rgba(255,96,113,0.5)]' : 'border-[var(--border-4)]'
+  } rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-[var(--blue)]/60 bg-[var(--surface-2)] text-[var(--text-1)] placeholder-[var(--text-6)] text-sm pr-10`;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.18)] shadow-2xl max-w-md w-full animate-fade-in-up">
-        <div className="p-5 border-b border-[rgba(130,165,220,0.1)]">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-3)] shadow-2xl max-w-md w-full animate-fade-in-up">
+        <div className="p-5 border-b border-[var(--border)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 bg-[rgba(91,140,255,0.12)] rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-[#5b8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-[var(--blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-base font-semibold text-[#e7eef6]">{title}</h2>
-                <p className="text-xs text-[#9aa8bd]">{description}</p>
+                <h2 className="text-base font-semibold text-[var(--text-1)]">{title}</h2>
+                <p className="text-xs text-[var(--text-3)]">{description}</p>
               </div>
             </div>
             {!isRequired && (
               <button
                 onClick={onClose}
-                className="p-1.5 text-[#5f6b7d] hover:text-[#e7eef6] transition-colors rounded-lg hover:bg-white/6"
+                className="p-1.5 text-[var(--text-6)] hover:text-[var(--text-1)] transition-colors rounded-lg hover:bg-[var(--surface-2)]"
                 aria-label="Close modal"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,14 +145,14 @@ export default function ChangePasswordModal({
 
         <div className="mx-5 mt-5 bg-[rgba(91,140,255,0.07)] border border-[rgba(91,140,255,0.2)] rounded-lg p-4">
           <div className="flex">
-            <svg className="w-4 h-4 text-[#5b8cff] mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-[var(--blue)] mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <h3 className="font-medium text-[#5b8cff] text-sm">
+              <h3 className="font-medium text-[var(--blue)] text-sm">
                 {isRequired ? 'Password Update Required' : 'Security Recommendation'}
               </h3>
-              <p className="text-xs text-[#9aa8bd] mt-1">
+              <p className="text-xs text-[var(--text-3)] mt-1">
                 {isRequired
                   ? 'For security reasons, you must update your password before continuing.'
                   : 'You have not set a custom password yet. We strongly recommend updating it to secure your account.'}
@@ -168,7 +168,7 @@ export default function ChangePasswordModal({
             { label: 'Confirm New Password', value: confirmPassword, setter: setConfirmPassword, show: showConfirmPassword, toggleShow: () => setShowConfirmPassword(!showConfirmPassword), error: errors.confirmPassword, placeholder: 'Confirm new password', errorKey: 'confirmPassword' },
           ].map(({ label, value, setter, show, toggleShow, error, placeholder, errorKey, showStrength }) => (
             <div key={errorKey}>
-              <label className="block text-sm font-medium text-[#cdd9e8] mb-2">{label}</label>
+              <label className="block text-sm font-medium text-[var(--text-2)] mb-2">{label}</label>
               <div className="relative">
                 <input
                   type={show ? 'text' : 'password'}
@@ -181,27 +181,27 @@ export default function ChangePasswordModal({
                 <button
                   type="button"
                   onClick={toggleShow}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#5f6b7d] hover:text-[#9aa8bd] transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[var(--text-6)] hover:text-[var(--text-3)] transition-colors"
                 >
                   <EyeIcon show={show} />
                 </button>
               </div>
-              {error && <p className="text-xs text-[#ff6071] mt-1">{error}</p>}
+              {error && <p className="text-xs text-[var(--red)] mt-1">{error}</p>}
               {showStrength && value && (
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-[#7c8aa0]">Password Strength</span>
-                    <span className={`text-xs font-medium ${passwordStrength.strength >= 3 ? 'text-[#3ddc84]' : 'text-[#f6b352]'}`}>
+                    <span className="text-xs text-[var(--text-5)]">Password Strength</span>
+                    <span className={`text-xs font-medium ${passwordStrength.strength >= 3 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}`}>
                       {passwordStrength.label}
                     </span>
                   </div>
-                  <div className="w-full bg-white/10 rounded-full h-1.5">
+                  <div className="w-full bg-[var(--surface-3)] rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full transition-all ${passwordStrength.color}`}
                       style={{ width: `${(passwordStrength.strength / 5) * 100}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs text-[#5f6b7d] mt-1">Use 10+ characters with a mix of letters, numbers & symbols</p>
+                  <p className="text-xs text-[var(--text-6)] mt-1">Use 10+ characters with a mix of letters, numbers & symbols</p>
                 </div>
               )}
             </div>

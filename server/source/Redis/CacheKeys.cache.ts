@@ -16,7 +16,8 @@ enum CacheKeys {
 export const getACLKeyForIP = (ip: string): string => `acl:ip:${ip}`;
 
 export enum QueueKeys {
-  DNS_Analytics = "DNS_analytcs"
+  DNS_Analytics = "DNS_analytcs",
+  LOGS_EXPORT = "logs_export"
 }
 
 export enum DNS_QUERY_STATUS_KEYS {
@@ -25,7 +26,9 @@ export enum DNS_QUERY_STATUS_KEYS {
   RESOLVED = "RESOLVED",
   NOT_FOUND = "DOMAIN NOT FOUND",
   FORWARDED = "DNS REQUESTED FORWARDED",
-  FAILED = "FAILED TO PROCESS"
+  FAILED = "FAILED TO PROCESS",
+  FAIL_SAFE = "RESOLVED (FAIL-SAFE)",
+  FROM_FAIL_SAFE = "FAIL-SAFE BYPASS"
 
 }
 

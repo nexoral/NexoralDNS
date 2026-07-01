@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "dgram";
 import { Console } from "outers"
@@ -195,7 +196,8 @@ class DNSForwarderService {
     queryType: string,
     customTTL: number | null,
     rinfo: dgram.RemoteInfo,
-    start: number
+    start: number,
+    isFailSafe = false
   ): Promise<Buffer | null> {
     const originalId = msg.readUInt16BE(0);
     const availableDNS = shuffleArray([...GlobalDNS]);
@@ -255,8 +257,8 @@ class DNSForwarderService {
           queryType,
           timestamp: Date.now(),
           SourceIP: rinfo.address,
-          Status: DNS_QUERY_STATUS_KEYS.FORWARDED,
-          From: dnsIP.name,
+          Status: isFailSafe ? DNS_QUERY_STATUS_KEYS.FAIL_SAFE : DNS_QUERY_STATUS_KEYS.FORWARDED,
+          From: isFailSafe ? DNS_QUERY_STATUS_KEYS.FROM_FAIL_SAFE : dnsIP.name,
           duration
         };
 
@@ -290,7 +292,8 @@ export default function GlobalDNSforwarder(
   queryType: string,
   customTTL: number | null = null,
   rinfo: dgram.RemoteInfo,
-  start: number
+  start: number,
+  isFailSafe = false
 ): Promise<Buffer | null> {
-  return DNSForwarderService.getInstance().resolve(msg, queryName, queryType, customTTL, rinfo, start);
+  return DNSForwarderService.getInstance().resolve(msg, queryName, queryType, customTTL, rinfo, start, isFailSafe);
 }

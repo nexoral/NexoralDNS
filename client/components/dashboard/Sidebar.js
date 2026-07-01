@@ -97,20 +97,20 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <div className={`
-      fixed top-0 left-0 h-full bg-[#090c12] border-r border-[rgba(130,165,220,0.1)] z-50 transition-all duration-300 ease-in-out flex flex-col
+      fixed top-0 left-0 h-full bg-[var(--sidebar-bg)] border-r border-[var(--border)] z-50 transition-all duration-300 ease-in-out flex flex-col
       ${isOpen ? 'w-64' : 'w-20 lg:w-20'}
       lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
     `}>
       {/* Logo */}
-      <div className="flex items-center justify-center h-16 border-b border-[rgba(130,165,220,0.1)] flex-shrink-0">
+      <div className="flex items-center justify-center h-16 border-b border-[var(--border)] flex-shrink-0">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-[#5b8cff] to-[#34e1d4] rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
+          <div className="w-9 h-9 bg-gradient-to-br from-[var(--blue)] to-[var(--teal)] rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
           {isOpen && (
-            <span className="font-bold text-[#e7eef6] tracking-tight animate-fade-in">
+            <span className="font-bold text-[var(--text-1)] tracking-tight animate-fade-in">
               {config.APP_NAME}
             </span>
           )}
@@ -128,15 +128,15 @@ export default function Sidebar({ isOpen, onClose }) {
                 className={`
                   w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-all duration-200 relative
                   ${pathname === item.href
-                    ? 'bg-gradient-to-r from-[#5b8cff]/20 to-[#34e1d4]/10 text-[#5b8cff] border border-[rgba(91,140,255,0.2)]'
-                    : 'text-[#9aa8bd] hover:bg-white/5 hover:text-[#e7eef6]'
+                    ? 'bg-gradient-to-r from-[var(--blue)]/20 to-[var(--teal)]/10 text-[var(--blue)] border border-[rgba(91,140,255,0.2)]'
+                    : 'text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]'
                   }
                   ${!isOpen ? 'justify-center' : 'justify-start'}
                 `}
                 onMouseEnter={(e) => handleMouseEnter(item.id, e)}
                 onMouseLeave={handleMouseLeave}
               >
-                <span className={`flex-shrink-0 ${pathname === item.href ? 'text-[#5b8cff]' : ''}`}>
+                <span className={`flex-shrink-0 ${pathname === item.href ? 'text-[var(--blue)]' : ''}`}>
                   {icons[item.icon]}
                 </span>
                 {isOpen && (
@@ -145,7 +145,7 @@ export default function Sidebar({ isOpen, onClose }) {
                   </span>
                 )}
                 {pathname === item.href && isOpen && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#5b8cff]"></span>
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--blue)]"></span>
                 )}
               </Link>
             </li>
@@ -154,10 +154,10 @@ export default function Sidebar({ isOpen, onClose }) {
       </nav>
 
       {/* Logout Button */}
-      <div className="flex-shrink-0 p-3 border-t border-[rgba(130,165,220,0.1)]">
+      <div className="flex-shrink-0 p-3 border-t border-[var(--border)]">
         <button
           className={`
-            w-full flex items-center px-3 py-2.5 text-[#ff6071] hover:bg-[rgba(255,96,113,0.08)] rounded-lg transition-all duration-200 relative
+            w-full flex items-center px-3 py-2.5 text-[var(--red)] hover:bg-[rgba(255,96,113,0.08)] rounded-lg transition-all duration-200 relative
             ${!isOpen ? 'justify-center' : 'justify-start'}
           `}
           onMouseEnter={(e) => handleMouseEnter('logout', e)}
@@ -175,14 +175,14 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* Tooltip */}
       {!isOpen && hoveredItem && (
         <div
-          className="fixed left-20 px-3 py-2 bg-[#0d111a] border border-[rgba(130,165,220,0.18)] text-[#e7eef6] text-sm rounded-lg shadow-xl z-[9999] whitespace-nowrap animate-fade-in pointer-events-none ml-2"
+          className="fixed left-20 px-3 py-2 bg-[var(--card-bg)] border border-[var(--border-3)] text-[var(--text-1)] text-sm rounded-lg shadow-xl z-[9999] whitespace-nowrap animate-fade-in pointer-events-none ml-2"
           style={{
             top: tooltipPosition.top,
             transform: 'translateY(-50%)'
           }}
         >
           {hoveredItem === 'logout' ? 'Logout' : menuItems.find(item => item.id === hoveredItem)?.tooltip}
-          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-[#0d111a] border-l border-b border-[rgba(130,165,220,0.18)] rotate-45"></div>
+          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-[var(--card-bg)] border-l border-b border-[var(--border-3)] rotate-45"></div>
         </div>
       )}
     </div>

@@ -36,12 +36,12 @@ export default function RoleModal({ role, permissions, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.18)] shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-[rgba(130,165,220,0.14)]">
-          <h2 className="text-lg font-semibold text-[#e7eef6]">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-3)] shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-[var(--border-2)]">
+          <h2 className="text-lg font-semibold text-[var(--text-1)]">
             {isEdit ? 'Edit Role' : 'Create Role'}
           </h2>
-          <p className="text-sm text-[#9aa8bd] mt-1">Choose which permissions this role grants</p>
+          <p className="text-sm text-[var(--text-3)] mt-1">Choose which permissions this role grants</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -54,26 +54,26 @@ export default function RoleModal({ role, permissions, onClose, onSave }) {
           />
 
           <div>
-            <label className="block text-sm font-medium text-[#cdd9e8] mb-2">Permissions</label>
-            <div className="space-y-1 max-h-72 overflow-y-auto p-2 bg-[#07090e] rounded-lg border border-[rgba(130,165,220,0.1)]">
+            <label className="block text-sm font-medium text-[var(--text-2)] mb-2">Permissions</label>
+            <div className="space-y-1 max-h-72 overflow-y-auto p-2 bg-[var(--bg)] rounded-lg border border-[var(--border)]">
               {permissions.map((permission) => (
                 <label
                   key={permission._id}
-                  className="flex items-center p-2 rounded-lg hover:bg-white/5 cursor-pointer"
+                  className="flex items-center p-2 rounded-lg hover:bg-[var(--surface-hover)] cursor-pointer"
                 >
                   <input
                     type="checkbox"
                     checked={formData.permissionCodes.includes(permission.code)}
                     onChange={() => togglePermission(permission.code)}
-                    className="w-4 h-4 text-[#5b8cff] rounded"
+                    className="w-4 h-4 text-[var(--blue)] rounded"
                   />
-                  <span className="ml-3 text-sm text-[#e7eef6]">{permission.name}</span>
+                  <span className="ml-3 text-sm text-[var(--text-1)]">{permission.name}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          {error && <p className="text-xs text-[#ff6071]">{error}</p>}
+          {error && <p className="text-xs text-[var(--red)]">{error}</p>}
 
           <div className="flex justify-end space-x-3 pt-2">
             <Button type="button" variant="secondary" onClick={onClose}>

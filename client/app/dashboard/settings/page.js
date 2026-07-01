@@ -87,10 +87,10 @@ export default function SettingsPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84] border-[rgba(61,220,132,0.2)]';
-      case 'inactive': return 'bg-[rgba(255,96,113,0.12)] text-[#ff6071] border-[rgba(255,96,113,0.2)]';
-      case 'loading': return 'bg-[rgba(246,179,82,0.12)] text-[#f6b352] border-[rgba(246,179,82,0.2)]';
-      default: return 'bg-white/8 text-[#e7eef6] border-gray-200';
+      case 'active': return 'bg-[rgba(61,220,132,0.12)] text-[var(--green)] border-[rgba(61,220,132,0.2)]';
+      case 'inactive': return 'bg-[rgba(255,96,113,0.12)] text-[var(--red)] border-[rgba(255,96,113,0.2)]';
+      case 'loading': return 'bg-[rgba(246,179,82,0.12)] text-[var(--amber)] border-[rgba(246,179,82,0.2)]';
+      default: return 'bg-[var(--surface-3)] text-[var(--text-1)] border-gray-200';
     }
   };
 
@@ -145,7 +145,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07090e]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
@@ -157,8 +157,8 @@ export default function SettingsPage() {
 
         <main className="p-4 lg:p-6">
           <div className="mb-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">DNS Server Settings</h1>
-            <p className="text-[#9aa8bd]">Manage your DNS server configuration and services</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-[var(--text-1)] mb-2">DNS Server Settings</h1>
+            <p className="text-[var(--text-3)]">Manage your DNS server configuration and services</p>
           </div>
 
           {/* CRITICAL WARNING - LAN USE ONLY */}
@@ -168,38 +168,38 @@ export default function SettingsPage() {
               {/* Header */}
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 bg-[rgba(255,96,113,0.15)] border border-[rgba(255,96,113,0.3)] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-[#ff6071]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-[var(--red)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-[#ff6071] tracking-tight">CRITICAL WARNING — LAN USE ONLY</h2>
-                  <p className="text-xs text-[#ff6071]/70 mt-0.5">DO NOT HOST ON CLOUD OR PUBLIC INTERNET</p>
+                  <h2 className="text-lg font-bold text-[var(--red)] tracking-tight">CRITICAL WARNING — LAN USE ONLY</h2>
+                  <p className="text-xs text-[var(--red)]/70 mt-0.5">DO NOT HOST ON CLOUD OR PUBLIC INTERNET</p>
                 </div>
               </div>
 
               {/* Main message */}
               <div className="bg-[rgba(255,96,113,0.08)] border border-[rgba(255,96,113,0.2)] rounded-lg p-4 mb-4">
-                <p className="text-sm font-semibold text-[#e7eef6] mb-1">
-                  NexoralDNS is <span className="text-[#ff6071]">strictly</span> designed for <span className="text-[#ff6071]">Local Area Network (LAN)</span> use only.
+                <p className="text-sm font-semibold text-[var(--text-1)] mb-1">
+                  NexoralDNS is <span className="text-[var(--red)]">strictly</span> designed for <span className="text-[var(--red)]">Local Area Network (LAN)</span> use only.
                 </p>
-                <p className="text-xs text-[#9aa8bd]">Why you should never use this on cloud or public hosting:</p>
-                <ul className="mt-2 space-y-1.5 text-xs text-[#9aa8bd]">
-                  <li className="flex items-start gap-2"><span className="text-[#ff6071] mt-0.5">✕</span><span><span className="text-[#cdd9e8] font-medium">DNS Spoofing Detection:</span> Your ISP will detect and flag this activity</span></li>
-                  <li className="flex items-start gap-2"><span className="text-[#ff6071] mt-0.5">✕</span><span><span className="text-[#cdd9e8] font-medium">Automatic Blocking:</span> ISPs will automatically block your DNS server</span></li>
-                  <li className="flex items-start gap-2"><span className="text-[#ff6071] mt-0.5">✕</span><span><span className="text-[#cdd9e8] font-medium">Traffic Redirection:</span> All DNS traffic forcibly routed to ISP's servers</span></li>
-                  <li className="flex items-start gap-2"><span className="text-[#ff6071] mt-0.5">✕</span><span><span className="text-[#cdd9e8] font-medium">Legal Issues:</span> May violate ISP terms of service</span></li>
+                <p className="text-xs text-[var(--text-3)]">Why you should never use this on cloud or public hosting:</p>
+                <ul className="mt-2 space-y-1.5 text-xs text-[var(--text-3)]">
+                  <li className="flex items-start gap-2"><span className="text-[var(--red)] mt-0.5">✕</span><span><span className="text-[var(--text-2)] font-medium">DNS Spoofing Detection:</span> Your ISP will detect and flag this activity</span></li>
+                  <li className="flex items-start gap-2"><span className="text-[var(--red)] mt-0.5">✕</span><span><span className="text-[var(--text-2)] font-medium">Automatic Blocking:</span> ISPs will automatically block your DNS server</span></li>
+                  <li className="flex items-start gap-2"><span className="text-[var(--red)] mt-0.5">✕</span><span><span className="text-[var(--text-2)] font-medium">Traffic Redirection:</span> All DNS traffic forcibly routed to ISP's servers</span></li>
+                  <li className="flex items-start gap-2"><span className="text-[var(--red)] mt-0.5">✕</span><span><span className="text-[var(--text-2)] font-medium">Legal Issues:</span> May violate ISP terms of service</span></li>
                 </ul>
               </div>
 
               {/* Correct vs Incorrect */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="bg-[rgba(61,220,132,0.06)] border border-[rgba(61,220,132,0.2)] rounded-lg p-3.5">
-                  <p className="text-xs font-semibold text-[#3ddc84] mb-2 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-[var(--green)] mb-2 flex items-center gap-1.5">
                     <span className="w-4 h-4 bg-[rgba(61,220,132,0.2)] rounded-full flex items-center justify-center text-[10px]">✓</span>
                     Correct Usage
                   </p>
-                  <ul className="space-y-1 text-xs text-[#9aa8bd]">
+                  <ul className="space-y-1 text-xs text-[var(--text-3)]">
                     <li>• Install on a local machine within your LAN</li>
                     <li>• Configure your router to use this DNS</li>
                     <li>• Use only for internal network traffic</li>
@@ -207,11 +207,11 @@ export default function SettingsPage() {
                   </ul>
                 </div>
                 <div className="bg-[rgba(255,96,113,0.06)] border border-[rgba(255,96,113,0.2)] rounded-lg p-3.5">
-                  <p className="text-xs font-semibold text-[#ff6071] mb-2 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-[var(--red)] mb-2 flex items-center gap-1.5">
                     <span className="w-4 h-4 bg-[rgba(255,96,113,0.2)] rounded-full flex items-center justify-center text-[10px]">✕</span>
                     Incorrect Usage
                   </p>
-                  <ul className="space-y-1 text-xs text-[#9aa8bd]">
+                  <ul className="space-y-1 text-xs text-[var(--text-3)]">
                     <li>• Hosting on AWS, Azure, Google Cloud, etc.</li>
                     <li>• Using as a public DNS resolver</li>
                     <li>• Exposing port 53 to the internet</li>
@@ -220,7 +220,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <p className="mt-4 text-xs text-[#7c8aa0] text-center border-t border-[rgba(255,96,113,0.15)] pt-3">
+              <p className="mt-4 text-xs text-[var(--text-5)] text-center border-t border-[rgba(255,96,113,0.15)] pt-3">
                 This warning applies to all deployment scenarios — always ensure NexoralDNS remains within your private network.
               </p>
             </div>
@@ -228,37 +228,37 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Server Information */}
-            <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
-              <h2 className="text-lg font-semibold text-[#e7eef6] mb-4 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-[#5b8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
+              <h2 className="text-lg font-semibold text-[var(--text-1)] mb-4 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-[var(--blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
                 </svg>
                 Server Information
               </h2>
 
               <div className="space-y-4">
-                <div className="flex justify-between items-center py-3 border-b border-[rgba(130,165,220,0.08)]">
-                  <span className="text-sm font-medium text-[#9aa8bd]">Server IP Address</span>
-                  <span className="text-sm text-[#e7eef6] font-mono bg-white/8 px-2 py-1 rounded">
+                <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                  <span className="text-sm font-medium text-[var(--text-3)]">Server IP Address</span>
+                  <span className="text-sm text-[var(--text-1)] font-mono bg-[var(--surface-3)] px-2 py-1 rounded">
                     {serverConfig.serverIP}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-[rgba(130,165,220,0.08)]">
-                  <span className="text-sm font-medium text-[#9aa8bd]">DNS Port</span>
-                  <span className="text-sm text-[#e7eef6] font-mono bg-white/8 px-2 py-1 rounded">
+                <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                  <span className="text-sm font-medium text-[var(--text-3)]">DNS Port</span>
+                  <span className="text-sm text-[var(--text-1)] font-mono bg-[var(--surface-3)] px-2 py-1 rounded">
                     {serverConfig.dnsPort}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-[rgba(130,165,220,0.08)]">
-                  <span className="text-sm font-medium text-[#9aa8bd]">Server Version</span>
-                  <span className="text-sm text-[#e7eef6]">{serverConfig.version}</span>
+                <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                  <span className="text-sm font-medium text-[var(--text-3)]">Server Version</span>
+                  <span className="text-sm text-[var(--text-1)]">{serverConfig.version}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-sm font-medium text-[#9aa8bd]">Web Interface</span>
-                  <span className="text-sm text-[#e7eef6] font-mono bg-white/8 px-2 py-1 rounded">
+                  <span className="text-sm font-medium text-[var(--text-3)]">Web Interface</span>
+                  <span className="text-sm text-[var(--text-1)] font-mono bg-[var(--surface-3)] px-2 py-1 rounded">
                     {serverConfig.webInterfaceHost}:{serverConfig.webInterfacePort}
                   </span>
                 </div>
@@ -266,18 +266,18 @@ export default function SettingsPage() {
             </div>
 
             {/* Service Control */}
-            <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
-              <h2 className="text-lg font-semibold text-[#e7eef6] mb-4 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-[#3ddc84]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
+              <h2 className="text-lg font-semibold text-[var(--text-1)] mb-4 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-[var(--green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 DNS Service Control
               </h2>
 
               <div className="space-y-4">
-                <div className="bg-[#07090e] rounded-lg p-4">
+                <div className="bg-[var(--bg)] rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="font-medium text-[#e7eef6]">DNS Service Status</span>
+                    <span className="font-medium text-[var(--text-1)]">DNS Service Status</span>
                     <div className="flex items-center space-x-2">
                       {getStatusIcon(serverConfig.serviceStatus)}
                       <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(serverConfig.serviceStatus)}`}>
@@ -286,7 +286,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <p className="text-sm text-[#9aa8bd] mb-4">
+                  <p className="text-sm text-[var(--text-3)] mb-4">
                     Control the DNS service status. Use the buttons below to start, stop, or restart the DNS service.
                   </p>
 
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                     )}
 
                     {serverConfig.serviceStatus === 'loading' && (
-                      <div className="flex items-center space-x-2 text-[#f6b352] bg-[rgba(246,179,82,0.07)] px-4 py-2 rounded-lg border border-[rgba(246,179,82,0.2)]">
+                      <div className="flex items-center space-x-2 text-[var(--amber)] bg-[rgba(246,179,82,0.07)] px-4 py-2 rounded-lg border border-[rgba(246,179,82,0.2)]">
                         <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
@@ -329,12 +329,12 @@ export default function SettingsPage() {
                 {serverConfig.serviceStatus === 'inactive' && (
                   <div className="bg-[rgba(255,96,113,0.07)] border border-[rgba(255,96,113,0.2)] rounded-lg p-4">
                     <div className="flex items-start space-x-2">
-                      <svg className="w-5 h-5 text-[#ff6071] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-[var(--red)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <div>
-                        <p className="text-sm font-medium text-[#ff6071]">🛑 DNS Service Stopped</p>
-                        <p className="text-sm text-[#ff6071] mt-1">
+                        <p className="text-sm font-medium text-[var(--red)]">🛑 DNS Service Stopped</p>
+                        <p className="text-sm text-[var(--red)] mt-1">
                           The DNS service is currently stopped. All DNS resolution requests will fail until the service is started.
                         </p>
                       </div>
@@ -345,12 +345,12 @@ export default function SettingsPage() {
                 {serverConfig.serviceStatus === 'active' && (
                   <div className="bg-[rgba(61,220,132,0.07)] border border-[rgba(61,220,132,0.2)] rounded-lg p-4">
                     <div className="flex items-start space-x-2">
-                      <svg className="w-5 h-5 text-[#3ddc84] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-[var(--green)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <div>
-                        <p className="text-sm font-medium text-[#3ddc84]">✅ DNS Service Running</p>
-                        <p className="text-sm text-[#3ddc84] mt-1">
+                        <p className="text-sm font-medium text-[var(--green)]">✅ DNS Service Running</p>
+                        <p className="text-sm text-[var(--green)] mt-1">
                           The DNS service is running normally and processing DNS resolution requests.
                         </p>
                       </div>
@@ -361,12 +361,12 @@ export default function SettingsPage() {
                 {/* Warning for service actions */}
                 <div className="bg-[rgba(246,179,82,0.07)] border border-[rgba(246,179,82,0.2)] rounded-lg p-4">
                   <div className="flex items-start space-x-2">
-                    <svg className="w-5 h-5 text-[#f6b352] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[var(--amber)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-medium text-[#f6b352]">⚠️ Service Control Warning</p>
-                      <p className="text-sm text-[#f6b352] mt-1">
+                      <p className="text-sm font-medium text-[var(--amber)]">⚠️ Service Control Warning</p>
+                      <p className="text-sm text-[var(--amber)] mt-1">
                         Stopping the DNS service will temporarily interrupt DNS resolution for all connected clients. Make sure to inform users before performing this action.
                       </p>
                     </div>
@@ -377,19 +377,19 @@ export default function SettingsPage() {
           </div>
 
           {/* Default TTL Configuration */}
-          <div className="mt-6 bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
-            <h2 className="text-lg font-semibold text-[#e7eef6] mb-4 flex items-center">
-              <svg className="w-5 h-5 mr-2 text-[#5b8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mt-6 bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
+            <h2 className="text-lg font-semibold text-[var(--text-1)] mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-[var(--blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Default TTL (Time To Live) Configuration
             </h2>
 
             <div className="bg-[rgba(91,140,255,0.06)] border border-[rgba(91,140,255,0.2)] rounded-lg p-4 mb-6">
-              <p className="text-sm text-[#cdd9e8] mb-1.5">
-                <span className="text-[#5b8cff] font-semibold">Purpose:</span> This TTL applies <strong className="text-[#e7eef6]">only</strong> to blocked domains and domain forwarder requests.
+              <p className="text-sm text-[var(--text-2)] mb-1.5">
+                <span className="text-[var(--blue)] font-semibold">Purpose:</span> This TTL applies <strong className="text-[var(--text-1)]">only</strong> to blocked domains and domain forwarder requests.
               </p>
-              <p className="text-sm text-[#9aa8bd]">
+              <p className="text-sm text-[var(--text-3)]">
                 Low TTL ensures quick response when you unblock a domain — it will work normally almost instantly. Regular domains you create use their own TTL set at creation time.
               </p>
             </div>
@@ -399,7 +399,7 @@ export default function SettingsPage() {
               <div className="bg-[rgba(91,140,255,0.05)] rounded-lg p-6 border border-[rgba(91,140,255,0.15)]">
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="defaultTTL" className="block text-sm font-semibold text-[#cdd9e8] mb-2">
+                    <label htmlFor="defaultTTL" className="block text-sm font-semibold text-[var(--text-2)] mb-2">
                       Default TTL Value (seconds)
                     </label>
                     <div className="relative">
@@ -412,22 +412,22 @@ export default function SettingsPage() {
                         placeholder="10"
                         min="10"
                         max="86400"
-                        className="w-full px-4 py-3 bg-white/6 border border-[rgba(91,140,255,0.25)] rounded-lg text-[#e7eef6] placeholder-[#5f6b7d] focus:outline-none focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-[#5b8cff]/60 transition-all duration-200 font-mono text-lg"
+                        className="w-full px-4 py-3 bg-[var(--surface-2)] border border-[rgba(91,140,255,0.25)] rounded-lg text-[var(--text-1)] placeholder-[var(--text-6)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-[var(--blue)]/60 transition-all duration-200 font-mono text-lg"
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <span className="text-[#5f6b7d] text-sm font-medium">seconds</span>
+                        <span className="text-[var(--text-6)] text-sm font-medium">seconds</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white/4 rounded-lg p-4 border border-[rgba(130,165,220,0.12)]">
-                    <p className="text-xs text-[#9aa8bd] mb-2.5 font-medium">Quick TTL Presets:</p>
+                  <div className="bg-[var(--surface-1)] rounded-lg p-4 border border-[var(--border-2)]">
+                    <p className="text-xs text-[var(--text-3)] mb-2.5 font-medium">Quick TTL Presets:</p>
                     <div className="flex flex-wrap gap-2">
                       {[{ label: '10 sec', value: 10 }, { label: '30 sec', value: 30 }, { label: '1 min', value: 60 }, { label: '5 min', value: 300 }].map(({ label, value }) => (
                         <button
                           key={value}
                           onClick={() => handleTTLPreset(value)}
-                          className="px-3 py-1.5 bg-[rgba(91,140,255,0.08)] hover:bg-[rgba(91,140,255,0.15)] text-[#5b8cff] text-xs font-medium rounded-md border border-[rgba(91,140,255,0.2)] hover:border-[rgba(91,140,255,0.35)] transition-all duration-200"
+                          className="px-3 py-1.5 bg-[rgba(91,140,255,0.08)] hover:bg-[rgba(91,140,255,0.15)] text-[var(--blue)] text-xs font-medium rounded-md border border-[rgba(91,140,255,0.2)] hover:border-[rgba(91,140,255,0.35)] transition-all duration-200"
                         >
                           {label} ({value}s)
                         </button>
@@ -453,15 +453,15 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="bg-[rgba(255,96,113,0.07)] border border-[rgba(255,96,113,0.2)] rounded-lg p-4">
                   <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[#ff6071] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[var(--red)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-[#ff6071] mb-2">Why Low TTL for Blockages?</p>
-                      <p className="text-sm text-[#ff6071] mb-2">
+                      <p className="text-sm font-semibold text-[var(--red)] mb-2">Why Low TTL for Blockages?</p>
+                      <p className="text-sm text-[var(--red)] mb-2">
                         Low TTL ensures <strong>more accurate and instant blockage control</strong>:
                       </p>
-                      <ul className="text-xs text-[#ff6071] space-y-1 ml-4">
+                      <ul className="text-xs text-[var(--red)] space-y-1 ml-4">
                         <li>• When you block a domain, it blocks quickly across all devices</li>
                         <li>• When you unblock a domain, it resumes working almost instantly</li>
                         <li>• Clients refresh DNS cache faster, respecting your block/unblock actions</li>
@@ -472,12 +472,12 @@ export default function SettingsPage() {
 
                 <div className="bg-[rgba(91,140,255,0.07)] border border-[rgba(91,140,255,0.2)] rounded-lg p-4">
                   <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[#5b8cff] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[var(--blue)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-[#5b8cff] mb-2">Applies To</p>
-                      <ul className="text-sm text-[#5b8cff] space-y-1">
+                      <p className="text-sm font-semibold text-[var(--blue)] mb-2">Applies To</p>
+                      <ul className="text-sm text-[var(--blue)] space-y-1">
                         <li><strong>✓ Blocked Domains:</strong> Domains you've blocked via NexoralDNS</li>
                         <li><strong>✓ Domain Forwarder Requests:</strong> DNS queries forwarded to upstream servers</li>
                         <li><strong>✗ Custom Domains:</strong> These use their own TTL set when created</li>
@@ -488,12 +488,12 @@ export default function SettingsPage() {
 
                 <div className="bg-[rgba(61,220,132,0.07)] border border-[rgba(61,220,132,0.2)] rounded-lg p-4">
                   <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[#3ddc84] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[var(--green)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-[#3ddc84] mb-2">Recommended Values</p>
-                      <ul className="text-sm text-[#3ddc84] space-y-1">
+                      <p className="text-sm font-semibold text-[var(--green)] mb-2">Recommended Values</p>
+                      <ul className="text-sm text-[var(--green)] space-y-1">
                         <li><strong>10-30s:</strong> Maximum responsiveness for block/unblock actions</li>
                         <li><strong>60-300s:</strong> Balanced performance and accuracy</li>
                         <li><strong>300s+ (5 min):</strong> Lower DNS query load, slower updates</li>
@@ -504,12 +504,12 @@ export default function SettingsPage() {
 
                 <div className="bg-[rgba(246,179,82,0.07)] border border-[rgba(246,179,82,0.2)] rounded-lg p-4">
                   <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[#f6b352] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[var(--amber)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-[#f6b352] mb-2">Important Constraints</p>
-                      <ul className="text-sm text-[#f6b352] space-y-1">
+                      <p className="text-sm font-semibold text-[var(--amber)] mb-2">Important Constraints</p>
+                      <ul className="text-sm text-[var(--amber)] space-y-1">
                         <li><strong>Minimum TTL:</strong> 10 seconds (allows instant unblocking)</li>
                         <li><strong>Maximum TTL:</strong> 86400 seconds (24 hours)</li>
                         <li><strong>Note:</strong> Custom domains you create maintain their own TTL</li>
@@ -523,9 +523,9 @@ export default function SettingsPage() {
           </div>
 
           {/* Network Configuration */}
-          <div className="mt-6 bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
-            <h2 className="text-lg font-semibold text-[#e7eef6] mb-4 flex items-center">
-              <svg className="w-5 h-5 mr-2 text-[#a78bfa]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mt-6 bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
+            <h2 className="text-lg font-semibold text-[var(--text-1)] mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-[var(--purple)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9" />
               </svg>
               Network Configuration Instructions
@@ -535,12 +535,12 @@ export default function SettingsPage() {
               {/* Critical IP Reservation Warning */}
               <div className="bg-[rgba(255,96,113,0.07)] border border-[rgba(255,96,113,0.2)] rounded-lg p-4">
                 <div className="flex items-start space-x-2">
-                  <svg className="w-5 h-5 text-[#ff6071] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-[var(--red)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="text-sm font-medium text-[#ff6071]">🚨 CRITICAL: Set Static IP for this server!</p>
-                    <p className="text-sm text-[#ff6071] mt-1">
+                    <p className="text-sm font-medium text-[var(--red)]">🚨 CRITICAL: Set Static IP for this server!</p>
+                    <p className="text-sm text-[var(--red)] mt-1">
                       <strong>Reserve/Static IP: {serverConfig.serverIP}</strong> in your router settings to prevent DNS service interruption.
                       This prevents IP changes that would break DNS resolution for all clients.
                     </p>
@@ -550,7 +550,7 @@ export default function SettingsPage() {
 
               {/* Router Configuration Steps */}
               <div className="bg-[rgba(91,140,255,0.07)] border border-[rgba(91,140,255,0.2)] rounded-lg p-4">
-                <h3 className="font-medium text-[#5b8cff] mb-3 flex items-center">
+                <h3 className="font-medium text-[var(--blue)] mb-3 flex items-center">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.168 18.477 18.582 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
@@ -558,18 +558,18 @@ export default function SettingsPage() {
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="bg-[#0d111a] rounded p-4 border border-[rgba(91,140,255,0.15)]">
-                    <h4 className="font-semibold text-[#5b8cff] mb-2">Step 1: Access Router Admin Panel</h4>
-                    <ul className="text-sm text-[#5b8cff] space-y-1 list-disc list-inside ml-2">
+                  <div className="bg-[var(--card-bg)] rounded p-4 border border-[rgba(91,140,255,0.15)]">
+                    <h4 className="font-semibold text-[var(--blue)] mb-2">Step 1: Access Router Admin Panel</h4>
+                    <ul className="text-sm text-[var(--blue)] space-y-1 list-disc list-inside ml-2">
                       <li>Open your web browser</li>
                       <li>Navigate to your router's IP (usually 192.168.1.1 or 192.168.0.1)</li>
                       <li>Login with your router admin credentials</li>
                     </ul>
                   </div>
 
-                  <div className="bg-[#0d111a] rounded p-4 border border-[rgba(91,140,255,0.15)]">
-                    <h4 className="font-semibold text-[#5b8cff] mb-2">Step 2: Configure DHCP & DNS Settings</h4>
-                    <ul className="text-sm text-[#5b8cff] space-y-1 list-disc list-inside ml-2">
+                  <div className="bg-[var(--card-bg)] rounded p-4 border border-[rgba(91,140,255,0.15)]">
+                    <h4 className="font-semibold text-[var(--blue)] mb-2">Step 2: Configure DHCP & DNS Settings</h4>
+                    <ul className="text-sm text-[var(--blue)] space-y-1 list-disc list-inside ml-2">
                       <li>Navigate to <strong>DHCP Settings</strong> or <strong>LAN Settings</strong></li>
                       <li>Find the <strong>DNS Server Settings</strong> section</li>
                       <li><strong>Set Primary DNS Server to: {serverConfig.serverIP}</strong></li>
@@ -578,9 +578,9 @@ export default function SettingsPage() {
                     </ul>
                   </div>
 
-                  <div className="bg-[#0d111a] rounded p-4 border border-[rgba(91,140,255,0.15)]">
-                    <h4 className="font-semibold text-[#5b8cff] mb-2">Step 3: Reserve IP Address (Critical)</h4>
-                    <ul className="text-sm text-[#5b8cff] space-y-1 list-disc list-inside ml-2">
+                  <div className="bg-[var(--card-bg)] rounded p-4 border border-[rgba(91,140,255,0.15)]">
+                    <h4 className="font-semibold text-[var(--blue)] mb-2">Step 3: Reserve IP Address (Critical)</h4>
+                    <ul className="text-sm text-[var(--blue)] space-y-1 list-disc list-inside ml-2">
                       <li>Navigate to <strong>DHCP Reservation</strong> or <strong>Static IP</strong> settings</li>
                       <li>Find this server's MAC address in connected devices</li>
                       <li><strong>Reserve IP: {serverConfig.serverIP}</strong> for this server</li>
@@ -588,9 +588,9 @@ export default function SettingsPage() {
                     </ul>
                   </div>
 
-                  <div className="bg-[#0d111a] rounded p-4 border border-[rgba(91,140,255,0.15)]">
-                    <h4 className="font-semibold text-[#5b8cff] mb-2">Step 4: Apply & Restart</h4>
-                    <ul className="text-sm text-[#5b8cff] space-y-1 list-disc list-inside ml-2">
+                  <div className="bg-[var(--card-bg)] rounded p-4 border border-[rgba(91,140,255,0.15)]">
+                    <h4 className="font-semibold text-[var(--blue)] mb-2">Step 4: Apply & Restart</h4>
+                    <ul className="text-sm text-[var(--blue)] space-y-1 list-disc list-inside ml-2">
                       <li><strong>Save all settings</strong> in your router</li>
                       <li><strong>Restart your router</strong> to apply changes</li>
                       <li>Wait 2-3 minutes for router to fully boot up</li>
@@ -602,8 +602,8 @@ export default function SettingsPage() {
 
               {/* Current Server Info */}
               <div className="bg-[rgba(61,220,132,0.07)] border border-[rgba(61,220,132,0.2)] rounded-lg p-4">
-                <h3 className="font-medium text-[#3ddc84] mb-3">🌐 Your NexoralDNS Server Configuration</h3>
-                <div className="bg-[#0d111a] rounded p-3 border border-[rgba(61,220,132,0.15)]">
+                <h3 className="font-medium text-[var(--green)] mb-3">🌐 Your NexoralDNS Server Configuration</h3>
+                <div className="bg-[var(--card-bg)] rounded p-3 border border-[rgba(61,220,132,0.15)]">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
                       <p><strong>DNS Server IP:</strong> <span className="font-mono bg-[rgba(61,220,132,0.12)] px-2 py-1 rounded">{serverConfig.serverIP}</span></p>
@@ -611,7 +611,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <p><strong>Web Interface:</strong> <span className="font-mono bg-[rgba(61,220,132,0.12)] px-2 py-1 rounded">http://{serverConfig.webInterfaceHost}:{serverConfig.webInterfacePort}</span></p>
-                      <p><strong>Status:</strong> <span className="text-[#3ddc84] font-semibold">Active & Running</span></p>
+                      <p><strong>Status:</strong> <span className="text-[var(--green)] font-semibold">Active & Running</span></p>
                     </div>
                   </div>
                 </div>
@@ -619,8 +619,8 @@ export default function SettingsPage() {
 
               {/* Verification Steps */}
               <div className="bg-[rgba(246,179,82,0.07)] border border-[rgba(246,179,82,0.2)] rounded-lg p-4">
-                <h3 className="font-medium text-[#f6b352] mb-3">🔍 Verify Configuration is Working</h3>
-                <div className="space-y-2 text-sm text-[#f6b352]">
+                <h3 className="font-medium text-[var(--amber)] mb-3">🔍 Verify Configuration is Working</h3>
+                <div className="space-y-2 text-sm text-[var(--amber)]">
                   <p><strong>1. Check DNS Resolution:</strong></p>
                   <ul className="list-disc list-inside ml-4 space-y-1">
                     <li>Open Command Prompt/Terminal on any device</li>
@@ -638,16 +638,16 @@ export default function SettingsPage() {
               </div>
 
               {/* Troubleshooting */}
-              <div className="bg-white/3 border border-gray-200 rounded-lg p-4">
-                <h3 className="font-medium text-[#e7eef6] mb-3">🛠️ Troubleshooting Tips</h3>
-                <div className="space-y-2 text-sm text-[#cdd9e8]">
+              <div className="bg-[var(--surface-1)] border border-gray-200 rounded-lg p-4">
+                <h3 className="font-medium text-[var(--text-1)] mb-3">🛠️ Troubleshooting Tips</h3>
+                <div className="space-y-2 text-sm text-[var(--text-2)]">
                   <p><strong>If DNS is not working:</strong></p>
                   <ul className="list-disc list-inside ml-4 space-y-1">
                     <li>Ensure NexoralDNS service is running (check above)</li>
                     <li>Verify router DNS is set to <strong>{serverConfig.serverIP}</strong> only</li>
                     <li>Check IP reservation is active for this server</li>
                     <li>Restart router and wait 2-3 minutes</li>
-                    <li>On devices, run: <code className="bg-white/8 px-1 rounded">ipconfig /flushdns</code> (Windows) or restart device</li>
+                    <li>On devices, run: <code className="bg-[var(--surface-3)] px-1 rounded">ipconfig /flushdns</code> (Windows) or restart device</li>
                   </ul>
                 </div>
               </div>

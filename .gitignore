@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 # Build output
 lib/
 dist/
+
+# Generated log export files (temporary, cleaned up on download / hourly sweep)
+server/exports/

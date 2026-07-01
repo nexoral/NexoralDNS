@@ -11,6 +11,7 @@ import swaggerUI from '@fastify/swagger-ui';
 import startCronJob from "../CronJob/CronJob";
 import { initializeAdultContentDomainGroup } from "../utilities/InitializeAdultContentGroup.utls";
 import { initializeAdBlockingDomainGroup } from "../utilities/InitializeAdBlockingGroup.utls";
+import { initializeAIContentDomainGroup } from "../utilities/InitializeAIContentGroup.utls";
 
 
 export default function FastifyServer() {
@@ -92,6 +93,9 @@ export default function FastifyServer() {
       // Initialize ad blocking domain group (anti-ads mode)
       await initializeAdBlockingDomainGroup();
 
+      // Initialize AI content domain group (anti-ai mode)
+      await initializeAIContentDomainGroup();
+
       NexoralServer.listen({
         port: Number(ServerKeys.PORT),
         host: String(ServerKeys.HOST),
@@ -99,7 +103,6 @@ export default function FastifyServer() {
       console.log(
         `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
       );
-      startCronJob()
     } catch (err) {
       NexoralServer.log.error(err);
       process.exit(1);
@@ -113,4 +116,5 @@ export default function FastifyServer() {
 // Run the server if this file is executed directly
 if (process.argv[1] === __filename) {
   FastifyServer();
+  startCronJob();
 }

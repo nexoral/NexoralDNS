@@ -124,14 +124,14 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0d111a] rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-[var(--card-bg)] rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-6 border-b border-[rgba(130,165,220,0.14)]">
+        <div className="p-6 border-b border-[var(--border-2)]">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-[#e7eef6]">Block Device: {deviceIP}</h2>
+            <h2 className="text-2xl font-bold text-[var(--text-1)]">Block Device: {deviceIP}</h2>
             <button
               onClick={onClose}
-              className="text-[#5f6b7d] hover:text-[#9aa8bd] transition-colors"
+              className="text-[var(--text-6)] hover:text-[var(--text-3)] transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -143,7 +143,7 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
           <div className="flex items-center justify-between">
             {[1, 2].map((s) => (
               <div key={s} className="flex items-center flex-1">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${step >= s ? 'bg-blue-600 text-white' : 'bg-slate-200 text-[#9aa8bd]'
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${step >= s ? 'bg-blue-600 text-white' : 'bg-slate-200 text-[var(--text-3)]'
                   }`}>
                   {s}
                 </div>
@@ -154,7 +154,7 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-xs text-[#9aa8bd]">
+          <div className="flex justify-between mt-2 text-xs text-[var(--text-3)]">
             <span>What to Block</span>
             <span>Policy Details</span>
           </div>
@@ -165,12 +165,12 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
           {/* Step 1: WHAT should be blocked? */}
           {step === 1 && (
             <div>
-              <h3 className="text-lg font-semibold text-[#e7eef6] mb-2">WHAT should be blocked?</h3>
-              <p className="text-sm text-[#9aa8bd] mb-4">Choose what content or services to block for this device</p>
+              <h3 className="text-lg font-semibold text-[var(--text-1)] mb-2">WHAT should be blocked?</h3>
+              <p className="text-sm text-[var(--text-3)] mb-4">Choose what content or services to block for this device</p>
 
               <div className="space-y-4">
                 {/* Specific Domains */}
-                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'specific_domains' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
+                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'specific_domains' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[var(--border-2)] hover:border-[var(--border-4)]'
                   }`}>
                   <div className="flex items-center">
                     <input
@@ -179,11 +179,11 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                       value="specific_domains"
                       checked={formData.blockType === 'specific_domains'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-[#5b8cff]"
+                      className="w-4 h-4 text-[var(--blue)]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-[#e7eef6]">Specific Domains</span>
-                      <p className="text-sm text-[#9aa8bd]">Block specific websites</p>
+                      <span className="font-medium text-[var(--text-1)]">Specific Domains</span>
+                      <p className="text-sm text-[var(--text-3)]">Block specific websites</p>
                     </div>
                   </div>
                   {formData.blockType === 'specific_domains' && (
@@ -195,14 +195,14 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                           value={newDomain}
                           onChange={(e) => setNewDomain(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && addDomain()}
-                          className="w-full px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
+                          className="w-full px-4 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent"
                         />
-                        <label className="flex items-center space-x-2 text-sm text-[#cdd9e8] cursor-pointer">
+                        <label className="flex items-center space-x-2 text-sm text-[var(--text-2)] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={newDomainIsWildcard}
                             onChange={(e) => setNewDomainIsWildcard(e.target.checked)}
-                            className="w-4 h-4 text-[#5b8cff] border-[rgba(130,165,220,0.2)] rounded focus:ring-[#5b8cff]/50"
+                            className="w-4 h-4 text-[var(--blue)] border-[var(--border-4)] rounded focus:ring-[var(--blue)]/50"
                           />
                           <span>
                             Include subdomains (wildcard)
@@ -218,19 +218,19 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                       {formData.domains.length > 0 && (
                         <div className="space-y-2 mt-3">
                           {formData.domains.map((domainEntry, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-[#07090e] rounded border border-[rgba(130,165,220,0.14)]">
+                            <div key={idx} className="flex items-center justify-between p-3 bg-[var(--bg)] rounded border border-[var(--border-2)]">
                               <div className="flex-1">
-                                <span className="text-sm font-medium text-[#cdd9e8]">{domainEntry.domain}</span>
+                                <span className="text-sm font-medium text-[var(--text-2)]">{domainEntry.domain}</span>
                                 <div className="flex items-center mt-1 space-x-2">
                                   <span className={`text-xs px-2 py-0.5 rounded ${domainEntry.isWildcard
-                                      ? 'bg-[rgba(91,140,255,0.12)] text-[#5b8cff]'
-                                      : 'bg-slate-200 text-[#9aa8bd]'
+                                      ? 'bg-[rgba(91,140,255,0.12)] text-[var(--blue)]'
+                                      : 'bg-slate-200 text-[var(--text-3)]'
                                     }`}>
                                     {domainEntry.isWildcard ? '🌐 With Subdomains' : '🎯 Exact Match'}
                                   </span>
                                 </div>
                               </div>
-                              <button onClick={() => removeDomain(domainEntry.domain)} className="text-[#ff6071] hover:text-[#ff6071] ml-2">
+                              <button onClick={() => removeDomain(domainEntry.domain)} className="text-[var(--red)] hover:text-[var(--red)] ml-2">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -244,7 +244,7 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                 </label>
 
                 {/* Single Domain Group */}
-                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'domain_group' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
+                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'domain_group' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[var(--border-2)] hover:border-[var(--border-4)]'
                   }`}>
                   <div className="flex items-center">
                     <input
@@ -253,18 +253,18 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                       value="domain_group"
                       checked={formData.blockType === 'domain_group'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-[#5b8cff]"
+                      className="w-4 h-4 text-[var(--blue)]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-[#e7eef6]">Domain Group</span>
-                      <p className="text-sm text-[#9aa8bd]">Block a pre-defined category of websites</p>
+                      <span className="font-medium text-[var(--text-1)]">Domain Group</span>
+                      <p className="text-sm text-[var(--text-3)]">Block a pre-defined category of websites</p>
                     </div>
                   </div>
                   {formData.blockType === 'domain_group' && (
                     <select
                       value={formData.domainGroup}
                       onChange={(e) => setFormData({ ...formData, domainGroup: e.target.value })}
-                      className="w-full mt-3 px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
+                      className="w-full mt-3 px-4 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent"
                       disabled={loadingGroups}
                     >
                       <option value="">{loadingGroups ? 'Loading...' : 'Select Domain Group'}</option>
@@ -276,7 +276,7 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                 </label>
 
                 {/* Multiple Domain Groups */}
-                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'multiple_domain_groups' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
+                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'multiple_domain_groups' ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]' : 'border-[var(--border-2)] hover:border-[var(--border-4)]'
                   }`}>
                   <div className="flex items-center">
                     <input
@@ -285,37 +285,37 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                       value="multiple_domain_groups"
                       checked={formData.blockType === 'multiple_domain_groups'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-[#5b8cff]"
+                      className="w-4 h-4 text-[var(--blue)]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-[#e7eef6]">Multiple Domain Groups</span>
-                      <p className="text-sm text-[#9aa8bd]">Block multiple categories of websites</p>
+                      <span className="font-medium text-[var(--text-1)]">Multiple Domain Groups</span>
+                      <p className="text-sm text-[var(--text-3)]">Block multiple categories of websites</p>
                     </div>
                   </div>
                   {formData.blockType === 'multiple_domain_groups' && (
                     <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
                       {loadingGroups ? (
-                        <div className="text-center py-4 text-[#9aa8bd]">Loading groups...</div>
+                        <div className="text-center py-4 text-[var(--text-3)]">Loading groups...</div>
                       ) : domainGroups.length === 0 ? (
-                        <div className="text-center py-4 text-[#9aa8bd]">No domain groups available</div>
+                        <div className="text-center py-4 text-[var(--text-3)]">No domain groups available</div>
                       ) : (
                         domainGroups.map((group) => (
                           <label
                             key={group._id}
                             className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${formData.domainGroups.includes(group._id)
                                 ? 'border-blue-500 bg-[rgba(91,140,255,0.07)]'
-                                : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
+                                : 'border-[var(--border-2)] hover:border-[var(--border-4)]'
                               }`}
                           >
                             <input
                               type="checkbox"
                               checked={formData.domainGroups.includes(group._id)}
                               onChange={() => toggleDomainGroup(group._id)}
-                              className="w-4 h-4 text-[#5b8cff] rounded"
+                              className="w-4 h-4 text-[var(--blue)] rounded"
                             />
                             <div className="ml-3">
-                              <div className="font-medium text-[#e7eef6]">{group.name}</div>
-                              {group.description && <div className="text-sm text-[#9aa8bd]">{group.description}</div>}
+                              <div className="font-medium text-[var(--text-1)]">{group.name}</div>
+                              {group.description && <div className="text-sm text-[var(--text-3)]">{group.description}</div>}
                             </div>
                           </label>
                         ))
@@ -325,7 +325,7 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                 </label>
 
                 {/* Full Internet */}
-                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'full_internet' ? 'border-red-500 bg-[rgba(255,96,113,0.07)]' : 'border-[rgba(130,165,220,0.14)] hover:border-[rgba(130,165,220,0.2)]'
+                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.blockType === 'full_internet' ? 'border-red-500 bg-[rgba(255,96,113,0.07)]' : 'border-[var(--border-2)] hover:border-[var(--border-4)]'
                   }`}>
                   <div className="flex items-center">
                     <input
@@ -334,11 +334,11 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                       value="full_internet"
                       checked={formData.blockType === 'full_internet'}
                       onChange={(e) => setFormData({ ...formData, blockType: e.target.value })}
-                      className="w-4 h-4 text-[#ff6071]"
+                      className="w-4 h-4 text-[var(--red)]"
                     />
                     <div className="ml-3">
-                      <span className="font-medium text-[#e7eef6]">Full Internet Access</span>
-                      <p className="text-sm text-[#9aa8bd]">Block all internet access</p>
+                      <span className="font-medium text-[var(--text-1)]">Full Internet Access</span>
+                      <p className="text-sm text-[var(--text-3)]">Block all internet access</p>
                     </div>
                   </div>
                 </label>
@@ -349,24 +349,24 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
           {/* Step 2: Policy Details */}
           {step === 2 && (
             <div>
-              <h3 className="text-lg font-semibold text-[#e7eef6] mb-4">Policy Details</h3>
+              <h3 className="text-lg font-semibold text-[var(--text-1)] mb-4">Policy Details</h3>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#cdd9e8] mb-2">Policy Name</label>
+                  <label className="block text-sm font-medium text-[var(--text-2)] mb-2">Policy Name</label>
                   <input
                     type="text"
                     placeholder="e.g., Block Internet for Device"
                     value={formData.policyName}
                     onChange={(e) => setFormData({ ...formData, policyName: e.target.value })}
-                    className="w-full px-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent"
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-[#07090e] rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-[var(--bg)] rounded-lg">
                   <div>
-                    <label className="block font-medium text-[#e7eef6]">Active</label>
-                    <p className="text-sm text-[#9aa8bd]">Enable this policy immediately</p>
+                    <label className="block font-medium text-[var(--text-1)]">Active</label>
+                    <p className="text-sm text-[var(--text-3)]">Enable this policy immediately</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -375,14 +375,14 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
                       checked={formData.isActive}
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                     />
-                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#0d111a] after:border-[rgba(130,165,220,0.2)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--card-bg)] after:border-[var(--border-4)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
 
                 {/* Summary */}
                 <div className="p-4 bg-[rgba(91,140,255,0.07)] border border-blue-200 rounded-lg">
                   <h4 className="font-semibold text-blue-900 mb-2">Policy Summary</h4>
-                  <ul className="text-sm text-[#5b8cff] space-y-1">
+                  <ul className="text-sm text-[var(--blue)] space-y-1">
                     <li className="font-medium">• Target:</li>
                     <li className="ml-4">
                       Single Device ({deviceIP})
@@ -402,11 +402,11 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-[rgba(130,165,220,0.14)] flex items-center justify-between">
+        <div className="p-6 border-t border-[var(--border-2)] flex items-center justify-between">
           <button
             onClick={step === 1 ? onClose : handleBack}
             disabled={loading}
-            className="px-6 py-2 text-[#9aa8bd] hover:text-[#e7eef6] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-[var(--text-3)] hover:text-[var(--text-1)] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
@@ -415,7 +415,7 @@ export default function BlockDeviceModal({ onClose, onSave, deviceIP }) {
             disabled={!canProceed() || loading}
             className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${canProceed() && !loading
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-slate-300 text-[#7c8aa0] cursor-not-allowed'
+                : 'bg-slate-300 text-[var(--text-5)] cursor-not-allowed'
               }`}
           >
             {loading && step === 2 && (

@@ -3,13 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useAuthStore from '../../stores/authStore';
+import useThemeStore from '../../stores/themeStore';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { api } from '../../services/api';
 
 export default function DashboardLayout({ children }) {
   const { login } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
   const router = useRouter();
   const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    // themeStore uses skipHydration — rehydrate from localStorage once on mount
+    useThemeStore.persist.rehydrate();
+  }, []);
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -31,13 +38,15 @@ export default function DashboardLayout({ children }) {
     checkAuthentication();
   }, []);
 
-  if (!isInitialized) {
-    return (
-      <div className="min-h-screen bg-[#07090e] flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  return children;
+  // Theme class is scoped to this dashboard-only wrapper (not <html>/<body>,
+  // which are shared with the login page) so the login page never changes
+  return (
+    <div className={theme}>
+      {!isInitialized ? (
+        <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      ) : children}
+    </div>
+  );
 }

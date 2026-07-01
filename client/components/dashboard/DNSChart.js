@@ -36,23 +36,23 @@ export default function DNSChart() {
   const maxQueries = Math.max(...currentData.map(d => d.queries));
 
   return (
-    <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
+    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-[#e7eef6]">DNS Query Analytics</h3>
-          <p className="text-sm text-[#9aa8bd]">Query volume and blocking statistics</p>
+          <h3 className="text-lg font-semibold text-[var(--text-1)]">DNS Query Analytics</h3>
+          <p className="text-sm text-[var(--text-3)]">Query volume and blocking statistics</p>
         </div>
 
         {/* Time Period Selector */}
-        <div className="flex bg-white/8 rounded-lg p-1">
+        <div className="flex bg-[var(--surface-3)] rounded-lg p-1">
           {['24h', '7d', '30d'].map((period) => (
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
               className={`px-3 py-1 text-sm font-medium rounded-md transition-all duration-200 ${selectedPeriod === period
-                  ? 'bg-[rgba(91,140,255,0.15)] text-[#5b8cff] border border-[rgba(91,140,255,0.25)]'
-                  : 'text-[#9aa8bd] hover:text-[#e7eef6]'
+                  ? 'bg-[rgba(91,140,255,0.15)] text-[var(--blue)] border border-[rgba(91,140,255,0.25)]'
+                  : 'text-[var(--text-3)] hover:text-[var(--text-1)]'
                 }`}
             >
               {period}
@@ -87,21 +87,21 @@ export default function DNSChart() {
               </div>
 
               {/* Time Label */}
-              <span className="text-xs text-[#9aa8bd] font-medium">{data.time}</span>
+              <span className="text-xs text-[var(--text-3)] font-medium">{data.time}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center space-x-6 mt-4 pt-4 border-t border-[rgba(130,165,220,0.14)]">
+      <div className="flex items-center justify-center space-x-6 mt-4 pt-4 border-t border-[var(--border-2)]">
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"></div>
-          <span className="text-sm text-[#9aa8bd]">Total Queries</span>
+          <span className="text-sm text-[var(--text-3)]">Total Queries</span>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-gradient-to-r from-red-500 to-red-400 rounded-full"></div>
-          <span className="text-sm text-[#9aa8bd]">Blocked Queries</span>
+          <span className="text-sm text-[var(--text-3)]">Blocked Queries</span>
         </div>
       </div>
     </div>

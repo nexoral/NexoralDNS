@@ -112,8 +112,8 @@ export default function UsersTab() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-[#e7eef6]">Users</h3>
-          <p className="text-sm text-[#9aa8bd] mt-1">Create users with a temporary password — they'll be required to set their own on first login</p>
+          <h3 className="text-lg font-semibold text-[var(--text-1)]">Users</h3>
+          <p className="text-sm text-[var(--text-3)] mt-1">Create users with a temporary password — they'll be required to set their own on first login</p>
         </div>
         <Button onClick={() => setShowModal(true)} variant="primary">
           Add User
@@ -123,37 +123,37 @@ export default function UsersTab() {
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-[#9aa8bd]">Loading users...</p>
+          <p className="mt-4 text-[var(--text-3)]">Loading users...</p>
         </div>
       ) : error ? (
         <div className="text-center py-12 bg-[rgba(255,96,113,0.07)] rounded-lg border-2 border-red-200">
-          <p className="text-[#ff6071] mb-4">{error}</p>
+          <p className="text-[var(--red)] mb-4">{error}</p>
           <Button onClick={fetchUsers}>Retry</Button>
         </div>
       ) : users.length === 0 ? (
-        <div className="text-center py-12 bg-[#07090e] rounded-lg border-2 border-dashed border-[rgba(130,165,220,0.14)]">
-          <h3 className="text-lg font-medium text-[#e7eef6] mb-2">No users found</h3>
-          <p className="text-[#9aa8bd] mb-4">Add your first user to get started</p>
+        <div className="text-center py-12 bg-[var(--bg)] rounded-lg border-2 border-dashed border-[var(--border-2)]">
+          <h3 className="text-lg font-medium text-[var(--text-1)] mb-2">No users found</h3>
+          <p className="text-[var(--text-3)] mb-4">Add your first user to get started</p>
           <Button onClick={() => setShowModal(true)}>Add User</Button>
         </div>
       ) : (
-        <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] overflow-hidden">
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#07090e]">
+              <thead className="bg-[var(--bg)]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Password</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#7c8aa0] uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Password</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-5)] uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-[#0d111a] divide-y divide-[rgba(130,165,220,0.08)]">
+              <tbody className="bg-[var(--card-bg)] divide-y divide-[var(--border)]">
                 {users.map((u) => {
                   const isSelf = currentUser?.id === u._id;
                   return (
-                    <tr key={u._id} className="hover:bg-[#07090e]">
+                    <tr key={u._id} className="hover:bg-[var(--bg)]">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="w-9 h-9 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
@@ -161,21 +161,21 @@ export default function UsersTab() {
                               {u.username?.slice(0, 2).toUpperCase()}
                             </span>
                           </div>
-                          <div className="ml-4 text-sm font-medium text-[#e7eef6]">
-                            {u.username}{isSelf && <span className="text-xs text-[#7c8aa0] ml-2">(you)</span>}
+                          <div className="ml-4 text-sm font-medium text-[var(--text-1)]">
+                            {u.username}{isSelf && <span className="text-xs text-[var(--text-5)] ml-2">(you)</span>}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-[rgba(91,140,255,0.12)] text-[#5b8cff]">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-[rgba(91,140,255,0.12)] text-[var(--blue)]">
                           {u.role?.name || 'No role'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           u.isActive !== false
-                            ? 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]'
-                            : 'bg-[rgba(255,96,113,0.12)] text-[#ff6071]'
+                            ? 'bg-[rgba(61,220,132,0.12)] text-[var(--green)]'
+                            : 'bg-[rgba(255,96,113,0.12)] text-[var(--red)]'
                         }`}>
                           {u.isActive !== false ? 'active' : 'disabled'}
                         </span>
@@ -183,20 +183,20 @@ export default function UsersTab() {
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           u.passwordUpdatedAt
-                            ? 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]'
-                            : 'bg-[rgba(246,179,82,0.12)] text-[#f6b352]'
+                            ? 'bg-[rgba(61,220,132,0.12)] text-[var(--green)]'
+                            : 'bg-[rgba(246,179,82,0.12)] text-[var(--amber)]'
                         }`}>
                           {u.passwordUpdatedAt ? 'set' : 'temporary'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-medium">
                         <div className="flex space-x-3">
-                          <button onClick={() => setEditingUser(u)} className="text-[#5b8cff] hover:text-blue-400">Edit</button>
-                          <button onClick={() => setResettingUser(u)} className="text-[#f6b352] hover:text-yellow-400">Reset Password</button>
+                          <button onClick={() => setEditingUser(u)} className="text-[var(--blue)] hover:text-blue-400">Edit</button>
+                          <button onClick={() => setResettingUser(u)} className="text-[var(--amber)] hover:text-yellow-400">Reset Password</button>
                           <button
                             onClick={() => setDeletingUser(u)}
                             disabled={isSelf}
-                            className="text-[#ff6071] hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="text-[var(--red)] hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             Delete
                           </button>
