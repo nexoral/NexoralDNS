@@ -70,6 +70,8 @@ export default class StartRulesService {
     const queryName: string = io.parseQueryName(msg);
     const queryType: string = io.parseQueryType(msg);
 
+    Console.blue(`🔍 DNS Query: ${queryName} (${queryType}) from ${rinfo.address}`);
+
     // Analytics Payload
     const AnalyticsMSgPayload: {
       queryName: string,

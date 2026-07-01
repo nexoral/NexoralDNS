@@ -52,4 +52,4 @@ RUN setcap cap_net_raw+ep /bin/ping && \
 ENV NODE_ENV=production
 EXPOSE 53/udp 53/tcp 4000 4773
 
-CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+CMD ["sudo", "pm2-runtime", "start", "ecosystem.config.js"]
