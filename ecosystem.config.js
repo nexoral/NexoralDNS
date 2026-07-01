@@ -29,28 +29,26 @@ module.exports = {
     // dhcp (network scan broker) — runs from /DHCP
     {
       name: 'dhcp',
-      script: 'npm',
-      args: 'run start',
+      script: 'sudo',
+      args: 'npm run start',
       cwd: '/app/DHCP',
       env: { NODE_ENV: 'production' },
       out_file: '/var/log/dhcp.log',
       error_file: '/var/log/dhcp.err.log',
       restart_delay: 5000,
-      max_restarts: 3,
-      user: 'root'
+      max_restarts: 3
     },
     // web (Core DNS Server) — runs from /Web
     {
       name: 'web',
-      script: 'npm',
-      args: 'run start',
+      script: 'sudo',
+      args: 'npm run start',
       cwd: '/app/Web',
       env: { NODE_ENV: 'production' },
       out_file: '/var/log/web.log',
       error_file: '/var/log/web.err.log',
       restart_delay: 5000,
-      max_restarts: 3,
-      user: 'root'
+      max_restarts: 3
     }
   ]
 };
