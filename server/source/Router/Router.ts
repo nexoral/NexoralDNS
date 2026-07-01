@@ -16,6 +16,8 @@ import dnsRouter from "./DNS/DNS.route";
 import SettingsRouter from "./Settings/settings.route";
 import AnalyticsRouter from "./Analytics/Analytics.route";
 import AccessControlRouter from "./AccessControl/AccessControl.route";
+import UsersRouter from "./Users/Users.route";
+import RolesRouter from "./Roles/Roles.route";
 
 
 // Extended options interface to include NexoralDNS instance
@@ -82,6 +84,8 @@ export default async function mainRouter(
   fastify.register(SettingsRouter, {prefix: "/settings"})
   fastify.register(AnalyticsRouter, {prefix: "/analytics"})
   fastify.register(AccessControlRouter, {prefix: "/access-control"})
+  fastify.register(UsersRouter, {prefix: "/users"})
+  fastify.register(RolesRouter, {prefix: "/roles"})
 
 
   // Handle 404 Not Found

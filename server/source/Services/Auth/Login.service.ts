@@ -32,6 +32,11 @@ export default class LoginService {
       return Responser.send("Invalid username or password", StatusCodes.UNAUTHORIZED, "Authentication Failed");
     }
 
+    // isActive is absent on pre-existing users, which correctly defaults to allowed
+    if (user.isActive === false) {
+      return Responser.send("This account has been deactivated", StatusCodes.UNAUTHORIZED, "Authentication Failed");
+    }
+
     const isPasswordValid = await new Bcrypt().Compare(password, user.password as string);
     if (!isPasswordValid) {
       return Responser.send("Invalid username or password", StatusCodes.UNAUTHORIZED, "Authentication Failed");
@@ -125,6 +130,8 @@ export default class LoginService {
         id: user._id,
         username: user.username,
         passwordUpdatedAt: user.passwordUpdatedAt ?? null,
+        createdAt: user.createdAt,
+        isActive: user.isActive !== false,
       },
       role: {
         id: userDetails.role._id,

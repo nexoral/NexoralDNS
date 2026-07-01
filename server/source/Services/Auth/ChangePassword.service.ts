@@ -7,6 +7,7 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
 import RedisCache from "../../Redis/Redis.cache";
+import { validatePasswordStrength } from "../../helper/passwordPolicy.helper";
 
 export default class ChangePasswordService {
   private readonly fastifyReply: FastifyReply;
@@ -33,8 +34,9 @@ export default class ChangePasswordService {
       return Responser.send("Current password is incorrect", StatusCodes.UNAUTHORIZED, "Invalid Password");
     }
 
-    if (newPassword.length < 6) {
-      return Responser.send("New password must be at least 6 characters long", StatusCodes.BAD_REQUEST, "Invalid Password");
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      return Responser.send(strength.message, StatusCodes.BAD_REQUEST, "Invalid Password");
     }
 
     const isSamePassword = await new Bcrypt().Compare(newPassword, user.password);

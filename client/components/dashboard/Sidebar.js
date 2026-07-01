@@ -5,12 +5,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import config from '../../config/keys';
 import { isLocalNetwork } from '../../services/networkDetection';
+import useAuthStore from '../../stores/authStore';
+
+// Full Access (4) or Manage Users (5) — matches the server's PermissionGuard.canAccess(4, 5) on /api/users and /api/roles
+const USERS_NAV_PERMISSION_CODES = [4, 5];
 
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0 });
   const itemRefs = useRef({});
+  const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission);
 
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/dashboard', tooltip: 'Main Dashboard' },
@@ -19,10 +24,14 @@ export default function Sidebar({ isOpen, onClose }) {
     { id: 'cache', label: 'DNS Cache', icon: 'cache', href: '/dashboard/cache', tooltip: 'View & Manage DNS Cache' },
     { id: 'logs', label: 'Query Logs', icon: 'logs', href: '/dashboard/logs', tooltip: 'View DNS Query Logs' },
     { id: 'devices', label: 'Connected Devices', icon: 'devices', href: '/dashboard/devices', tooltip: 'View Connected Devices', localOnly: true },
+    { id: 'users', label: 'Users & Roles', icon: 'users', href: '/dashboard/users', tooltip: 'Manage Users & Roles', requiresPermission: true },
     { id: 'settings', label: 'Server Settings', icon: 'settings', href: '/dashboard/settings', tooltip: 'DNS Server Settings' }
   ];
 
   const menuItems = allMenuItems.filter(item => {
+    if (item.requiresPermission && !hasAnyPermission(USERS_NAV_PERMISSION_CODES)) {
+      return false;
+    }
     if (item.localOnly) {
       return isLocalNetwork();
     }
@@ -66,6 +75,11 @@ export default function Sidebar({ isOpen, onClose }) {
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+    users: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 11-4-4 4 4 0 014 4zm6 4a4 4 0 10-4-4" />
       </svg>
     )
   };

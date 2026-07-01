@@ -5,7 +5,8 @@
 2. [Flow Diagrams](#flow-diagrams)
 3. [System Design](#system-design)
 4. [Database Schema](#database-schema)
-5. [Performance Targets](#performance-targets)
+5. [RBAC & User Management](#rbac--user-management)
+6. [Performance Targets](#performance-targets)
 
 ---
 
@@ -553,6 +554,60 @@ db.dns_query_logs.createIndex({ clientIP: 1 })
 ```
 
 **Purpose:** Analytics and monitoring of DNS queries
+
+---
+
+## RBAC & User Management
+
+This is the admin-facing management layer on top of the existing RBAC primitives (`users`, `roles`, `permissions` collections — see `server/source/core/key.ts` and `server/source/Database/mongodb.db.ts` for the seeded permission catalog and default roles). It is administrative surface, not part of the 7-layer DNS query path.
+
+### Users Collection (current shape)
+
+```typescript
+{
+  _id: ObjectId,
+  username: string,            // unique indexed, login identifier
+  password: string,            // bcrypt hash
+  roleId: ObjectId,            // ref -> roles._id
+  passwordUpdatedAt: Date | null, // null forces a password change on next login
+  isActive: boolean,           // false blocks login (checked in Login.service.ts)
+  createdBy: ObjectId,         // admin user who created this account
+  createdAt: number            // Date.now() epoch ms
+}
+```
+
+### Admin-created users: temporary password flow
+
+There is no email/invite flow. An admin with "Manage Users" (permission code 5) or "Full Access" (code 4) creates a user directly with a username and a temporary password (`POST /api/users`). The new user document is inserted with `passwordUpdatedAt: null` — the same field the bootstrap admin account uses. The dashboard already gates on this field (`client/app/dashboard/page.js`): on login, if `passwordUpdatedAt` is `null`/`undefined`, a required "Change Password" modal (`client/components/auth/ChangePasswordModal.js`) blocks the dashboard until the user sets their own password. No separate "invited"/"pending" status or email delivery is needed — the temporary password itself is the credential the admin hands to the new user out-of-band.
+
+Resetting a user's password (`PATCH /api/users/:userId/reset-password`) re-arms this gate the same way and immediately invalidates that user's session (Redis + `session_manage`), forcing a fresh login with the new temporary password.
+
+### Roles: custom permission sets
+
+Admins with "Manage Roles" (permission code 6) or "Full Access" (code 4) can create roles by selecting any subset of the fixed permission catalog (`GET /api/roles/permissions`) rather than being limited to the seeded defaults (Super Admin, Admin, Moderator, User, Guest). A role cannot be deleted while any user is still assigned to it.
+
+### API Surface
+
+| Method | Route | Purpose | Required permission |
+|--------|-------|---------|---------------------|
+| POST | `/api/users` | Create a user with a temporary password | 4 or 5 |
+| GET | `/api/users` | List users (role populated, paginated) | 4 or 5 |
+| GET | `/api/users/:userId` | Get a single user | 4 or 5 |
+| PUT | `/api/users/:userId` | Update username/role/active status | 4 or 5 |
+| PATCH | `/api/users/:userId/reset-password` | Admin-issued password reset | 4 or 5 |
+| DELETE | `/api/users/:userId` | Delete a user | 4 or 5 |
+| GET | `/api/roles/permissions` | List the permission catalog | 4 or 6 |
+| POST | `/api/roles` | Create a role | 4 or 6 |
+| GET | `/api/roles` | List roles (permissions populated) | 4 or 6 |
+| GET | `/api/roles/:roleId` | Get a single role | 4 or 6 |
+| PUT | `/api/roles/:roleId` | Update a role's name/permissions | 4 or 6 |
+| DELETE | `/api/roles/:roleId` | Delete a role (blocked if still assigned to users) | 4 or 6 |
+
+Implementation: `server/source/Router/Users/`, `Controller/Users/`, `Services/Users/Users.service.ts`; `server/source/Router/Roles/`, `Controller/Roles/`, `Services/Roles/Roles.service.ts`. Frontend: `client/app/dashboard/users/page.js` (Users/Roles tabs), `client/components/users/*`.
+
+### Self-lockout guards
+
+An admin cannot deactivate, demote, or delete their own account through this API — every mutating endpoint compares the target `userId` against the requesting admin's own id (`request.user._id`) before allowing role/active-status changes or deletion.
 
 ---
 

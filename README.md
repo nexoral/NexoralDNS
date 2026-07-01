@@ -117,6 +117,7 @@ NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your n
 - **🛡️ Security Filtering:** Block unwanted domains and protect your network
 - **🔞 Anti-Porn Mode:** Block 100+ adult content websites with one click - perfect for families and schools
 - **🛡️ Anti-Ads Mode:** Block 200+ advertising and tracking domains - eliminate ads, protect privacy, and speed up browsing
+- **👥 Users & Roles (RBAC):** Create custom roles from a fixed permission catalog, add admin-managed users with a temporary password, and enforce a forced password change on first login
 - **👨‍💻 Developer-Friendly:** Perfect for development environments
  - **📊 Real-time Analytics:** Monitor DNS queries as they happen
  - **☁️ Cloud Integration:** Sync settings across multiple installations

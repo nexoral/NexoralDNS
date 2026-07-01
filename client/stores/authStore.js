@@ -21,6 +21,8 @@ const useAuthStore = create(
         const userData = {
           id: data.data?.user?.id || data.user?.id,
           username: data.data?.user?.username || data.user?.username || 'User',
+          createdAt: data.data?.user?.createdAt || data.user?.createdAt || null,
+          isActive: data.data?.user?.isActive ?? data.user?.isActive ?? true,
         };
 
         const permissionsData = (data.data?.role?.permissions || data.data?.permissions || []).map(p => ({
