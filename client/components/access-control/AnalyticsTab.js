@@ -54,11 +54,11 @@ export default function AnalyticsTab() {
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-[#5b8cff]">Total Blocks</p>
+              <p className="text-sm font-medium text-[var(--blue)]">Total Blocks</p>
               <p className="text-3xl font-bold text-blue-900 mt-1">{stats.totalBlocks.toLocaleString()}</p>
             </div>
             <div className="p-3 bg-blue-200 rounded-lg">
-              <svg className="w-6 h-6 text-[#5b8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[var(--blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
               </svg>
             </div>
@@ -68,11 +68,11 @@ export default function AnalyticsTab() {
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-[#a78bfa]">Blocks Today</p>
+              <p className="text-sm font-medium text-[var(--purple)]">Blocks Today</p>
               <p className="text-3xl font-bold text-purple-900 mt-1">{stats.blocksToday}</p>
             </div>
             <div className="p-3 bg-purple-200 rounded-lg">
-              <svg className="w-6 h-6 text-[#a78bfa]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[var(--purple)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -95,12 +95,12 @@ export default function AnalyticsTab() {
       </div>
 
       {/* Chart - Blocks Over Time */}
-      <div className="bg-[#0d111a] border border-[rgba(130,165,220,0.14)] rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-[#e7eef6] mb-4">Blocks Over Time (Last 7 Days)</h3>
+      <div className="bg-[var(--card-bg)] border border-[var(--border-2)] rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-[var(--text-1)] mb-4">Blocks Over Time (Last 7 Days)</h3>
         <div className="h-64 flex items-end justify-between space-x-2">
           {chartData.map((data, idx) => (
             <div key={idx} className="flex-1 flex flex-col items-center">
-              <div className="w-full bg-white/8 rounded-t-lg relative" style={{ height: '100%' }}>
+              <div className="w-full bg-[var(--surface-3)] rounded-t-lg relative" style={{ height: '100%' }}>
                 <div
                   className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg absolute bottom-0 transition-all hover:from-blue-700 hover:to-blue-500 cursor-pointer group"
                   style={{ height: `${(data.blocks / maxBlocks) * 100}%` }}
@@ -111,7 +111,7 @@ export default function AnalyticsTab() {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-[#9aa8bd] mt-2 font-medium">{data.day}</p>
+              <p className="text-sm text-[var(--text-3)] mt-2 font-medium">{data.day}</p>
             </div>
           ))}
         </div>
@@ -119,16 +119,16 @@ export default function AnalyticsTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Blocked Domains */}
-        <div className="bg-[#0d111a] border border-[rgba(130,165,220,0.14)] rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-[#e7eef6] mb-4">Top Blocked Domains</h3>
+        <div className="bg-[var(--card-bg)] border border-[var(--border-2)] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-[var(--text-1)] mb-4">Top Blocked Domains</h3>
           <div className="space-y-3">
             {topBlockedDomains.map((item, idx) => (
               <div key={idx}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-[#cdd9e8]">{item.domain}</span>
-                  <span className="text-sm text-[#9aa8bd]">{item.blocks} blocks</span>
+                  <span className="text-sm font-medium text-[var(--text-2)]">{item.domain}</span>
+                  <span className="text-sm text-[var(--text-3)]">{item.blocks} blocks</span>
                 </div>
-                <div className="w-full bg-white/8 rounded-full h-2">
+                <div className="w-full bg-[var(--surface-3)] rounded-full h-2">
                   <div
                     className="bg-gradient-to-r from-red-500 to-red-600 h-2 rounded-full transition-all"
                     style={{ width: `${item.percentage}%` }}
@@ -140,19 +140,19 @@ export default function AnalyticsTab() {
         </div>
 
         {/* Top Blocked Users */}
-        <div className="bg-[#0d111a] border border-[rgba(130,165,220,0.14)] rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-[#e7eef6] mb-4">Top Blocked Users</h3>
+        <div className="bg-[var(--card-bg)] border border-[var(--border-2)] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-[var(--text-1)] mb-4">Top Blocked Users</h3>
           <div className="space-y-3">
             {topBlockedUsers.map((item, idx) => (
               <div key={idx}>
                 <div className="flex items-center justify-between mb-1">
                   <div>
-                    <span className="text-sm font-medium text-[#cdd9e8]">{item.ip}</span>
-                    <span className="text-xs text-[#7c8aa0] ml-2">({item.name})</span>
+                    <span className="text-sm font-medium text-[var(--text-2)]">{item.ip}</span>
+                    <span className="text-xs text-[var(--text-5)] ml-2">({item.name})</span>
                   </div>
-                  <span className="text-sm text-[#9aa8bd]">{item.blocks} blocks</span>
+                  <span className="text-sm text-[var(--text-3)]">{item.blocks} blocks</span>
                 </div>
-                <div className="w-full bg-white/8 rounded-full h-2">
+                <div className="w-full bg-[var(--surface-3)] rounded-full h-2">
                   <div
                     className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all"
                     style={{ width: `${item.percentage}%` }}
@@ -165,31 +165,31 @@ export default function AnalyticsTab() {
       </div>
 
       {/* Recent Block Events */}
-      <div className="bg-[#0d111a] border border-[rgba(130,165,220,0.14)] rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-[#e7eef6] mb-4">Recent Block Events</h3>
+      <div className="bg-[var(--card-bg)] border border-[var(--border-2)] rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-[var(--text-1)] mb-4">Recent Block Events</h3>
         <div className="space-y-3">
           {recentBlockEvents.map((event, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between p-4 bg-[#07090e] rounded-lg hover:bg-white/8 transition-colors"
+              className="flex items-center justify-between p-4 bg-[var(--bg)] rounded-lg hover:bg-[var(--surface-3)] transition-colors"
             >
               <div className="flex items-center space-x-4 flex-1">
                 <div className="flex-shrink-0">
                   <div className="w-10 h-10 bg-[rgba(255,96,113,0.12)] rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-[#ff6071]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[var(--red)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                     </svg>
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#e7eef6] truncate">
+                  <p className="text-sm font-medium text-[var(--text-1)] truncate">
                     {event.ip} tried to access <span className="font-semibold">{event.domain}</span>
                   </p>
-                  <p className="text-xs text-[#7c8aa0] mt-1">Blocked by: {event.policy}</p>
+                  <p className="text-xs text-[var(--text-5)] mt-1">Blocked by: {event.policy}</p>
                 </div>
               </div>
               <div className="flex-shrink-0 ml-4">
-                <p className="text-xs text-[#7c8aa0]">{event.time}</p>
+                <p className="text-xs text-[var(--text-5)]">{event.time}</p>
               </div>
             </div>
           ))}

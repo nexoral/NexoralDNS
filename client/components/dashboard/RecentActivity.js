@@ -47,7 +47,7 @@ export default function RecentActivity() {
   const getColorClasses = (color) => {
     const colors = {
       green: 'bg-green-100 text-green-600 border-green-200',
-      blue: 'bg-blue-100 text-[#5b8cff] border-blue-200',
+      blue: 'bg-blue-100 text-[var(--blue)] border-blue-200',
       red: 'bg-red-100 text-red-600 border-red-200',
       yellow: 'bg-yellow-100 text-yellow-600 border-yellow-200'
     };
@@ -55,14 +55,14 @@ export default function RecentActivity() {
   };
 
   return (
-    <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
+    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-[#e7eef6]">Recent Activity</h3>
-          <p className="text-sm text-[#9aa8bd]">Latest system events and changes</p>
+          <h3 className="text-lg font-semibold text-[var(--text-1)]">Recent Activity</h3>
+          <p className="text-sm text-[var(--text-3)]">Latest system events and changes</p>
         </div>
-        <button className="text-sm text-[#5b8cff] hover:text-blue-700 font-medium">
+        <button className="text-sm text-[var(--blue)] hover:text-blue-700 font-medium">
           View All
         </button>
       </div>
@@ -72,7 +72,7 @@ export default function RecentActivity() {
         {activities.map((activity, index) => (
           <div
             key={activity.id}
-            className="flex items-start space-x-3 p-3 rounded-lg hover:bg-white/3 transition-colors animate-fade-in-up"
+            className="flex items-start space-x-3 p-3 rounded-lg hover:bg-[var(--surface-1)] transition-colors animate-fade-in-up"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             {/* Icon */}
@@ -82,12 +82,12 @@ export default function RecentActivity() {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-[#e7eef6] font-medium">{activity.message}</p>
-              <p className="text-xs text-[#7c8aa0] mt-1">{activity.time}</p>
+              <p className="text-sm text-[var(--text-1)] font-medium">{activity.message}</p>
+              <p className="text-xs text-[var(--text-5)] mt-1">{activity.time}</p>
             </div>
 
             {/* Action Button */}
-            <button className="flex-shrink-0 text-[#5f6b7d] hover:text-[#9aa8bd] transition-colors">
+            <button className="flex-shrink-0 text-[var(--text-6)] hover:text-[var(--text-3)] transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -97,8 +97,8 @@ export default function RecentActivity() {
       </div>
 
       {/* Footer */}
-      <div className="mt-6 pt-4 border-t border-[rgba(130,165,220,0.14)] text-center">
-        <button className="text-sm text-[#9aa8bd] hover:text-[#e7eef6] transition-colors">
+      <div className="mt-6 pt-4 border-t border-[var(--border-2)] text-center">
+        <button className="text-sm text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors">
           Load More Activities
         </button>
       </div>

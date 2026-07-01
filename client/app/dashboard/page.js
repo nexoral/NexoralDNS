@@ -117,7 +117,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-[#07090e]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
@@ -129,19 +129,19 @@ export default function Dashboard() {
 
         <main className="p-4 lg:p-6">
           <div className="mb-8 nd-rise">
-            <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">
+            <h1 className="text-2xl lg:text-3xl font-bold text-[var(--text-1)] mb-2">
               Welcome back, {user?.username ? user.username : 'User'}!
             </h1>
-            <p className="text-[#9aa8bd]">Manage your DNS infrastructure efficiently.</p>
+            <p className="text-[var(--text-3)]">Manage your DNS infrastructure efficiently.</p>
           </div>
 
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6 animate-pulse">
-                  <div className="h-4 bg-white/8 rounded w-1/2 mb-4"></div>
-                  <div className="h-8 bg-white/8 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-white/6 rounded w-1/3"></div>
+                <div key={i} className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6 animate-pulse">
+                  <div className="h-4 bg-[var(--surface-3)] rounded w-1/2 mb-4"></div>
+                  <div className="h-8 bg-[var(--surface-3)] rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-[var(--surface-2)] rounded w-1/3"></div>
                 </div>
               ))}
             </div>

@@ -18,7 +18,7 @@ export default function DevicesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07090e]">
+    <div className="min-h-screen bg-[var(--bg)]">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -34,8 +34,8 @@ export default function DevicesPage() {
         {/* Page Content */}
         <main className="p-4 lg:p-6">
           <div className="mb-6">
-            <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">Connected Devices</h1>
-            <p className="text-[#9aa8bd]">Monitor all devices connected to your network</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-[var(--text-1)] mb-2">Connected Devices</h1>
+            <p className="text-[var(--text-3)]">Monitor all devices connected to your network</p>
           </div>
 
           <ConnectedDevices />

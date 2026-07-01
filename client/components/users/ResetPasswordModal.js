@@ -12,12 +12,12 @@ const getPasswordStrength = (password) => {
   if (/\d/.test(password)) strength += 1;
   if (/[^a-zA-Z\d]/.test(password)) strength += 1;
   const strengthMap = {
-    0: { label: 'Too weak', color: 'bg-[#ff6071]' },
-    1: { label: 'Weak', color: 'bg-[#ff6071]' },
-    2: { label: 'Fair', color: 'bg-[#f6b352]' },
-    3: { label: 'Good', color: 'bg-[#f6b352]' },
-    4: { label: 'Strong', color: 'bg-[#3ddc84]' },
-    5: { label: 'Very Strong', color: 'bg-[#3ddc84]' }
+    0: { label: 'Too weak', color: 'bg-[var(--red)]' },
+    1: { label: 'Weak', color: 'bg-[var(--red)]' },
+    2: { label: 'Fair', color: 'bg-[var(--amber)]' },
+    3: { label: 'Good', color: 'bg-[var(--amber)]' },
+    4: { label: 'Strong', color: 'bg-[var(--green)]' },
+    5: { label: 'Very Strong', color: 'bg-[var(--green)]' }
   };
   return { strength, ...strengthMap[strength] };
 };
@@ -42,11 +42,11 @@ export default function ResetPasswordModal({ user, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.18)] shadow-2xl max-w-md w-full">
-        <div className="p-6 border-b border-[rgba(130,165,220,0.14)]">
-          <h2 className="text-lg font-semibold text-[#e7eef6]">Reset Password</h2>
-          <p className="text-sm text-[#9aa8bd] mt-1">
-            Set a new temporary password for <span className="font-medium text-[#cdd9e8]">{user.username}</span>.
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-3)] shadow-2xl max-w-md w-full">
+        <div className="p-6 border-b border-[var(--border-2)]">
+          <h2 className="text-lg font-semibold text-[var(--text-1)]">Reset Password</h2>
+          <p className="text-sm text-[var(--text-3)] mt-1">
+            Set a new temporary password for <span className="font-medium text-[var(--text-2)]">{user.username}</span>.
             They'll be signed out and required to change it on next login.
           </p>
         </div>
@@ -58,18 +58,18 @@ export default function ResetPasswordModal({ user, onClose, onSave }) {
               placeholder="New temporary password"
               value={newPassword}
               onChange={(e) => { setNewPassword(e.target.value); setError(''); }}
-              className="w-full px-4 py-3 bg-white/6 border border-[rgba(130,165,220,0.2)] rounded-lg text-[#e7eef6] placeholder-[#5f6b7d] focus:outline-none focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-[#5b8cff]/60"
+              className="w-full px-4 py-3 bg-[var(--surface-2)] border border-[var(--border-4)] rounded-lg text-[var(--text-1)] placeholder-[var(--text-6)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-[var(--blue)]/60"
             />
-            {error && <p className="text-xs text-[#ff6071] mt-1">{error}</p>}
+            {error && <p className="text-xs text-[var(--red)] mt-1">{error}</p>}
             {newPassword && (
               <div className="mt-2">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-[#7c8aa0]">Password Strength</span>
-                  <span className={`text-xs font-medium ${passwordStrength.strength >= 3 ? 'text-[#3ddc84]' : 'text-[#f6b352]'}`}>
+                  <span className="text-xs text-[var(--text-5)]">Password Strength</span>
+                  <span className={`text-xs font-medium ${passwordStrength.strength >= 3 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}`}>
                     {passwordStrength.label}
                   </span>
                 </div>
-                <div className="w-full bg-white/10 rounded-full h-1.5">
+                <div className="w-full bg-[var(--surface-3)] rounded-full h-1.5">
                   <div
                     className={`h-1.5 rounded-full transition-all ${passwordStrength.color}`}
                     style={{ width: `${(passwordStrength.strength / 5) * 100}%` }}

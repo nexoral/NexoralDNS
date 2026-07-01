@@ -16,7 +16,8 @@ enum CacheKeys {
 export const getACLKeyForIP = (ip: string): string => `acl:ip:${ip}`;
 
 export enum QueueKeys {
-  DNS_Analytics = "DNS_analytcs"
+  DNS_Analytics = "DNS_analytcs",
+  LOGS_EXPORT = "logs_export"
 }
 
 export enum DNS_QUERY_STATUS_KEYS {

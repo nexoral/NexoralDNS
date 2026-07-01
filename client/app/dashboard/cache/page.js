@@ -196,18 +196,18 @@ export default function DNSCachePage() {
 
   const getRecordTypeBadge = (type) => {
     const colors = {
-      A: 'bg-[rgba(91,140,255,0.12)] text-[#5b8cff] border-blue-300',
-      AAAA: 'bg-[rgba(167,139,250,0.12)] text-[#a78bfa] border-purple-300',
-      CNAME: 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84] border-green-300',
+      A: 'bg-[rgba(91,140,255,0.12)] text-[var(--blue)] border-blue-300',
+      AAAA: 'bg-[rgba(167,139,250,0.12)] text-[var(--purple)] border-purple-300',
+      CNAME: 'bg-[rgba(61,220,132,0.12)] text-[var(--green)] border-green-300',
       MX: 'bg-orange-100 text-orange-700 border-orange-300',
-      TXT: 'bg-yellow-100 text-[#f6b352] border-yellow-300',
+      TXT: 'bg-yellow-100 text-[var(--amber)] border-yellow-300',
       NS: 'bg-pink-100 text-pink-700 border-pink-300'
     };
-    return colors[type] || 'bg-white/8 text-[#cdd9e8] border-[rgba(130,165,220,0.2)]';
+    return colors[type] || 'bg-[var(--surface-3)] text-[var(--text-2)] border-[var(--border-4)]';
   };
 
   return (
-    <div className="min-h-screen bg-[#07090e]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
@@ -221,8 +221,8 @@ export default function DNSCachePage() {
           {/* Page Header */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">DNS Cache Management</h1>
-              <p className="text-[#9aa8bd]">View and manage cached DNS records</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-[var(--text-1)] mb-2">DNS Cache Management</h1>
+              <p className="text-[var(--text-3)]">View and manage cached DNS records</p>
             </div>
             <div className="flex items-center space-x-3">
               <button
@@ -231,7 +231,7 @@ export default function DNSCachePage() {
                   fetchCacheStats(false);
                 }}
                 disabled={loading}
-                className="px-4 py-2 text-[#5b8cff] hover:bg-[rgba(91,140,255,0.07)] rounded-lg transition-colors font-medium flex items-center space-x-2"
+                className="px-4 py-2 text-[var(--blue)] hover:bg-[rgba(91,140,255,0.07)] rounded-lg transition-colors font-medium flex items-center space-x-2"
                 title="Refresh stats"
               >
                 <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,7 +253,7 @@ export default function DNSCachePage() {
 
           {/* Error Alert */}
           {error && (
-            <div className="mb-6 bg-[rgba(255,96,113,0.07)] border-l-4 border-[#ff6071] p-4 rounded-md">
+            <div className="mb-6 bg-[rgba(255,96,113,0.07)] border-l-4 border-[var(--red)] p-4 rounded-md">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
@@ -261,7 +261,7 @@ export default function DNSCachePage() {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-[#ff6071]">{error}</p>
+                  <p className="text-sm text-[var(--red)]">{error}</p>
                 </div>
               </div>
             </div>
@@ -271,7 +271,7 @@ export default function DNSCachePage() {
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               {[1, 2].map((i) => (
-                <div key={i} className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6 animate-pulse">
+                <div key={i} className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6 animate-pulse">
                   <div className="h-4 bg-slate-200 rounded w-20 mb-2"></div>
                   <div className="h-8 bg-slate-200 rounded w-16"></div>
                 </div>
@@ -279,11 +279,11 @@ export default function DNSCachePage() {
             </div>
           ) : cacheStats ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
+              <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-[#9aa8bd]">Hit Rate</p>
-                    <p className="text-2xl font-bold text-[#e7eef6]">{cacheStats.hit_rate || '0%'}</p>
+                    <p className="text-sm font-medium text-[var(--text-3)]">Hit Rate</p>
+                    <p className="text-2xl font-bold text-[var(--text-1)]">{cacheStats.hit_rate || '0%'}</p>
                   </div>
                   <div className="p-3 bg-[rgba(61,220,132,0.07)] rounded-lg">
                     <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -293,11 +293,11 @@ export default function DNSCachePage() {
                 </div>
               </div>
 
-              <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] p-6">
+              <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-[#9aa8bd]">Miss Rate</p>
-                    <p className="text-2xl font-bold text-[#e7eef6]">{getMissRate()}</p>
+                    <p className="text-sm font-medium text-[var(--text-3)]">Miss Rate</p>
+                    <p className="text-2xl font-bold text-[var(--text-1)]">{getMissRate()}</p>
                   </div>
                   <div className="p-3 bg-orange-50 rounded-lg">
                     <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,13 +310,13 @@ export default function DNSCachePage() {
           ) : null}
 
           {/* Filters and Search */}
-          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] mb-6">
+          <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] mb-6">
             <div className="p-6">
               <div className="flex flex-col lg:flex-row gap-4">
                 {/* Search */}
                 <div className="flex-1">
                   <div className="relative">
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#5f6b7d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[var(--text-6)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <input
@@ -324,7 +324,7 @@ export default function DNSCachePage() {
                       placeholder="Search domain or IP address..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -338,7 +338,7 @@ export default function DNSCachePage() {
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                         recordTypeFilter === type
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white/8 text-[#cdd9e8] hover:bg-slate-200'
+                          : 'bg-[var(--surface-3)] text-[var(--text-2)] hover:bg-slate-200'
                       }`}
                     >
                       {type === 'all' ? 'All Types' : type}
@@ -350,15 +350,15 @@ export default function DNSCachePage() {
           </div>
 
           {/* Cache Records Table */}
-          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] overflow-hidden">
-            <div className="p-6 border-b border-[rgba(130,165,220,0.1)]">
+          <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] overflow-hidden">
+            <div className="p-6 border-b border-[var(--border)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-[#e7eef6] flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-[#5b8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <h2 className="text-lg font-semibold text-[var(--text-1)] flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-[var(--blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                   </svg>
                   Cached Records
-                  <span className="ml-3 text-sm font-normal text-[#7c8aa0]">
+                  <span className="ml-3 text-sm font-normal text-[var(--text-5)]">
                     ({filteredRecords.length} {filteredRecords.length === 1 ? 'record' : 'records'})
                   </span>
                 </h2>
@@ -366,48 +366,48 @@ export default function DNSCachePage() {
             </div>
 
             {filteredRecords.length === 0 ? (
-              <div className="p-8 text-center text-[#7c8aa0]">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/8 mb-4">
-                  <svg className="w-8 h-8 text-[#5f6b7d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-8 text-center text-[var(--text-5)]">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--surface-3)] mb-4">
+                  <svg className="w-8 h-8 text-[var(--text-6)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                   </svg>
                 </div>
-                <p className="text-[#9aa8bd] font-medium mb-2">No cached records found</p>
-                <p className="text-sm text-[#7c8aa0]">Try adjusting your search or filters</p>
+                <p className="text-[var(--text-3)] font-medium mb-2">No cached records found</p>
+                <p className="text-sm text-[var(--text-5)]">Try adjusting your search or filters</p>
               </div>
             ) : (
               <>
                 {/* Desktop Table View */}
                 <div className="hidden lg:block overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-[#07090e] border-b border-[rgba(130,165,220,0.1)]">
+                    <thead className="bg-[var(--bg)] border-b border-[var(--border)]">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-[#9aa8bd] uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
                           Domain
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-[#9aa8bd] uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
                           Type
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-[#9aa8bd] uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
                           Value
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-[#9aa8bd] uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
                           TTL Remaining
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-[#9aa8bd] uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
                           Expires At
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-[#9aa8bd] uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[rgba(130,165,220,0.08)]">
+                    <tbody className="divide-y divide-[var(--border)]">
                       {filteredRecords.map((record) => (
-                        <tr key={record.id} className="hover:bg-[#07090e] transition-colors">
+                        <tr key={record.id} className="hover:bg-[var(--bg)] transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-[#e7eef6]">{record.domain}</div>
-                            <div className="text-xs text-[#7c8aa0]">{record.size}</div>
+                            <div className="text-sm font-medium text-[var(--text-1)]">{record.domain}</div>
+                            <div className="text-xs text-[var(--text-5)]">{record.size}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRecordTypeBadge(record.recordType)}`}>
@@ -415,20 +415,20 @@ export default function DNSCachePage() {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm font-mono text-[#cdd9e8] max-w-xs truncate" title={record.value}>
+                            <div className="text-sm font-mono text-[var(--text-2)] max-w-xs truncate" title={record.value}>
                               {record.value}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-[#cdd9e8]">{formatTTL(record.ttlRemaining)}</div>
+                            <div className="text-sm text-[var(--text-2)]">{formatTTL(record.ttlRemaining)}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-[#cdd9e8]">{formatExpiryTime(record.expiresAt)}</div>
+                            <div className="text-sm text-[var(--text-2)]">{formatExpiryTime(record.expiresAt)}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <button
                               onClick={() => handleClearSingle(record)}
-                              className="text-[#ff6071] hover:text-[#ff6071] hover:bg-[rgba(255,96,113,0.07)] p-2 rounded transition-colors"
+                              className="text-[var(--red)] hover:text-[var(--red)] hover:bg-[rgba(255,96,113,0.07)] p-2 rounded transition-colors"
                               title="Clear this cache entry"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -443,35 +443,35 @@ export default function DNSCachePage() {
                 </div>
 
                 {/* Mobile Card View */}
-                <div className="lg:hidden divide-y divide-[rgba(130,165,220,0.08)]">
+                <div className="lg:hidden divide-y divide-[var(--border)]">
                   {filteredRecords.map((record) => (
-                    <div key={record.id} className="p-4 hover:bg-[#07090e] transition-colors">
+                    <div key={record.id} className="p-4 hover:bg-[var(--bg)] transition-colors">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <div className="font-medium text-[#e7eef6] mb-1 break-all">{record.domain}</div>
+                          <div className="font-medium text-[var(--text-1)] mb-1 break-all">{record.domain}</div>
                           <div className="flex items-center space-x-2 mb-2">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRecordTypeBadge(record.recordType)}`}>
                               {record.recordType}
                             </span>
-                            <span className="text-xs text-[#7c8aa0]">{record.size}</span>
+                            <span className="text-xs text-[var(--text-5)]">{record.size}</span>
                           </div>
-                          <div className="text-sm font-mono text-[#cdd9e8] break-all">{record.value}</div>
+                          <div className="text-sm font-mono text-[var(--text-2)] break-all">{record.value}</div>
                         </div>
                         <button
                           onClick={() => handleClearSingle(record)}
-                          className="text-[#ff6071] hover:text-[#ff6071] hover:bg-[rgba(255,96,113,0.07)] p-2 rounded transition-colors flex-shrink-0 ml-2"
+                          className="text-[var(--red)] hover:text-[var(--red)] hover:bg-[rgba(255,96,113,0.07)] p-2 rounded transition-colors flex-shrink-0 ml-2"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-[#9aa8bd]">
+                      <div className="grid grid-cols-2 gap-2 text-xs text-[var(--text-3)]">
                         <div>
-                          <span className="text-[#7c8aa0]">TTL:</span> {formatTTL(record.ttlRemaining)}
+                          <span className="text-[var(--text-5)]">TTL:</span> {formatTTL(record.ttlRemaining)}
                         </div>
                         <div>
-                          <span className="text-[#7c8aa0]">Expires:</span> {formatExpiryTime(record.expiresAt)}
+                          <span className="text-[var(--text-5)]">Expires:</span> {formatExpiryTime(record.expiresAt)}
                         </div>
                       </div>
                     </div>
@@ -480,7 +480,7 @@ export default function DNSCachePage() {
 
                 {/* Load More Button */}
                 {hasMore && filteredRecords.length > 0 && (
-                  <div className="p-6 border-t border-[rgba(130,165,220,0.1)] flex justify-center">
+                  <div className="p-6 border-t border-[var(--border)] flex justify-center">
                     <button
                       onClick={() => fetchCacheStats(true)}
                       disabled={loadingMore}
@@ -522,21 +522,21 @@ export default function DNSCachePage() {
       {/* Clear All Modal */}
       {showClearAllModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0d111a] rounded-xl shadow-2xl max-w-md w-full">
+          <div className="bg-[var(--card-bg)] rounded-xl shadow-2xl max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[rgba(255,96,113,0.12)] mx-auto mb-4">
-                <svg className="w-6 h-6 text-[#ff6071]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-[var(--red)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-[#e7eef6] text-center mb-2">Clear All Cache?</h3>
-              <p className="text-[#9aa8bd] text-center mb-6">
+              <h3 className="text-xl font-bold text-[var(--text-1)] text-center mb-2">Clear All Cache?</h3>
+              <p className="text-[var(--text-3)] text-center mb-6">
                 This will remove all {cachedRecords.length?.toLocaleString() || 0} cached records. This action cannot be undone.
               </p>
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowClearAllModal(false)}
-                  className="flex-1 px-4 py-2 border border-[rgba(130,165,220,0.2)] text-[#cdd9e8] rounded-lg hover:bg-[#07090e] font-medium transition-colors"
+                  className="flex-1 px-4 py-2 border border-[var(--border-4)] text-[var(--text-2)] rounded-lg hover:bg-[var(--bg)] font-medium transition-colors"
                 >
                   Cancel
                 </button>
@@ -555,20 +555,20 @@ export default function DNSCachePage() {
       {/* Clear Single Modal */}
       {showClearSingleModal && selectedRecord && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0d111a] rounded-xl shadow-2xl max-w-md w-full">
+          <div className="bg-[var(--card-bg)] rounded-xl shadow-2xl max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 mx-auto mb-4">
                 <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-[#e7eef6] text-center mb-2">Clear Cache Entry?</h3>
-              <p className="text-[#9aa8bd] text-center mb-2">
+              <h3 className="text-xl font-bold text-[var(--text-1)] text-center mb-2">Clear Cache Entry?</h3>
+              <p className="text-[var(--text-3)] text-center mb-2">
                 Remove cached record for:
               </p>
-              <div className="bg-[#07090e] rounded-lg p-3 mb-6">
-                <p className="text-sm font-medium text-[#e7eef6] text-center break-all">{selectedRecord.domain}</p>
-                <p className="text-xs text-[#9aa8bd] text-center mt-1">{selectedRecord.recordType} → {selectedRecord.value}</p>
+              <div className="bg-[var(--bg)] rounded-lg p-3 mb-6">
+                <p className="text-sm font-medium text-[var(--text-1)] text-center break-all">{selectedRecord.domain}</p>
+                <p className="text-xs text-[var(--text-3)] text-center mt-1">{selectedRecord.recordType} → {selectedRecord.value}</p>
               </div>
               <div className="flex space-x-3">
                 <button
@@ -576,7 +576,7 @@ export default function DNSCachePage() {
                     setShowClearSingleModal(false);
                     setSelectedRecord(null);
                   }}
-                  className="flex-1 px-4 py-2 border border-[rgba(130,165,220,0.2)] text-[#cdd9e8] rounded-lg hover:bg-[#07090e] font-medium transition-colors"
+                  className="flex-1 px-4 py-2 border border-[var(--border-4)] text-[var(--text-2)] rounded-lg hover:bg-[var(--bg)] font-medium transition-colors"
                 >
                   Cancel
                 </button>

@@ -27,7 +27,7 @@ export default function UsersPage() {
   const currentTab = activeTab && tabs.some(t => t.id === activeTab) ? activeTab : tabs[0]?.id;
 
   return (
-    <div className="min-h-screen bg-[#07090e]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
@@ -39,13 +39,13 @@ export default function UsersPage() {
 
         <main className="p-4 lg:p-6">
           <div className="mb-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-[#e7eef6] mb-2">Users & Roles</h1>
-            <p className="text-[#9aa8bd]">Manage user accounts and role-based access control</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-[var(--text-1)] mb-2">Users & Roles</h1>
+            <p className="text-[var(--text-3)]">Manage user accounts and role-based access control</p>
           </div>
 
-          <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] overflow-hidden">
+          <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] overflow-hidden">
             {tabs.length > 1 && (
-              <div className="border-b border-[rgba(130,165,220,0.1)]">
+              <div className="border-b border-[var(--border)]">
                 <nav className="flex overflow-x-auto">
                   {tabs.map((tab) => (
                     <button
@@ -54,8 +54,8 @@ export default function UsersPage() {
                       className={`
                         px-6 py-4 text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-2
                         ${currentTab === tab.id
-                          ? 'border-b-2 border-blue-500 text-[#5b8cff] bg-[rgba(91,140,255,0.07)]'
-                          : 'text-[#9aa8bd] hover:text-[#e7eef6] hover:bg-[#07090e]'
+                          ? 'border-b-2 border-blue-500 text-[var(--blue)] bg-[rgba(91,140,255,0.07)]'
+                          : 'text-[var(--text-3)] hover:text-[var(--text-1)] hover:bg-[var(--bg)]'
                         }
                       `}
                     >
@@ -71,7 +71,7 @@ export default function UsersPage() {
               {currentTab === 'users' && <UsersTab />}
               {currentTab === 'roles' && <RolesTab />}
               {!currentTab && (
-                <p className="text-sm text-[#9aa8bd]">You don't have permission to manage users or roles.</p>
+                <p className="text-sm text-[var(--text-3)]">You don't have permission to manage users or roles.</p>
               )}
             </div>
           </div>

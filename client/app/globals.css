@@ -22,6 +22,42 @@
   --border: rgba(130, 165, 220, 0.1);
   --border-2: rgba(130, 165, 220, 0.14);
   --border-3: rgba(130, 165, 220, 0.18);
+  --border-4: rgba(130, 165, 220, 0.2);
+  --surface-hover: rgba(255, 255, 255, 0.05);
+  --surface-1: rgba(255, 255, 255, 0.03);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-3: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Light theme overrides — scoped to a `.light` wrapper (the dashboard
+   layout only), never applied to <html>/<body>, so the login page always
+   renders with the :root (dark) values above regardless of preference ── */
+.light {
+  --bg: #f4f6fa;
+  --sidebar-bg: #ffffff;
+  --card-bg: #ffffff;
+  --blue: #3d6fe0;
+  --teal: #14a89b;
+  --green: #1f9d5c;
+  --green-dark: #17824c;
+  --red: #e0384f;
+  --amber: #b9781a;
+  --purple: #7c5cd6;
+  --text-1: #131a26;
+  --text-2: #2c3648;
+  --text-3: #52607a;
+  --text-4: #64718a;
+  --text-5: #76839b;
+  --text-6: #8994a8;
+  --text-7: #9ba5b6;
+  --border: rgba(20, 40, 80, 0.08);
+  --border-2: rgba(20, 40, 80, 0.12);
+  --border-3: rgba(20, 40, 80, 0.16);
+  --border-4: rgba(20, 40, 80, 0.18);
+  --surface-hover: rgba(20, 40, 80, 0.04);
+  --surface-1: rgba(20, 40, 80, 0.025);
+  --surface-2: rgba(20, 40, 80, 0.05);
+  --surface-3: rgba(20, 40, 80, 0.07);
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────── */
@@ -135,15 +171,20 @@ body {
   border-radius: 2px;
 }
 
-/* ── Date/time input dark theme ─────────────────────────────────────── */
+/* ── Date/time input theme ──────────────────────────────────────────── */
 input[type="date"],
 input[type="time"],
 input[type="datetime-local"] {
   color-scheme: dark;
 }
+.light input[type="date"],
+.light input[type="time"],
+.light input[type="datetime-local"] {
+  color-scheme: light;
+}
 
-/* ── Select dark theme ──────────────────────────────────────────────── */
+/* ── Select theme ───────────────────────────────────────────────────── */
 select option {
-  background: #0d111a;
-  color: #e7eef6;
+  background: var(--card-bg);
+  color: var(--text-1);
 }

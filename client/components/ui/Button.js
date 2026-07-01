@@ -12,9 +12,9 @@ export default function Button({
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent';
 
   const variants = {
-    primary: 'bg-gradient-to-r from-[#5b8cff] to-[#34e1d4] hover:from-[#4a7bf0] hover:to-[#28c9bd] text-white focus:ring-[#5b8cff] shadow-md',
-    secondary: 'bg-white/8 hover:bg-white/12 text-[#cdd9e8] border border-[rgba(130,165,220,0.2)] focus:ring-[#5b8cff]',
-    danger: 'bg-[rgba(255,96,113,0.15)] hover:bg-[rgba(255,96,113,0.25)] text-[#ff6071] border border-[rgba(255,96,113,0.3)] focus:ring-[#ff6071]'
+    primary: 'bg-gradient-to-r from-[var(--blue)] to-[var(--teal)] hover:from-[#4a7bf0] hover:to-[#28c9bd] text-white focus:ring-[var(--blue)] shadow-md',
+    secondary: 'bg-[var(--surface-3)] hover:bg-[var(--surface-3)] text-[var(--text-2)] border border-[var(--border-4)] focus:ring-[var(--blue)]',
+    danger: 'bg-[rgba(255,96,113,0.15)] hover:bg-[rgba(255,96,113,0.25)] text-[var(--red)] border border-[rgba(255,96,113,0.3)] focus:ring-[var(--red)]'
   };
 
   const sizes = {

@@ -145,16 +145,16 @@ export default function DomainModal({ onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0d111a] rounded-xl shadow-xl max-w-md w-full">
-        <div className="p-6 border-b border-[rgba(130,165,220,0.14)]">
+      <div className="bg-[var(--card-bg)] rounded-xl shadow-xl max-w-md w-full">
+        <div className="p-6 border-b border-[var(--border-2)]">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[#e7eef6]">Add New Domain</h2>
-              <p className="text-sm text-[#9aa8bd] mt-1">Add a domain and configure its default DNS record</p>
+              <h2 className="text-lg font-semibold text-[var(--text-1)]">Add New Domain</h2>
+              <p className="text-sm text-[var(--text-3)] mt-1">Add a domain and configure its default DNS record</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-[#5f6b7d] hover:text-[#9aa8bd] transition-colors rounded-lg hover:bg-white/8"
+              className="p-2 text-[var(--text-6)] hover:text-[var(--text-3)] transition-colors rounded-lg hover:bg-[var(--surface-3)]"
               aria-label="Close modal"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +178,7 @@ export default function DomainModal({ onClose, onSave }) {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-[#ff6071]">{errors.api}</p>
+                  <p className="text-sm text-[var(--red)]">{errors.api}</p>
                 </div>
               </div>
             </div>
@@ -186,12 +186,12 @@ export default function DomainModal({ onClose, onSave }) {
 
           {/* Replace InputField with direct input for better control of styling */}
           <div className="space-y-1">
-            <label htmlFor="domain-name" className="block text-sm font-medium text-[#cdd9e8]">
+            <label htmlFor="domain-name" className="block text-sm font-medium text-[var(--text-2)]">
               Domain Name
             </label>
             <div className="relative rounded-lg shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-[#5f6b7d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-[var(--text-6)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9 3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9" />
                 </svg>
               </div>
@@ -202,16 +202,16 @@ export default function DomainModal({ onClose, onSave }) {
                 placeholder="Enter domain name (e.g., example.com)"
                 value={formData.name}
                 onChange={handleChange}
-                className="block w-full pl-10 pr-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent text-[#e7eef6] bg-[#0d111a] placeholder-[#5f6b7d]"
+                className="block w-full pl-10 pr-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent text-[var(--text-1)] bg-[var(--card-bg)] placeholder-[var(--text-6)]"
                 required
               />
             </div>
             {errors.name ? (
               <p className="text-red-500 text-sm mt-1">{errors.name}</p>
             ) : (
-              <p className="text-[#7c8aa0] text-xs mt-1">
+              <p className="text-[var(--text-5)] text-xs mt-1">
                 <span className="flex items-center">
-                  <svg className="h-3 w-3 mr-1 text-[#5f6b7d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-3 w-3 mr-1 text-[var(--text-6)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Note: Domain names ending with .local are not allowed as they can cause resolution errors.
@@ -220,17 +220,17 @@ export default function DomainModal({ onClose, onSave }) {
             )}
           </div>
 
-          <div className="border-t border-[rgba(130,165,220,0.14)] pt-4">
-            <h3 className="text-sm font-medium text-[#cdd9e8] mb-3">Default DNS Record</h3>
+          <div className="border-t border-[var(--border-2)] pt-4">
+            <h3 className="text-sm font-medium text-[var(--text-2)] mb-3">Default DNS Record</h3>
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-[#cdd9e8] mb-1">Type</label>
+                <label className="block text-sm font-medium text-[var(--text-2)] mb-1">Type</label>
                 <select
                   name="defaultRecord.type"
                   value={formData.defaultRecord.type}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent text-sm bg-[#0d111a] text-[#e7eef6]"
+                  className="w-full px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent text-sm bg-[var(--card-bg)] text-[var(--text-1)]"
                 >
                   <option value="A">A (IPv4)</option>
                   <option value="AAAA">AAAA (IPv6)</option>
@@ -238,14 +238,14 @@ export default function DomainModal({ onClose, onSave }) {
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-[#cdd9e8] mb-1">IP Address</label>
+                <label className="block text-sm font-medium text-[var(--text-2)] mb-1">IP Address</label>
                 <input
                   type="text"
                   name="defaultRecord.value"
                   placeholder={formData.defaultRecord.type === 'A' ? '192.168.1.1' : '2001:db8::1'}
                   value={formData.defaultRecord.value}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-[rgba(130,165,220,0.2)] rounded-lg focus:ring-2 focus:ring-[#5b8cff]/50 focus:border-transparent text-sm bg-[#0d111a] text-[#e7eef6] placeholder-[#5f6b7d]"
+                  className="w-full px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent text-sm bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-6)]"
                   required
                 />
               </div>

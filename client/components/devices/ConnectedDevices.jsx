@@ -146,23 +146,23 @@ export default function ConnectedDevices() {
     <div className="space-y-8">
       {/* Network Overview Card */}
       {serviceInfo && (
-        <div className="bg-[#0d111a] rounded-xl border border-[rgba(130,165,220,0.14)] overflow-hidden">
+        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-2)] overflow-hidden">
           <div className="p-6">
             <div className="flex flex-wrap justify-between items-center mb-6">
               <div className="flex items-center mb-4 md:mb-0">
                 <div className="p-3 rounded-lg bg-[rgba(91,140,255,0.12)] border border-[rgba(91,140,255,0.2)] mr-4">
-                  <FiWifi className="h-6 w-6 text-[#5b8cff]" />
+                  <FiWifi className="h-6 w-6 text-[var(--blue)]" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-[#e7eef6]">Network Overview</h2>
-                  <p className="text-[#7c8aa0]">{serviceInfo.wifiSSID}</p>
+                  <h2 className="text-2xl font-bold text-[var(--text-1)]">Network Overview</h2>
+                  <p className="text-[var(--text-5)]">{serviceInfo.wifiSSID}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium border ${
                   serviceInfo.status === 'active'
-                    ? 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84] border-[rgba(61,220,132,0.25)]'
-                    : 'bg-[rgba(255,96,113,0.12)] text-[#ff6071] border-[rgba(255,96,113,0.25)]'
+                    ? 'bg-[rgba(61,220,132,0.12)] text-[var(--green)] border-[rgba(61,220,132,0.25)]'
+                    : 'bg-[rgba(255,96,113,0.12)] text-[var(--red)] border-[rgba(255,96,113,0.25)]'
                 }`}>
                   {serviceInfo.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
@@ -170,7 +170,7 @@ export default function ConnectedDevices() {
                   <button
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className={`flex items-center bg-[rgba(91,140,255,0.08)] text-[#5b8cff] hover:bg-[rgba(91,140,255,0.15)] border border-[rgba(91,140,255,0.2)] px-4 py-2 rounded-lg transition-all duration-200 ${isRefreshing ? 'opacity-70' : ''}`}
+                    className={`flex items-center bg-[rgba(91,140,255,0.08)] text-[var(--blue)] hover:bg-[rgba(91,140,255,0.15)] border border-[rgba(91,140,255,0.2)] px-4 py-2 rounded-lg transition-all duration-200 ${isRefreshing ? 'opacity-70' : ''}`}
                   >
                     <FiRefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                     {isRefreshing ? 'Refreshing...' : 'Refresh'}
@@ -181,46 +181,46 @@ export default function ConnectedDevices() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[rgba(91,140,255,0.08)] border border-[rgba(91,140,255,0.18)] p-5 rounded-xl hover:bg-[rgba(91,140,255,0.12)] transition-colors duration-200">
-                <div className="flex items-center mb-3 text-[#5b8cff]">
+                <div className="flex items-center mb-3 text-[var(--blue)]">
                   <FiGlobe className="h-4 w-4 mr-2" />
                   <h3 className="text-xs font-semibold uppercase tracking-wide">IP Range</h3>
                 </div>
-                <p className="text-[#5b8cff] font-bold font-mono text-sm">{serviceInfo.ipRange}</p>
+                <p className="text-[var(--blue)] font-bold font-mono text-sm">{serviceInfo.ipRange}</p>
               </div>
 
               <div className="bg-[rgba(52,225,212,0.08)] border border-[rgba(52,225,212,0.18)] p-5 rounded-xl hover:bg-[rgba(52,225,212,0.12)] transition-colors duration-200">
-                <div className="flex items-center mb-3 text-[#34e1d4]">
+                <div className="flex items-center mb-3 text-[var(--teal)]">
                   <FiServer className="h-4 w-4 mr-2" />
                   <h3 className="text-xs font-semibold uppercase tracking-wide">My Local IP</h3>
                 </div>
-                <p className="text-[#34e1d4] font-bold font-mono text-sm">{serviceInfo.localIp}</p>
+                <p className="text-[var(--teal)] font-bold font-mono text-sm">{serviceInfo.localIp}</p>
               </div>
 
               <div className="bg-[rgba(167,139,250,0.08)] border border-[rgba(167,139,250,0.18)] p-5 rounded-xl hover:bg-[rgba(167,139,250,0.12)] transition-colors duration-200">
-                <div className="flex items-center mb-3 text-[#a78bfa]">
+                <div className="flex items-center mb-3 text-[var(--purple)]">
                   <FiGrid className="h-4 w-4 mr-2" />
                   <h3 className="text-xs font-semibold uppercase tracking-wide">Subnet Mask</h3>
                 </div>
-                <p className="text-[#a78bfa] font-bold font-mono text-sm">{serviceInfo.subnetMask}</p>
+                <p className="text-[var(--purple)] font-bold font-mono text-sm">{serviceInfo.subnetMask}</p>
               </div>
 
               <div className="bg-[rgba(61,220,132,0.08)] border border-[rgba(61,220,132,0.18)] p-5 rounded-xl hover:bg-[rgba(61,220,132,0.12)] transition-colors duration-200">
-                <div className="flex items-center mb-3 text-[#3ddc84]">
+                <div className="flex items-center mb-3 text-[var(--green)]">
                   <FiActivity className="h-4 w-4 mr-2" />
                   <h3 className="text-xs font-semibold uppercase tracking-wide">Connected Devices</h3>
                 </div>
-                <p className="text-[#3ddc84] font-bold font-mono text-sm">{serviceInfo.totalDevices}</p>
+                <p className="text-[var(--green)] font-bold font-mono text-sm">{serviceInfo.totalDevices}</p>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col md:flex-row justify-between items-center bg-white/4 border border-[rgba(130,165,220,0.08)] rounded-lg p-3">
+            <div className="mt-5 flex flex-col md:flex-row justify-between items-center bg-[var(--surface-1)] border border-[var(--border)] rounded-lg p-3">
               <div className="flex items-center mb-3 md:mb-0">
-                <FiClock className="text-[#7c8aa0] mr-2 h-3.5 w-3.5" />
-                <span className="text-sm text-[#9aa8bd]">Last updated: {serviceInfo.lastSynced.toLocaleString()}</span>
+                <FiClock className="text-[var(--text-5)] mr-2 h-3.5 w-3.5" />
+                <span className="text-sm text-[var(--text-3)]">Last updated: {serviceInfo.lastSynced.toLocaleString()}</span>
               </div>
               <div className="flex items-center">
-                <FiShield className="text-[#7c8aa0] mr-2 h-3.5 w-3.5" />
-                <span className="text-sm text-[#9aa8bd]">Next sync: {serviceInfo.nextSync.toLocaleString()}</span>
+                <FiShield className="text-[var(--text-5)] mr-2 h-3.5 w-3.5" />
+                <span className="text-sm text-[var(--text-3)]">Next sync: {serviceInfo.nextSync.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -229,13 +229,13 @@ export default function ConnectedDevices() {
 
       {/* Loading State - with animation */}
       {loading && !isRefreshing && (
-        <div className="bg-[#0d111a] rounded-xl shadow-lg border border-[rgba(130,165,220,0.14)] p-12 text-center">
+        <div className="bg-[var(--card-bg)] rounded-xl shadow-lg border border-[var(--border-2)] p-12 text-center">
           <div className="flex flex-col items-center">
             <div className="relative">
               <div className="h-16 w-16 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
               <div className="h-16 w-16 rounded-full border-l-4 border-r-4 border-blue-300 animate-spin absolute top-0 left-0" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
             </div>
-            <p className="text-lg text-[#9aa8bd] mt-6 font-medium animate-pulse">Loading network data...</p>
+            <p className="text-lg text-[var(--text-3)] mt-6 font-medium animate-pulse">Loading network data...</p>
           </div>
         </div>
       )}
@@ -248,8 +248,8 @@ export default function ConnectedDevices() {
               <FiAlertCircle className="h-6 w-6 text-red-500" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-[#ff6071] mb-1">Connection Error</h3>
-              <p className="text-[#ff6071]">
+              <h3 className="text-lg font-semibold text-[var(--red)] mb-1">Connection Error</h3>
+              <p className="text-[var(--red)]">
                 {error}
               </p>
             </div>
@@ -257,7 +257,7 @@ export default function ConnectedDevices() {
           <div className="mt-4 text-right">
             <button
               onClick={fetchDevices}
-              className="bg-[rgba(255,96,113,0.12)] hover:bg-red-200 text-[#ff6071] px-4 py-2 rounded-lg transition-colors duration-300"
+              className="bg-[rgba(255,96,113,0.12)] hover:bg-red-200 text-[var(--red)] px-4 py-2 rounded-lg transition-colors duration-300"
             >
               Try Again
             </button>
@@ -267,29 +267,29 @@ export default function ConnectedDevices() {
 
       {/* Devices Table - with animations */}
       {!loading && !error && devices.length > 0 && (
-        <div className="bg-[#0d111a] rounded-xl shadow-lg border border-[rgba(130,165,220,0.14)] overflow-hidden transition-all duration-500 hover:shadow-xl">
+        <div className="bg-[var(--card-bg)] rounded-xl shadow-lg border border-[var(--border-2)] overflow-hidden transition-all duration-500 hover:shadow-xl">
           <div className="p-6 pb-0">
             <div className="flex items-center mb-4">
               <div className="p-2 rounded-lg bg-[rgba(61,220,132,0.12)] mr-3">
-                <FiServer className="h-5 w-5 text-[#3ddc84]" />
+                <FiServer className="h-5 w-5 text-[var(--green)]" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-[#e7eef6]">Connected Devices</h2>
-                <p className="text-[#7c8aa0]">All devices currently connected to your network</p>
+                <h2 className="text-xl font-bold text-[var(--text-1)]">Connected Devices</h2>
+                <p className="text-[var(--text-5)]">All devices currently connected to your network</p>
               </div>
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-[rgba(130,165,220,0.08)]">
-              <thead className="bg-white/3">
+            <table className="min-w-full divide-y divide-[var(--border)]">
+              <thead className="bg-[var(--surface-1)]">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-[#7c8aa0] uppercase tracking-wider">IP Address</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-[#7c8aa0] uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-[#7c8aa0] uppercase tracking-wider">Last Seen</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-[#7c8aa0] uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">IP Address</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">Last Seen</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-[#0d111a] divide-y divide-[rgba(130,165,220,0.08)]">
+              <tbody className="bg-[var(--card-bg)] divide-y divide-[var(--border)]">
                 {devices.map((device, index) => {
                   const isBlocked = isDeviceBlocked(device.ip);
                   return (
@@ -297,10 +297,10 @@ export default function ConnectedDevices() {
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className={`w-2 h-2 rounded-full ${device.status === 'connected' ? 'bg-green-500' : 'bg-red-500'} mr-3 animate-pulse`}></div>
-                          <div className="text-sm font-medium text-[#e7eef6]">
+                          <div className="text-sm font-medium text-[var(--text-1)]">
                             {device.ip}
                             {device.ip === serviceInfo.localIp && (
-                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[rgba(91,140,255,0.12)] text-[#5b8cff]">
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[rgba(91,140,255,0.12)] text-[var(--blue)]">
                                 <FiMonitor className="mr-1" /> My Machine
                               </span>
                             )}
@@ -308,24 +308,24 @@ export default function ConnectedDevices() {
                         </div>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${device.status === 'connected' ? 'bg-[rgba(61,220,132,0.12)] text-[#3ddc84]' : 'bg-[rgba(255,96,113,0.12)] text-[#ff6071]'
+                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${device.status === 'connected' ? 'bg-[rgba(61,220,132,0.12)] text-[var(--green)]' : 'bg-[rgba(255,96,113,0.12)] text-[var(--red)]'
                           }`}>
                           {device.status}
                         </span>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="text-sm text-[#7c8aa0]">{new Date(device.lastSeen).toLocaleString()}</div>
+                        <div className="text-sm text-[var(--text-5)]">{new Date(device.lastSeen).toLocaleString()}</div>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap text-sm font-medium">
                         {device.ip !== serviceInfo.localIp && canManageAccessControl && (
                           isBlocked ? (
-                            <span className="inline-flex items-center bg-white/8 text-[#7c8aa0] px-3 py-1 rounded-lg cursor-not-allowed">
+                            <span className="inline-flex items-center bg-[var(--surface-3)] text-[var(--text-5)] px-3 py-1 rounded-lg cursor-not-allowed">
                               <FiShield className="mr-1" /> Blocked By Policy
                             </span>
                           ) : (
                             <button
                               onClick={() => handleBlockClick(device)}
-                              className="inline-flex items-center bg-[rgba(255,96,113,0.07)] text-[#ff6071] hover:bg-[rgba(255,96,113,0.12)] px-3 py-1 rounded-lg transition-all duration-200 hover:shadow-md"
+                              className="inline-flex items-center bg-[rgba(255,96,113,0.07)] text-[var(--red)] hover:bg-[rgba(255,96,113,0.12)] px-3 py-1 rounded-lg transition-all duration-200 hover:shadow-md"
                             >
                               <FiXCircle className="mr-1" /> Block
                             </button>
@@ -338,7 +338,7 @@ export default function ConnectedDevices() {
               </tbody>
             </table>
           </div>
-          <div className="p-4 bg-white/3 text-center text-sm text-[#7c8aa0]">
+          <div className="p-4 bg-[var(--surface-1)] text-center text-sm text-[var(--text-5)]">
             Showing {devices.length} of {serviceInfo?.totalDevices || 0} devices
           </div>
         </div>
@@ -346,15 +346,15 @@ export default function ConnectedDevices() {
 
       {/* Empty State - with animation */}
       {!loading && !error && devices.length === 0 && (
-        <div className="bg-[#0d111a] rounded-xl shadow-lg border border-[rgba(130,165,220,0.14)] p-12 text-center transition-all duration-300 hover:shadow-xl">
-          <div className="inline-block p-4 rounded-full bg-white/8 mb-4 animate-bounce">
-            <FiWifi className="h-8 w-8 text-[#7c8aa0]" />
+        <div className="bg-[var(--card-bg)] rounded-xl shadow-lg border border-[var(--border-2)] p-12 text-center transition-all duration-300 hover:shadow-xl">
+          <div className="inline-block p-4 rounded-full bg-[var(--surface-3)] mb-4 animate-bounce">
+            <FiWifi className="h-8 w-8 text-[var(--text-5)]" />
           </div>
-          <h3 className="text-xl font-semibold text-[#e7eef6] mb-2">No Connected Devices</h3>
-          <p className="text-[#7c8aa0] mb-6 max-w-md mx-auto">No devices are currently connected to your network. Devices will appear here when they connect.</p>
+          <h3 className="text-xl font-semibold text-[var(--text-1)] mb-2">No Connected Devices</h3>
+          <p className="text-[var(--text-5)] mb-6 max-w-md mx-auto">No devices are currently connected to your network. Devices will appear here when they connect.</p>
           <button
             onClick={canRefreshDevices ? handleRefresh : fetchDevices}
-            className="inline-flex items-center bg-[rgba(91,140,255,0.12)] hover:bg-[rgba(91,140,255,0.15)] text-[#5b8cff] px-4 py-2 rounded-lg transition-colors duration-300"
+            className="inline-flex items-center bg-[rgba(91,140,255,0.12)] hover:bg-[rgba(91,140,255,0.15)] text-[var(--blue)] px-4 py-2 rounded-lg transition-colors duration-300"
           >
             <FiRefreshCw className="mr-2" /> Check Again
           </button>
