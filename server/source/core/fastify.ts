@@ -103,7 +103,6 @@ export default function FastifyServer() {
       console.log(
         `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
       );
-      startCronJob()
     } catch (err) {
       NexoralServer.log.error(err);
       process.exit(1);
@@ -117,4 +116,5 @@ export default function FastifyServer() {
 // Run the server if this file is executed directly
 if (process.argv[1] === __filename) {
   FastifyServer();
+  startCronJob();
 }
