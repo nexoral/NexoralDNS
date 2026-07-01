@@ -117,6 +117,7 @@ NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your n
 - **🛡️ Security Filtering:** Block unwanted domains and protect your network
 - **🔞 Anti-Porn Mode:** Block 100+ adult content websites with one click - perfect for families and schools
 - **🛡️ Anti-Ads Mode:** Block 200+ advertising and tracking domains - eliminate ads, protect privacy, and speed up browsing
+- **🤖 Anti-AI Mode:** Block major AI chatbot, coding assistant, and generative-AI domains (ChatGPT, Claude, Gemini, Copilot, and more) - ideal for schools, exams, and workplaces
 - **👥 Users & Roles (RBAC):** Create custom roles from a fixed permission catalog, add admin-managed users with a temporary password, and enforce a forced password change on first login
 - **👨‍💻 Developer-Friendly:** Perfect for development environments
  - **📊 Real-time Analytics:** Monitor DNS queries as they happen
@@ -171,6 +172,7 @@ sudo docker compose up -d
 - Create blocking rules to block specific domains either for individual IP addresses or for the entire network. This is useful for parental controls, IoT protection, or blocking malicious domains.
 - **Enable Anti-Porn Mode** with one click to automatically block 100+ adult content websites for specific devices, groups, or your entire network (Access Control → Anti-Porn Mode).
 - **Enable Anti-Ads Mode** with one click to automatically block 200+ advertising and tracking domains including Google Ads, Facebook tracking, and more - improve privacy and browsing speed (Access Control → Anti-Ads Mode).
+- **Enable Anti-AI Mode** to automatically block major AI chatbot, AI coding assistant, and generative-AI tool domains (ChatGPT, Claude, Gemini, Copilot, Perplexity, Character.AI, Midjourney, and more) - useful for schools, exam environments, and workplaces that need to restrict AI tool access (Access Control → Anti-AI Mode).
 
 ---
 
