@@ -28,6 +28,6 @@ export default async function BatchProcessAnalytics() {
       return true
     }
     return false;
-  }, { batchSize: 100, batchTimeout: 3000 })
+  }, { batchSize: 1000, batchTimeout: 2000 })
 
 }
