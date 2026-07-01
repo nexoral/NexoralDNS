@@ -3,10 +3,10 @@ import { ClassBased, Console,  } from "outers";
 import cluster from "cluster";
 import Bcrypt from "../helper/bcrypt.helper";
 import { DB_DEFAULT_CONFIGS } from "../core/key";
+
 const connections = new Map<string, MongoClient>();
 const DB_clients = new Map<string, MongoClient>();
 const Collection_clients = new Map<string, Collection<Document>>();
-
 
 /**
  * Retrieves a MongoDB client instance for the specified URL.
@@ -47,7 +47,6 @@ export const getDBClient = (dbName: string): MongoClient | undefined => {
 export const getCollectionClient = (collectionName: string): Collection<Document> | undefined => {
   return Collection_clients.get(collectionName);
 }
-
 
 /**
  * Initializes the MongoDB connection and sets up the database with required collections and default data.
@@ -114,50 +113,49 @@ export default async () => {
       await rolesCol.createIndex({ code: 1 }, { unique: true }); // Ensure unique role codes
       await usersCol.createIndex({ username: 1 }, { unique: true }); // Ensure unique usernames
 
-
       // Analytics
-      await DnsAnalyticsCol.createIndex({ timestamp: 1 })
-      await DnsAnalyticsCol.createIndex({ Status: 1 })
-      await DnsAnalyticsCol.createIndex({ queryType: 1 })
-      await DnsAnalyticsCol.createIndex({ From: 1 })
-      await DnsAnalyticsCol.createIndex({ duration: 1 })
-      await DnsAnalyticsCol.createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 }) // This index for Auto Delete after 7 days
-      await DnsAnalyticsCol.createIndex({ updatedAt: 1 })
+      await DnsAnalyticsCol.createIndex({ timestamp: 1 });
+      await DnsAnalyticsCol.createIndex({ Status: 1 });
+      await DnsAnalyticsCol.createIndex({ queryType: 1 });
+      await DnsAnalyticsCol.createIndex({ From: 1 });
+      await DnsAnalyticsCol.createIndex({ duration: 1 });
+      await DnsAnalyticsCol.createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 }); // Auto Delete after 7 days
+      await DnsAnalyticsCol.createIndex({ updatedAt: 1 });
 
-      await DnsAnalyticsCol.createIndex({ timestamp: 1, Status: 1 })
-      await DnsAnalyticsCol.createIndex({ timestamp: 1, queryType: 1 })
-      await DnsAnalyticsCol.createIndex({ timestamp: -1 })
+      await DnsAnalyticsCol.createIndex({ timestamp: 1, Status: 1 });
+      await DnsAnalyticsCol.createIndex({ timestamp: 1, queryType: 1 });
+      await DnsAnalyticsCol.createIndex({ timestamp: -1 });
 
       // Domains
-      await domainsCol.createIndex({ domainStatus: 1 })
+      await domainsCol.createIndex({ domainStatus: 1 });
 
       // DNS Records
-      await dnsRecordsCol.createIndex({ domainId: 1 })
+      await dnsRecordsCol.createIndex({ domainId: 1 });
 
       // Access Control Policies
-      await accessControlPoliciesCol.createIndex({ policyName: 1 })
-      await accessControlPoliciesCol.createIndex({ isActive: 1 })
-      await accessControlPoliciesCol.createIndex({ policyType: 1 })
-      await accessControlPoliciesCol.createIndex({ targetType: 1 })
-      await accessControlPoliciesCol.createIndex({ createdAt: -1 })
+      await accessControlPoliciesCol.createIndex({ policyName: 1 });
+      await accessControlPoliciesCol.createIndex({ isActive: 1 });
+      await accessControlPoliciesCol.createIndex({ policyType: 1 });
+      await accessControlPoliciesCol.createIndex({ targetType: 1 });
+      await accessControlPoliciesCol.createIndex({ createdAt: -1 });
 
       // Domain Groups
-      await domainGroupsCol.createIndex({ name: 1 }, { unique: true })
-      await domainGroupsCol.createIndex({ createdAt: -1 })
+      await domainGroupsCol.createIndex({ name: 1 }, { unique: true });
+      await domainGroupsCol.createIndex({ createdAt: -1 });
 
       // IP Groups
-      await ipGroupsCol.createIndex({ name: 1 }, { unique: true })
-      await ipGroupsCol.createIndex({ createdAt: -1 })
+      await ipGroupsCol.createIndex({ name: 1 }, { unique: true });
+      await ipGroupsCol.createIndex({ createdAt: -1 });
 
       // Session Management — one document per user (unique userId enforces upsert semantics)
       // Drop the old non-unique index before recreating as unique (idempotent on fresh installs)
-      await sessionManageCol.dropIndex('userId_1').catch(() => {})
-      await sessionManageCol.createIndex({ userId: 1 }, { unique: true })
-      await sessionManageCol.createIndex({ accessToken: 1 })
-      await sessionManageCol.createIndex({ refreshToken: 1 })
+      await sessionManageCol.dropIndex('userId_1').catch(() => {});
+      await sessionManageCol.createIndex({ userId: 1 }, { unique: true });
+      await sessionManageCol.createIndex({ accessToken: 1 });
+      await sessionManageCol.createIndex({ refreshToken: 1 });
       // Auto-expire inactive sessions after 48h (matches refresh token TTL)
       // Active sessions survive because updatedAt is refreshed on every login/token refresh
-      await sessionManageCol.createIndex({ updatedAt: 1 }, { expireAfterSeconds: 48 * 60 * 60 })
+      await sessionManageCol.createIndex({ updatedAt: 1 }, { expireAfterSeconds: 48 * 60 * 60 });
 
       // 1. Insert permissions with numeric codes if empty
       const existingPerms = await permissionsCol.countDocuments();
@@ -235,11 +233,11 @@ export default async () => {
       }
 
       console.log("🎉 RBAC setup completed");
-    }� RBAC setup completed");
+    }
+
     return client;
   } catch (error) {
     Console.red("Failed to connect to MongoDB:", error);
     throw error;
   }
-
 }
