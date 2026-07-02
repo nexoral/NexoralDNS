@@ -26,7 +26,7 @@ const pages = [
   { key: '/docs/commands/update', label: 'Update', group: 'Commands', icon: '↻' },
 ];
 
-export default function Header() {
+export default function Header({ version }: { version: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -137,7 +137,7 @@ export default function Header() {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 1.27a11 11 0 0 0-3.48 21.46c.55.09.73-.24.73-.53v-1.85c-3.03.66-3.67-1.46-3.67-1.46-.5-1.27-1.21-1.6-1.21-1.6-1-.68.07-.66.07-.66 1.09.08 1.66 1.12 1.66 1.12.97 1.65 2.54 1.17 3.16.9.1-.7.38-1.18.69-1.45-2.42-.27-4.96-1.21-4.96-5.38 0-1.19.42-2.16 1.12-2.92-.11-.28-.49-1.39.11-2.9 0 0 .92-.29 3 1.12a10.4 10.4 0 0 1 5.46 0c2.08-1.41 3-1.12 3-1.12.6 1.51.22 2.62.11 2.9.7.76 1.12 1.73 1.12 2.92 0 4.18-2.55 5.1-4.98 5.37.39.34.74 1 .74 2.03v3.01c0 .29.18.63.74.52A11 11 0 0 0 12 1.27" />
           </svg>
-          <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11.5 }}>v3.5.44</span>
+          <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11.5 }}>v{version.replace(/-stable$/, '')}</span>
         </a>
       </header>
 

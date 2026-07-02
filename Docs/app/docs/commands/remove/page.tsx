@@ -1,12 +1,15 @@
 import DocPage from '@/components/DocPage';
 import type { Block } from '@/components/DocPage';
+import { getInstallScriptUrl, installCommand } from '@/lib/github';
 
-const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -';
+async function getBlocks(): Promise<Block[]> {
+  const scriptUrl = await getInstallScriptUrl();
+  const INSTALL = installCommand(scriptUrl);
 
-const blocks: Block[] = [
+  return [
   { type: 'callout', tone: 'danger', title: 'This is irreversible', text: "Permanently deletes all DNS records, configurations, query logs, cache data and user settings. Back up first." },
   { type: 'h', title: 'Command' },
-  { type: 'code', code: 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove', label: 'remove' },
+  { type: 'code', code: installCommand(scriptUrl, 'remove'), label: 'remove' },
   { type: 'h', title: 'What it does' },
   { type: 'list', variant: 'dot', items: [
     "Prompts for confirmation (type 'yes' exactly)",
@@ -26,9 +29,11 @@ const blocks: Block[] = [
   alpine tar czf /backup/db-backup-$(date +%Y%m%d).tar.gz -C /data .` },
   { type: 'h', title: 'Reinstalling' },
   { type: 'code', code: INSTALL, label: 'reinstall' },
-];
+  ];
+}
 
-export default function RemoveCommand() {
+export default async function RemoveCommand() {
+  const blocks = await getBlocks();
   return (
     <DocPage
       group="Commands"

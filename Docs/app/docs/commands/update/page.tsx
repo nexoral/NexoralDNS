@@ -1,9 +1,13 @@
 import DocPage from '@/components/DocPage';
 import type { Block } from '@/components/DocPage';
+import { getInstallScriptUrl, installCommand } from '@/lib/github';
 
-const blocks: Block[] = [
+async function getBlocks(): Promise<Block[]> {
+  const scriptUrl = await getInstallScriptUrl();
+
+  return [
   { type: 'h', title: 'Command' },
-  { type: 'code', code: 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s update', label: 'update' },
+  { type: 'code', code: installCommand(scriptUrl, 'update'), label: 'update' },
   { type: 'h', title: 'What it does' },
   { type: 'list', variant: 'dot', items: [
     'Queries GitHub for the latest release version',
@@ -16,15 +20,17 @@ const blocks: Block[] = [
   { type: 'code', prompt: false, label: 'backup path', code: '/var/lib/nexoraldns/backups/config_YYYY-MM-DD_HH-MM-SS.tar.gz' },
   { type: 'p', text: 'Includes custom DNS records, block lists, user settings and dashboard configurations. Query logs and cache data are not included.' },
   { type: 'h', title: 'Rollback' },
-  { type: 'code', prompt: false, label: 'restore', code: `curl -fsSL .../install.sh | bash -s stop
+  { type: 'code', prompt: false, label: 'restore', code: `${installCommand(scriptUrl, 'stop')}
 sudo tar -xzf /var/lib/nexoraldns/backups/config_LATEST.tar.gz -C /
-curl -fsSL .../install.sh | bash -s start` },
+${installCommand(scriptUrl, 'start')}` },
   { type: 'h', title: 'Check versions' },
   { type: 'code', prompt: false, label: 'version check', code: `cd /path/to/NexoralDNS && git describe --tags
 curl -s https://api.github.com/repos/nexoral/NexoralDNS/releases/latest | grep tag_name` },
-];
+  ];
+}
 
-export default function UpdateCommand() {
+export default async function UpdateCommand() {
+  const blocks = await getBlocks();
   return (
     <DocPage
       group="Commands"

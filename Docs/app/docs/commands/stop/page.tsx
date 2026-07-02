@@ -1,9 +1,13 @@
 import DocPage from '@/components/DocPage';
 import type { Block } from '@/components/DocPage';
+import { getInstallScriptUrl, installCommand } from '@/lib/github';
 
-const blocks: Block[] = [
+async function getBlocks(): Promise<Block[]> {
+  const scriptUrl = await getInstallScriptUrl();
+
+  return [
   { type: 'h', title: 'Command' },
-  { type: 'code', code: 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s stop', label: 'stop' },
+  { type: 'code', code: installCommand(scriptUrl, 'stop'), label: 'stop' },
   { type: 'h', title: 'What it does' },
   { type: 'list', variant: 'dot', items: [
     'Sends graceful shutdown signals to all containers',
@@ -20,9 +24,11 @@ const blocks: Block[] = [
   { type: 'code', prompt: false, label: 'alternatives', code: `cd /path/to/NexoralDNS/Scripts
 sudo docker compose stop
 sudo docker compose stop dashboard   # specific service` },
-];
+  ];
+}
 
-export default function StopCommand() {
+export default async function StopCommand() {
+  const blocks = await getBlocks();
   return (
     <DocPage
       group="Commands"

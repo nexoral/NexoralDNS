@@ -1,9 +1,12 @@
 import DocPage from '@/components/DocPage';
 import type { Block } from '@/components/DocPage';
+import { getInstallScriptUrl, installCommand } from '@/lib/github';
 
-const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -';
+async function getBlocks(): Promise<Block[]> {
+  const scriptUrl = await getInstallScriptUrl();
+  const INSTALL = installCommand(scriptUrl);
 
-const blocks: Block[] = [
+  return [
   { type: 'h', title: 'Prerequisites' },
   { type: 'list', variant: 'check', items: [
     'Linux, macOS, or Windows — any OS that runs Docker',
@@ -29,9 +32,11 @@ const blocks: Block[] = [
     { icon: '❓', title: 'FAQ',             href: '/docs/faq' },
     { icon: '🧬', title: 'Architecture',    href: '/docs/architecture' },
   ]},
-];
+  ];
+}
 
-export default function GettingStarted() {
+export default async function GettingStarted() {
+  const blocks = await getBlocks();
   return (
     <DocPage
       group="Get Started"
