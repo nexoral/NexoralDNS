@@ -3,22 +3,37 @@
 ## 📖 Table of Contents
 1. [System Overview](#system-overview)
 2. [Flow Diagrams](#flow-diagrams)
-3. [System Design](#system-design)
-4. [Database Schema](#database-schema)
-5. [RBAC & User Management](#rbac--user-management)
-6. [Performance Targets](#performance-targets)
+3. [System Component Architecture](#system-component-architecture)
+4. [Directory Structure](#directory-structure)
+5. [Core Service Responsibilities](#core-service-responsibilities)
+6. [Cluster & Concurrency Model](#cluster--concurrency-model)
+7. [Database Schema](#database-schema)
+8. [Redis Caching Strategy](#redis-caching-strategy)
+9. [RBAC & User Management](#rbac--user-management)
+10. [Anti-Porn Mode Feature](#-anti-porn-mode-feature)
+11. [Anti-Ads Mode Feature](#️-anti-ads-mode-feature)
+12. [Performance Targets](#performance-targets)
+13. [Operational Resilience](#operational-resilience)
+14. [Known Gaps & Non-Goals](#known-gaps--non-goals)
+15. [Testing](#testing)
+16. [Deployment](#deployment)
+17. [Security Considerations](#security-considerations)
+18. [Future Optimizations](#future-optimizations)
+19. [Support & Maintenance](#support--maintenance)
 
 ---
 
 ## System Overview
 
-NexoralDNS is a high-performance DNS server with advanced features including:
-- **Sub-5ms query response times** with Redis caching
-- **Domain rerouting** (e.g., google.com → ankan.site)
-- **Domain blocking** (ads, malware, custom blocks)
-- **User plan management** with feature limits
-- **Analytics & logging** for query monitoring
-- **Multi-client support** with client-specific rules
+NexoralDNS is a LAN-only DNS server and management system with:
+- **Sub-5ms query response targets** (cache hit / DB lookup), backed by a Redis-first, MongoDB-fallback resolution pipeline
+- **Three DNS transports**: UDP (port 53), TCP (port 53, RFC 7766), and DoT — DNS over TLS (port 853, RFC 7858) — all sharing the same query-processing logic
+- **Domain blocking** via an Access Control List (ACL) system: per-IP, per-group, or global policies, including pre-built Anti-Porn and Anti-Ads modes
+- **Analytics** for query monitoring, published async via RabbitMQ and batch-written to MongoDB
+- **Multi-worker clustering** for multi-core utilization
+- **RBAC-based admin dashboard** (users, roles, permissions) for managing the above
+
+> **Not currently implemented**: domain rerouting/rewriting (e.g. redirecting `google.com` → a custom target) and per-user subscription plan gating in the DNS query path. Earlier drafts of this document described both in detail; neither exists in the current codebase (`Web/src`, `server/source`) — there is no rewrite/reroute logic and no plan-check anywhere in the query path. If/when built, this document should be updated alongside the code.
 
 ---
 
@@ -29,31 +44,39 @@ NexoralDNS is a high-performance DNS server with advanced features including:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         CLIENT DNS QUERY                             │
-│                     (e.g., google.com A record)                      │
+│              UDP:53 · TCP:53 (RFC 7766) · DoT:853 (RFC 7858)         │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+      DNS.Service.ts   DNS_TCP.Service.ts  DNS_DoT.Service.ts
+      (dgram/UDP)      (net.Server)        (tls.Server)
+              │                │                │
+              └────────────────┼────────────────┘
                                ▼
+              All three transports parse via the same
+              IDNSIOHandler interface and dispatch into:
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      UDP DNS Server (Port 53)                        │
-│                        DNS.Service.ts                                │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Rules.service.ts (Main Logic)                    │
-│                    ┌──────────────────────────┐                      │
-│                    │   7-Layer Check System   │                      │
-│                    └──────────────────────────┘                      │
+│              StartRulesService.execute() — Rules.service.ts          │
+│                  (identical logic regardless of transport)           │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
         ┌──────────────────────┼──────────────────────┐
         │                      │                      │
         ▼                      ▼                      ▼
-   [CACHE HIT]           [DB LOOKUP]           [UPSTREAM DNS]
-   Return <2ms           Return <5ms           Return <50ms
+   [CACHE HIT]           [DB LOOKUP]           [UPSTREAM FORWARD]
+   Redis record hit      MongoDB record,       No local record —
+                          single-flight-deduped forwarded to a
+                                                shuffled upstream
+                                                DNS pool (Cloudflare,
+                                                Google, Verisign,
+                                                OpenDNS, Level3,
+                                                Neustar) with per-
+                                                server 2s timeout
+                                                and automatic retry
 ```
 
-### 2. Detailed 7-Layer Query Processing Flow
+### 2. Actual Query Processing Flow (4 checks, not the previously-documented 7)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -62,504 +85,299 @@ NexoralDNS is a high-performance DNS server with advanced features including:
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                     ┌──────────▼──────────┐
-                    │  LAYER 1: CACHE     │ ⚡ 0.5-1ms
-                    │  Redis Lookup       │
-                    └──────────┬──────────┘
-                               │
+                    │ CHECK 1: SERVICE    │  Redis (dns-server-status),
+                    │ STATUS              │  falls back to MongoDB
+                    └──────────┬──────────┘  `service` collection on
+                               │              cache miss
                     ┌──────────▼──────────┐
-                    │   Cache Hit?        │
+                    │  Service Active?    │
                     └──┬──────────────┬───┘
-                  YES  │              │ NO
+                  NO   │              │ YES
            ┌───────────▼─────┐        │
-           │ Return Response │        │
-           │   ✓ DONE (1ms)  │        │
+           │ Return NXDOMAIN │        │
            └─────────────────┘        │
                                       │
                            ┌──────────▼──────────┐
-                           │ LAYER 2: SERVICE    │ ⚡ 0.5ms
-                           │ Status Check        │
-                           └──────────┬──────────┘
-                                      │
-                           ┌──────────▼──────────┐
-                           │  Service Active?    │
+                           │ CHECK 2: BLOCK LIST │  3-layer cache:
+                           │ (ACL)               │  local Map (5s) →
+                           └──────────┬──────────┘  global Map (3s) →
+                                      │              Redis ACL sets
+                           ┌──────────▼──────────┐  (acl:ip:*, acl:all_users)
+                           │   Domain Blocked?   │  with wildcard matching
                            └──┬──────────────┬───┘
-                          NO  │              │ YES
+                          YES │              │ NO
                    ┌──────────▼─────┐        │
-                   │ Return NXDOMAIN│        │
-                   │  ✓ DONE (1ms)  │        │
+                   │ Return 0.0.0.0 │        │
+                   │ (fail-open on  │        │
+                   │  ACL errors)   │        │
                    └────────────────┘        │
                                              │
                                   ┌──────────▼──────────┐
-                                  │ LAYER 3: BLOCK LIST │ ⚡ 0.5ms
-                                  │ Check if Blocked    │
-                                  └──────────┬──────────┘
-                                             │
-                                  ┌──────────▼──────────┐
-                                  │   Domain Blocked?   │
+                                  │ CHECK 3: RECORD     │  Redis GET first;
+                                  │ CACHE / DB          │  on miss, single-
+                                  └──────────┬──────────┘  flight-deduped
+                                             │              MongoDB findOne,
+                                  ┌──────────▼──────────┐   walking CNAME
+                                  │  Record Found &     │   chains up to
+                                  │  Name Matches?       │   10 hops
                                   └──┬──────────────┬───┘
                                 YES  │              │ NO
                          ┌───────────▼─────┐        │
-                         │ Return NXDOMAIN │        │
-                         │ + Log Block     │        │
-                         │  ✓ DONE (2ms)   │        │
+                         │ Build & Send    │        │
+                         │ Answer, Re-cache│        │
+                         │ at record's TTL │        │
                          └─────────────────┘        │
                                                      │
                                           ┌──────────▼──────────┐
-                                          │ LAYER 4: REWRITE    │ ⚡ 1ms
-                                          │ Check Reroute Rules │
-                                          └──────────┬──────────┘
-                                                     │
-                                          ┌──────────▼──────────┐
-                                          │  Rewrite Rule?      │
-                                          └──┬──────────────┬───┘
-                                        YES  │              │ NO
-                                 ┌───────────▼─────┐        │
-                                 │ Lookup Target   │        │
-                                 │ Domain IP       │        │
-                                 │ Return Rerouted │        │
-                                 │  ✓ DONE (3ms)   │        │
-                                 └─────────────────┘        │
-                                                             │
-                                                  ┌──────────▼──────────┐
-                                                  │ LAYER 5: DNS RECORD │ ⚡ 2ms
-                                                  │ MongoDB Lookup      │
-                                                  └──────────┬──────────┘
-                                                             │
-                                                  ┌──────────▼──────────┐
-                                                  │  Record Found?      │
-                                                  └──┬──────────────┬───┘
-                                                YES  │              │ NO
-                                         ┌───────────▼─────┐        │
-                                         │ Check User Plan │        │
-                                         │ Return Record   │        │
-                                         │  ✓ DONE (4ms)   │        │
-                                         └─────────────────┘        │
-                                                                     │
-                                                          ┌──────────▼──────────┐
-                                                          │ LAYER 6: USER PLAN  │ ⚡ 0.5ms
-                                                          │ Validation (if user)│
-                                                          └──────────┬──────────┘
-                                                                     │
-                                                          ┌──────────▼──────────┐
-                                                          │ LAYER 7: UPSTREAM   │ ⚡ 10-50ms
-                                                          │ Forward to 8.8.8.8  │
-                                                          └──────────┬──────────┘
-                                                                     │
-                                                          ┌──────────▼──────────┐
-                                                          │ Cache Response      │
-                                                          │ Return to Client    │
-                                                          │  ✓ DONE (40ms)      │
-                                                          └─────────────────────┘
+                                          │ CHECK 4: UPSTREAM   │  Shuffled
+                                          │ FORWARD             │  multi-provider
+                                          └──────────┬──────────┘  pool, 2s
+                                                     │              per-server
+                                          ┌──────────▼──────────┐   timeout,
+                                          │ Cache Response,     │   automatic
+                                          │ Return to Client    │   fallthrough
+                                          └─────────────────────┘
 ```
 
-### 3. System Component Architecture
+**Fail-safe behavior**: if MongoDB is unreachable at any point in checks 1-3, the pipeline sets a `databaseOffline` flag and bypasses service-status/ACL enforcement rather than hard-failing — queries still resolve (via cache or upstream forward) with reduced policy enforcement, on the reasoning that a LAN losing all DNS resolution is worse than temporarily bypassing blocklists. See `Rules.service.ts`.
+
+---
+
+## System Component Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              CLIENT LAYER                                    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐                    │
-│  │  Web UI  │  │  Mobile  │  │   CLI    │  │  DNS     │                    │
-│  │ (Next.js)│  │   App    │  │  Client  │  │  Client  │                    │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘                    │
-└───────┼─────────────┼─────────────┼─────────────┼────────────────────────────┘
-        │             │             │             │
-        │ HTTP/REST   │ HTTP/REST   │ UDP:53      │ UDP:53
-        │             │             │             │
-┌───────▼─────────────▼─────────────┼─────────────┼────────────────────────────┐
-│                   API SERVER (Fastify)           │                            │
-│  ┌────────────────────────────────────────┐     │                            │
-│  │          REST API Endpoints            │     │                            │
-│  │  • /api/rewrites   • /api/blocks       │     │                            │
-│  │  • /api/dns        • /api/analytics    │     │                            │
-│  │  • /api/plans      • /api/auth         │     │                            │
-│  └────────────────┬───────────────────────┘     │                            │
-│                   │                              │                            │
-│  ┌────────────────▼───────────────────────┐     │                            │
-│  │         Controllers Layer              │     │                            │
-│  │  • DNS.controller                      │     │                            │
-│  │  • Rewrite.controller                  │     │                            │
-│  │  • Block.controller                    │     │                            │
-│  │  • Plan.controller                     │     │                            │
-│  └────────────────┬───────────────────────┘     │                            │
-│                   │                              │                            │
-│  ┌────────────────▼───────────────────────┐     │                            │
-│  │         Services Layer                 │     │                            │
-│  │  • Add_DNS.service                     │     │                            │
-│  │  • DNS_List.service                    │     │                            │
-│  │  • DNS_Update.service                  │     │                            │
-│  │  • DNS_Delete.service                  │     │                            │
-│  └────────────────┬───────────────────────┘     │                            │
-└─────────────────────┼──────────────────────────────────────────────────────────┘
-                      │                             │
-        ┌─────────────▼────────┐                    │
-        │                      │                    │
-┌───────▼────────┐    ┌────────▼────────┐          │
-│   MongoDB      │    │   Redis Cache   │          │
-│                │    │                 │          │
-│ • dns_records  │    │ • service:*     │          │
-│ • dns_rewrites │    │ • dns:*         │◄─────────┼────────┐
-│ • dns_blocks   │    │ • rewrite:*     │          │        │
-│ • user_plans   │    │ • block:*       │          │        │
-│ • query_logs   │    │ • response:*    │          │        │
-│ • domains      │    │ • plan:*        │          │        │
-└────────────────┘    └─────────────────┘          │        │
-                                                    │        │
-┌───────────────────────────────────────────────────▼────────┼────────────────┐
-│                      DNS SERVICE (UDP:53)                  │                │
-│  ┌─────────────────────────────────────────────────────┐   │                │
-│  │              DNS.Service.ts                         │   │                │
-│  │  • Listens on UDP Port 53                           │   │                │
-│  │  • Handles DNS packets (A, AAAA, CNAME, etc.)       │   │                │
-│  └─────────────────┬───────────────────────────────────┘   │                │
-│                    │                                        │                │
-│  ┌─────────────────▼───────────────────────────────────┐   │                │
-│  │            Rules.service.ts                         │   │                │
-│  │  • 7-Layer Query Processing                         │   │                │
-│  │  • Redis Cache Integration                          │   │                │
-│  │  • Service Status Check                             │   │                │
-│  │  • Block List Validation                            │───┼────────────────┤
-│  │  • Rewrite Rule Execution                           │   │                │
-│  │  • DNS Record Lookup                                │   │                │
-│  │  • User Plan Validation                             │   │                │
-│  │  • Upstream DNS Forwarding                          │   │                │
-│  └─────────────────┬───────────────────────────────────┘   │                │
-│                    │                                        │                │
-│  ┌─────────────────▼───────────────────────────────────┐   │                │
-│  │          Supporting Services                        │   │                │
-│  │  • DB_Pool.service      (DNS record lookups)        │   │                │
-│  │  • Rewrite.service      (Rewrite rules)             │   │                │
-│  │  • Block.service        (Block list)                │   │                │
-│  │  • UserPlan.service     (Plan validation)           │   │                │
-│  │  • QueryLogger.service  (Batch logging)             │   │                │
-│  │  • GlobalDNSforwarder   (Upstream DNS)              │   │                │
-│  └─────────────────────────────────────────────────────┘   │                │
-└────────────────────────────────────────────────────────────┴────────────────┘
-                                 │
-                                 │ Forward Unresolved
-                                 ▼
-                    ┌────────────────────────┐
-                    │  UPSTREAM DNS SERVERS  │
-                    │  • 8.8.8.8 (Google)    │
-                    │  • 1.1.1.1 (Cloudflare)│
-                    │  • Custom DNS          │
-                    └────────────────────────┘
+│  ┌──────────────────────┐         ┌──────────────────────────────────┐     │
+│  │   Web Dashboard        │         │        DNS Clients                │     │
+│  │   (Next.js, port 4000) │         │  (any device on the LAN — phones, │     │
+│  │                        │         │   laptops, IoT, routers)          │     │
+│  └───────────┬────────────┘         └────────────────┬───────────────────┘     │
+└──────────────┼───────────────────────────────────────┼─────────────────────┘
+               │ HTTP/REST                              │ UDP:53 / TCP:53 / DoT:853
+               ▼                                        ▼
+┌──────────────────────────────────┐   ┌───────────────────────────────────────┐
+│   server/ — Fastify API           │   │   Web/ — Core DNS Engine               │
+│   (port 4773)                     │   │   (cluster.fork() × floor(cpus×0.75)) │
+│                                    │   │                                       │
+│  Router → Controller → Service    │   │  DNS.Service.ts (UDP)                 │
+│  layers for: DNS records, users,  │   │  DNS_TCP.Service.ts (TCP)             │
+│  roles, ACL policies, anti-porn/  │   │  DNS_DoT.Service.ts (TLS/853)         │
+│  anti-ads mode, domain/IP groups, │   │       │                               │
+│  analytics, health checks         │   │       ▼                               │
+│                                    │   │  Rules.service.ts (StartRulesService) │
+│  Own cluster.fork() pool, own     │   │  ServiceStatusChecker.service.ts      │
+│  MongoClient, own RabbitMQ conn   │   │  BlockList.service.ts                 │
+│  (duplicated infra code from      │   │  DB_Pool.service.ts                   │
+│  Web/ — see Known Gaps)           │   │  GlobalDNSforwarder.service.ts        │
+└─────────────┬──────────────────────┘   │                                       │
+              │                          │  Own cluster.fork() pool, own        │
+              │                          │  MongoClient, own RabbitMQ conn      │
+              │                          └───────────────┬───────────────────────┘
+              │                                          │
+              └──────────────────┬───────────────────────┘
+                                  ▼
+        ┌─────────────────────────────────────────────────┐
+        │              Shared backing services              │
+        │  ┌──────────────┐ ┌──────────┐ ┌───────────────┐ │
+        │  │  MongoDB     │ │  Redis   │ │  RabbitMQ     │ │
+        │  │  (single     │ │  (single │ │  (DNS_Analytics│ │
+        │  │   instance)  │ │  instance)│ │   queue → batch│ │
+        │  │              │ │          │ │   consumer in  │ │
+        │  │              │ │          │ │   server/)     │ │
+        │  └──────────────┘ └──────────┘ └───────────────┘ │
+        └─────────────────────────────────────────────────┘
+                                  │
+                                  │ Forward on cache/DB miss
+                                  ▼
+                    ┌────────────────────────────────┐
+                    │  UPSTREAM DNS (shuffled pool)   │
+                    │  Cloudflare · Google · Verisign │
+                    │  OpenDNS · Level3 · Neustar     │
+                    └────────────────────────────────┘
+```
+
+Per `Scripts/docker-compose.yml`, MongoDB/Redis/RabbitMQ/`nexoraldns` (which bundles `Web`, `server`, `client`, `DHCP` via PM2 — see `ecosystem.config.js`) typically run as sibling containers **on one host**, not dedicated hardware per service — relevant when reasoning about capacity, since they compete for the same CPU/memory.
+
+---
+
+## Directory Structure
+
+```
+Web/src/
+├── cluster/Cluster.ts               # cluster.fork() bootstrap, SCHED_RR
+├── Config/
+│   ├── DNS.ts                       # Worker entrypoint: starts UDP+TCP+DoT
+│   └── key.ts                       # DB_DEFAULT_CONFIGS (collections, defaults)
+├── Database/mongodb.db.ts           # Connection pool, CPU-scaled maxPoolSize
+├── Redis/
+│   ├── Redis.cache.ts               # Singleton RedisCacheService (CRUD, pub/sub, ACL)
+│   └── CacheKeys.cache.ts           # CacheKeys / QueueKeys / DNS_QUERY_STATUS_KEYS enums
+├── RabbitMQ/Rabbitmq.config.ts      # Singleton RabbitMQService, memoized assertQueue
+├── services/
+│   ├── DNS/
+│   │   ├── DNS.Service.ts           # UDP listener (port 53)
+│   │   ├── DNS_TCP.Service.ts       # TCP listener (port 53, RFC 7766)
+│   │   └── DNS_DoT.Service.ts       # TLS listener (port 853, RFC 7858, self-signed cert)
+│   ├── Start/
+│   │   ├── Rules.service.ts         # StartRulesService — the 4-check pipeline
+│   │   └── ServiceStatusChecker.service.ts
+│   ├── DB/DB_Pool.service.ts        # DNS record + CNAME chain resolution
+│   ├── Rules/BlockList.service.ts   # ACL check, 3-layer cache
+│   └── Forwarder/GlobalDNSforwarder.service.ts  # Upstream DNS, singleton UDP socket
+└── utilities/
+    ├── IDNSIOHandler.ts             # Shared interface: UDP + TCP/TLS handlers implement this
+    ├── IO.utls.ts                   # UDP implementation + pure DNS packet parsing
+    ├── TCPInputOutputHandler.ts     # TCP/TLS implementation (delegates parsing to IO.utls)
+    ├── AutoIP_SCAN.utls.ts          # Detects LAN IP changes, rebinds UDP socket
+    └── GetWLANIP.utls.ts
+
+server/source/
+├── cluster/Cluster.ts               # Own cluster.fork() bootstrap (same SCHED_RR pattern)
+├── core/{fastify.ts,key.ts}         # Fastify app (port 4773), config/RBAC seed data
+├── Database/mongodb.db.ts           # Separate connection pool (RBAC seed/index logic)
+├── RabbitMQ/Rabbitmq.config.ts      # Separate RabbitMQService (see Known Gaps)
+├── Router/ · Controller/ · Services/  # DNS records, Users, Roles, ACL policies,
+│                                       # AntiPornMode, AntiAdsMode, DomainGroups,
+│                                       # IPGroups, Analytics, Health
+└── CronJob/Jobs/
+    ├── BatchAnalytics.cron.ts       # Consumes DNS_Analytics queue → analytics collection
+    └── LogsExportWorker.cron.ts     # Consumes LOGS_EXPORT queue
 ```
 
 ---
 
-## System Design
+## Core Service Responsibilities
 
-### Component Breakdown
+| Service | File | Responsibility |
+|---|---|---|
+| `StartRulesService` | `Web/src/services/Start/Rules.service.ts` | The single query-processing entrypoint shared by all three transports. Owns the 4-check pipeline, single-flight dedup (`inflight` Map, scoped **per instance** — UDP/TCP/DoT each construct their own `StartRulesService`, so dedup does not cross transports), and the `cache:invalidate` Redis subscription (guarded to register once per process via a static flag) |
+| `ServiceStatusChecker` | `.../Start/ServiceStatusChecker.service.ts` | Redis-cached service on/off switch, MongoDB `service` collection fallback |
+| `BlockList` | `.../Rules/BlockList.service.ts` | ACL check with 3 cache layers (local `Map` 5s → static global `Map` 3s → Redis `acl:ip:*`/`acl:all_users` sets), wildcard domain matching, fail-open on error |
+| `DomainDBPoolService` | `.../DB/DB_Pool.service.ts` | Resolves a domain to its record, walking CNAME chains up to 10 hops via sequential MongoDB `findOne` calls (each hop depends on the previous — cannot be parallelized) |
+| `DNSForwarderService` | `.../Forwarder/GlobalDNSforwarder.service.ts` | Singleton UDP socket forwarding to a shuffled upstream pool (Cloudflare/Google/Verisign/OpenDNS/Level3/Neustar), 2s per-server timeout with fallthrough, rewrites transaction IDs to multiplex concurrent forwards on one socket |
+| `RedisCacheService` | `Web/src/Redis/Redis.cache.ts` | Singleton Redis client: generic CRUD, pub/sub (cache invalidation), ACL-specific reads (`getBlockedDomainsForIP`, `isDomainBlocked`) |
+| `RabbitMQService` | `Web/src/RabbitMQ/Rabbitmq.config.ts` (and a separately-maintained copy in `server/source/RabbitMQ/`) | Singleton AMQP client. Queue declarations are memoized per-process (`ensureQueue`) — asserted once, not on every publish/consume call |
+| `IDNSIOHandler` implementations | `IO.utls.ts` (UDP), `TCPInputOutputHandler.ts` (TCP/TLS) | Pure DNS packet parsing/building shared by all handlers; TCP/TLS variant delegates parsing to the UDP one and only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
 
-#### 1. **Client Layer**
-- **Web UI** (Next.js): User dashboard for managing DNS records, rewrites, blocks
-- **Mobile App**: Mobile client for DNS management
-- **CLI Client**: Command-line interface for power users
-- **DNS Clients**: Any device using the DNS server (phones, laptops, IoT)
+---
 
-#### 2. **API Server Layer** (Port 4000 - Fastify)
-- **REST API**: HTTP endpoints for CRUD operations
-- **Controllers**: Request validation and routing
-- **Services**: Business logic and database operations
-- **Authentication**: JWT-based user authentication
-- **Rate Limiting**: Prevent API abuse
+## Cluster & Concurrency Model
 
-#### 3. **DNS Server Layer** (Port 53 - UDP)
-- **DNS.Service.ts**: Main UDP server listening on port 53
-- **Rules.service.ts**: Core query processing with 7-layer checks
-- **Supporting Services**: Database lookups, caching, logging
-- **Global DNS Forwarder**: Upstream DNS resolution
-
-#### 4. **Caching Layer** (Redis)
-- **Purpose**: Sub-millisecond query responses
-- **Cache Types**:
-  - Full DNS responses (binary packets)
-  - DNS records (JSON)
-  - Service status
-  - Rewrite rules
-  - Block lists
-  - User plans
-- **TTL Strategy**: Variable TTLs (60s - 600s)
-- **Cache Warming**: Preload hot data on startup
-
-#### 5. **Database Layer** (MongoDB)
-- **Collections**:
-  - `dns_records`: A, AAAA, CNAME records
-  - `dns_rewrites`: Domain rerouting rules
-  - `dns_blocks`: Blocked domains
-  - `user_plans`: Subscription management
-  - `dns_query_logs`: Analytics data (30-day TTL)
-  - `domains`: User-owned domains
-  - `service`: Service configuration
-- **Indexing**: Optimized indexes for fast lookups
-
-#### 6. **Logging & Analytics**
-- **QueryLogger.service**: Batch writes every 5s (100 queries)
-- **Metrics**: Response times, cache hit rate, query types
-- **Storage**: 30-day retention with automatic cleanup
+- Both `Web/` and `server/` independently run `cluster.fork()` with `Math.max(1, Math.floor(os.cpus().length * 0.75))` workers and `cluster.schedulingPolicy = cluster.SCHED_RR` for round-robin distribution of incoming connections/datagrams across workers.
+- **MongoDB connection pooling is CPU-scaled**, not left at the driver default. Both `mongodb.db.ts` files compute `maxPoolSize` per worker as `clamp(200 / totalUsableCpus, 20, 50)` — a floor of 20 (so a single busy worker always has headroom) and a ceiling of 50 (since DNS/API lookups are single fast document reads, not bulk operations), targeting roughly 200 aggregate connections across the whole cluster rather than `workers × 100` (the driver default) with no coordination.
+- **UDP socket buffers are explicitly enlarged** (4MB requested via `setRecvBufferSize`/`setSendBufferSize`) on both the inbound query socket (`DNS.Service.ts`) and the outbound forwarder socket (`GlobalDNSforwarder.service.ts`), applied only after the socket is confirmed bound (`"listening"` event) — calling these setters on an unbound socket throws. The actual granted size is logged, since the OS caps the request at `net.core.rmem_max`/`wmem_max` regardless of what's asked for; on a stock Linux host with default sysctls (`rmem_max` = `rmem_default` = 212992 bytes), the code-level request is silently clamped back to the default unless that ceiling is separately raised.
+- The Docker deployment raises that ceiling automatically: `Scripts/docker-entrypoint.sh` writes to `/proc/sys/net/core/rmem_max`/`wmem_max` at container start (works because the `nexoraldns` service runs `privileged: true` + `network_mode: host` in `docker-compose.yml`/`dev.compose.yaml`, so there's no isolated network namespace — the write lands on the real host value). **The bare-metal `Scripts/install.sh` path does not yet do this** — see Known Gaps.
+- **Single-flight deduplication** prevents duplicate concurrent MongoDB lookups for the same domain, but is scoped to one `StartRulesService` instance — since UDP/TCP/DoT each construct their own instance, and the IP-rebind path also constructs a fresh instance — a cold domain queried simultaneously across transports or immediately after a rebind is not deduplicated against those other instances.
+- **RabbitMQ queue declarations are memoized** per process via an `assertedQueues: Set<string>` guard in a shared `ensureQueue()` helper — every `publish`/`consume`/`publishBatch`/`consumeBatch`/`getQueueMessageCount` call site routes through it, so a queue is declared once per process lifetime rather than on every message (a queue is a durable, broker-side object that survives channel/connection drops, so re-declaring it per-message was pure overhead).
 
 ---
 
 ## Database Schema
 
-### 1. DNS_REWRITES (Domain Rerouting)
+Both `Web/` and `server/` connect to the same MongoDB database (`nexoral_db` by default) but register different subsets of collections, matching what each service actually reads/writes.
 
+**`Web/`'s DNS engine reads/writes**: `service`, `dns_records`, `domains`, `analytics` (via `Web/src/Config/key.ts`).
+
+**`server/`'s API additionally manages**: `users`, `roles`, `permissions`, `access_control_policies`, `domain_groups`, `ip_groups`, `session_manage` (via `server/source/core/key.ts`).
+
+### `dns_records`
 ```typescript
 {
   _id: ObjectId,
-  userId: ObjectId | null,           // null = global rule
-  sourceDomain: "google.com",
-  targetDomain: "ankan.site",
-  targetIP: "1.2.3.4",               // Optional direct IP
-  applyToClients: ["192.168.1.5"],   // [] = all clients
-  enabled: true,
-  ttl: 300,
-  priority: 10,                      // Lower = higher priority
-  createdAt: Date,
-  updatedAt: Date
+  name: string,               // domain name, exact-match lookup key
+  type: "A" | "CNAME" | ...,  // CNAME triggers chain resolution in DB_Pool.service.ts
+  value: string,               // IP for A records, target domain for CNAME
+  ttl: number,
+  domainId: ObjectId
 }
-
-// Indexes
-{ sourceDomain: 1, enabled: 1 }
-{ userId: 1 }
+// Index: { domainId: 1 }
 ```
 
-**Use Case**: Redirect google.com → ankan.site for specific clients or globally
+### `service`
+```typescript
+{
+  SERVICE_NAME: string,        // unique, matched against DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME
+  Service_Status: "active" | "inactive",
+  DefaultTTL: number,
+  apiKey: string,              // encrypted
+  Connected_At / Disconnected_At / Last_Synced_At / Next_Expected_Sync_At: Date | null,
+  Total_Connected_Devices_To_Router: number,
+  List_of_Connected_Devices_Info: any[]
+}
+// Index: { Service_Status: 1 } (unique)
+```
 
----
-
-### 2. DNS_BLOCKS (Domain Blocking)
-
+### `access_control_policies` (backs the ACL / block-list system, including Anti-Porn/Anti-Ads modes)
 ```typescript
 {
   _id: ObjectId,
-  userId: ObjectId | null,           // null = global block
-  domain: "ads.google.com",
-  blockType: "exact" | "wildcard",   // exact or *.domain.com
-  applyToClients: ["192.168.1.10"],  // [] = all clients
-  enabled: true,
-  reason: "Malware" | "Ads" | "Custom",
-  createdAt: Date
+  policyType: "domain_user",
+  targetType: "all" | "single_ip" | "multiple_ips" | "ip_group" | "multiple_ip_groups",
+  targetIP?: string, targetIPs?: string[],
+  targetIPGroup?: ObjectId, targetIPGroups?: ObjectId[],
+  blockType: "domain_group" | ...,
+  domainGroup?: ObjectId,      // ref -> domain_groups
+  policyName: string,
+  isActive: boolean,
+  createdAt: number, updatedAt: number
 }
-
-// Indexes
-{ domain: 1, enabled: 1 }
-{ userId: 1 }
+// Indexes: { policyName: 1 }, { isActive: 1 }, { policyType: 1 }, { targetType: 1 }, { createdAt: -1 }
 ```
 
-**Use Case**: Block ads, malware, or unwanted domains
+### `domain_groups`
+```typescript
+{ _id: ObjectId, name: string, isSystemGroup: boolean, domains: string[] /* wildcard-capable */ }
+// Indexes: { name: 1 } (unique), { createdAt: -1 }
+```
 
----
-
-### 3. USER_PLANS (Subscription Management)
-
+### `analytics`
 ```typescript
 {
-  _id: ObjectId,
-  userId: ObjectId,
-  planType: "free" | "pro" | "enterprise",
-  features: {
-    maxRewrites: 10,
-    maxBlocks: 100,
-    customDNS: true,
-    analyticsEnabled: true
-  },
-  expiresAt: Date,
-  status: "active" | "expired" | "suspended",
-  createdAt: Date
+  queryName: string, queryType: string, SourceIP: string,
+  Status: string,    // DNS_QUERY_STATUS_KEYS: RESOLVED | BLOCKED | SERVICE_DOWN | FAILED | FORWARDED | ...
+  From: string,      // FROM_CACHE | FROM_DB | Upstream provider name | FROM_BLOCKED | FROM_FAIL_SAFE
+  timestamp: number, duration: number
 }
-
-// Indexes
-{ userId: 1 }
-{ status: 1, expiresAt: 1 }
+// Published to RabbitMQ (DNS_Analytics queue) from Web/, batch-consumed and
+// written here by server/source/CronJob/Jobs/BatchAnalytics.cron.ts.
+// Indexes: { timestamp: 1 }, { Status: 1 }, { queryType: 1 }, { From: 1 }, { duration: 1 },
+//          { createdAt: 1 } with expireAfterSeconds: 604800 (7-day auto-cleanup),
+//          { timestamp: 1, Status: 1 }, { timestamp: 1, queryType: 1 }, { timestamp: -1 }
 ```
 
-**Use Case**: Limit features based on subscription plan
-
----
-
-### 4. DNS_QUERY_LOGS (Analytics)
-
-```typescript
-{
-  _id: ObjectId,
-  queryDomain: "google.com",
-  clientIP: "192.168.1.5",
-  queryType: "A" | "AAAA" | "CNAME",
-  responseType: "cached" | "db" | "upstream" | "blocked" | "rerouted",
-  responseTime: 2.5,                 // milliseconds
-  timestamp: Date,
-  userId: ObjectId                   // If domain belongs to user
-}
-
-// Indexes (with 30-day TTL)
-{ timestamp: 1 }, { expireAfterSeconds: 2592000 }
-{ userId: 1, timestamp: -1 }
-{ clientIP: 1 }
-```
-
-**Use Case**: Track query patterns, performance metrics, and generate analytics
-
----
-
-## Performance Targets
-
-| Check | Target Latency | Notes |
-|-------|---------------|-------|
-| Redis Cache Hit | **0.5-1ms** | 80%+ hit rate expected |
-| Service Status | **0.5ms** | Cached in Redis |
-| Block Check | **0.5ms** | Redis SET lookup |
-| Rewrite Check | **1ms** | Redis + fallback DB |
-| DNS Record DB | **2-3ms** | Redis + MongoDB |
-| User Plan Check | **0.5ms** | Cached in Redis |
-| Upstream DNS | **10-50ms** | Only for uncached |
-| **Total (Cached)** | **<2ms** | 🎯 Target |
-| **Total (Uncached DB)** | **<5ms** | 🎯 Target |
-| **Total (Upstream)** | **<50ms** | Acceptable |
+### `users` / `roles` / `permissions` / `session_manage`
+See [RBAC & User Management](#rbac--user-management) below — unchanged from the existing RBAC implementation.
 
 ---
 
 ## Redis Caching Strategy
 
-### Cache Keys Structure
+Actual key scheme (`Web/src/Redis/CacheKeys.cache.ts`) — narrower than earlier drafts of this document suggested:
 
 ```typescript
-// 1. Service Status (TTL: 60s)
-redis.set('service:status', 'active', 'EX', 60)
+enum CacheKeys {
+  Service_Status = "dns-server-status",
+  Domain_DNS_Record = "Domain_DNS_Record",   // used as `${Domain_DNS_Record}:${queryName}`
+  Block_Domains = "Blocked_Domain"
+}
 
-// 2. DNS Records (TTL: 300s or record TTL)
-redis.set('dns:google.com', '{"value":"1.2.3.4","ttl":300}', 'EX', 300)
-
-// 3. Rewrites (TTL: 300s)
-redis.set('rewrite:google.com:192.168.1.5', '{"target":"ankan.site"}', 'EX', 300)
-redis.set('rewrite:google.com:global', '{"target":"ankan.site"}', 'EX', 300)
-
-// 4. Blocks (TTL: 600s)
-redis.sadd('block:global', 'ads.google.com')
-redis.sadd('block:client:192.168.1.5', 'facebook.com')
-
-// 5. User Plans (TTL: 300s)
-redis.set('plan:userId:507f1f77bcf86cd799439011', '{"status":"active"}', 'EX', 300)
-
-// 6. Full DNS Response Cache (TTL: varies)
-redis.set('response:A:google.com', '<binary_dns_packet>', 'EX', 300)
-```
-
----
-
-## Additional Database Collections
-
-### 1. DNS_REWRITES Collection
-
-```typescript
-{
-  _id: ObjectId,
-  userId: ObjectId,                    // null = global rule
-  sourceDomain: "google.com",
-  targetDomain: "ankan.site",
-  targetIP: "1.2.3.4",                 // Optional direct IP
-  applyToClients: ["192.168.1.5"],    // Empty = all clients
-  enabled: true,
-  ttl: 300,
-  priority: 10,                        // Lower = higher priority
-  createdAt: Date,
-  updatedAt: Date
+enum QueueKeys {
+  DNS_Analytics = "DNS_analytcs"             // [sic] — RabbitMQ queue name, not a Redis key
 }
 ```
 
-**Indexes:**
-```javascript
-db.dns_rewrites.createIndex({ sourceDomain: 1, enabled: 1 })
-db.dns_rewrites.createIndex({ userId: 1 })
-```
+**ACL / block-list keys** (read by `Redis.cache.ts`'s `isDomainBlocked`/`getBlockedDomainsForIP`/`getGloballyBlockedDomains`): `acl:ip:<ip>` (Redis Set, per-IP blocked domains) and `acl:all_users` (Redis Set, global blocks) — populated by a cron job in `server/`, not by the DNS engine itself. Entries may be plain domain strings or JSON `{domain, isWildcard}` objects; wildcard matching supports `*.example.com` (subdomain), `example.*` (prefix), and bare `*` (block everything).
 
-**Purpose:** Store domain rerouting rules (e.g., google.com → ankan.site)
+**Record cache**: `${Domain_DNS_Record}:${queryName}` → the resolved record JSON, TTL = the record's own `ttl` field. Set both on a fresh MongoDB resolution and on a successful upstream forward.
 
----
-
-### 2. DNS_BLOCKS Collection
-
-```typescript
-{
-  _id: ObjectId,
-  userId: ObjectId,                    // null = global block
-  domain: "ads.google.com",
-  blockType: "exact" | "wildcard",     // *.ads.google.com
-  applyToClients: ["192.168.1.10"],   // Empty = all clients
-  enabled: true,
-  reason: "Malware/Ads/Custom",
-  createdAt: Date
-}
-```
-
-**Indexes:**
-```javascript
-db.dns_blocks.createIndex({ domain: 1, enabled: 1 })
-db.dns_blocks.createIndex({ userId: 1 })
-```
-
-**Purpose:** Block specific domains for all clients or specific IPs
-
----
-
-### 3. USER_PLANS Collection
-
-```typescript
-{
-  _id: ObjectId,
-  userId: ObjectId,
-  planType: "free" | "pro" | "enterprise",
-  features: {
-    maxRewrites: 10,
-    maxBlocks: 100,
-    customDNS: true,
-    analyticsEnabled: true
-  },
-  expiresAt: Date,
-  status: "active" | "expired" | "suspended",
-  createdAt: Date
-}
-```
-
-**Indexes:**
-```javascript
-db.user_plans.createIndex({ userId: 1 })
-db.user_plans.createIndex({ status: 1, expiresAt: 1 })
-```
-
-**Purpose:** Manage user subscription plans and feature limits
-
----
-
-### 4. DNS_QUERY_LOGS Collection
-
-```typescript
-{
-  _id: ObjectId,
-  queryDomain: "google.com",
-  clientIP: "192.168.1.5",
-  queryType: "A",
-  responseType: "cached" | "db" | "upstream" | "blocked" | "rerouted",
-  responseTime: 2.5,                   // ms
-  timestamp: Date,
-  userId: ObjectId                     // If domain belongs to user
-}
-```
-
-**Indexes (with TTL for auto-cleanup):**
-```javascript
-db.dns_query_logs.createIndex({ timestamp: 1 }, { expireAfterSeconds: 2592000 }) // 30 days
-db.dns_query_logs.createIndex({ userId: 1, timestamp: -1 })
-db.dns_query_logs.createIndex({ clientIP: 1 })
-```
-
-**Purpose:** Analytics and monitoring of DNS queries
+**Cache invalidation**: pub/sub on the `cache:invalidate` channel (not a polling/expiry-only model) — on receipt, `BlockList.clearAllCaches()` clears both in-process Map caches and the `Service_Status` Redis key is deleted, forcing the next query to re-read from MongoDB. The subscription is registered once per process (guarded by a static flag on `StartRulesService`), regardless of how many transport listeners construct their own instance.
 
 ---
 
 ## RBAC & User Management
 
-This is the admin-facing management layer on top of the existing RBAC primitives (`users`, `roles`, `permissions` collections — see `server/source/core/key.ts` and `server/source/Database/mongodb.db.ts` for the seeded permission catalog and default roles). It is administrative surface, not part of the 7-layer DNS query path.
+This is the admin-facing management layer on top of the existing RBAC primitives (`users`, `roles`, `permissions` collections — see `server/source/core/key.ts` and `server/source/Database/mongodb.db.ts` for the seeded permission catalog and default roles). It is administrative surface, not part of the DNS query path.
 
 ### Users Collection (current shape)
 
@@ -611,1242 +429,71 @@ An admin cannot deactivate, demote, or delete their own account through this API
 
 ---
 
-## ⚡ Redis Caching Strategy
-
-### Cache Keys Structure
-
-```typescript
-// 1. Service Status (TTL: 60s)
-redis.set('service:status', 'active', 'EX', 60)
-
-// 2. DNS Records (TTL: 300s or record TTL)
-redis.set('dns:A:google.com', '{"value":"1.2.3.4","ttl":300}', 'EX', 300)
-
-// 3. Rewrites (TTL: 300s)
-redis.set('rewrite:google.com:192.168.1.5', '{"target":"ankan.site","ttl":300}', 'EX', 300)
-redis.set('rewrite:google.com:global', '{"target":"ankan.site","ttl":300}', 'EX', 300)
-
-// 4. Blocks (TTL: 600s)
-redis.sadd('block:global', 'ads.google.com')
-redis.sadd('block:client:192.168.1.5', 'facebook.com')
-redis.expire('block:global', 600)
-
-// 5. User Plans (TTL: 300s)
-redis.set('plan:userId:507f1f77bcf86cd799439011', '{"status":"active","plan":"pro"}', 'EX', 300)
-
-// 6. Full DNS Response Cache (TTL: varies)
-redis.set('response:A:google.com', '<binary_dns_packet>', 'EX', 300)
-```
-
-### Cache Warming Strategy
-
-On server startup, preload:
-1. Service status
-2. Top 1000 queried domains (from analytics)
-3. All active rewrites
-4. All block lists
-5. Active user plans
-
----
-
-## 🚀 Core Services Architecture
-
-### Directory Structure
-
-```
-Web/src/services/
-├── DNS/
-│   └── DNS.Service.ts              # Main UDP DNS server
-├── Start/
-│   ├── Rules.service.ts            # Query processing logic (OPTIMIZED)
-│   └── ServiceStatusChecker.service.ts
-├── DB/
-│   ├── DB_Pool.service.ts          # DNS record lookups
-│   ├── Rewrite.service.ts          # NEW: Rewrite rules
-│   ├── Block.service.ts            # NEW: Block list management
-│   └── UserPlan.service.ts         # NEW: User plan validation
-├── Cache/
-│   └── Redis.service.ts            # NEW: Redis caching layer
-├── Forwarder/
-│   └── GlobalDNSforwarder.service.ts
-└── Logging/
-    └── QueryLogger.service.ts      # NEW: Batch query logging
-
-server/source/
-├── Controller/
-│   ├── DNS/DNS.controller.ts
-│   ├── Rewrite/Rewrite.controller.ts  # NEW
-│   ├── Block/Block.controller.ts      # NEW
-│   └── Plan/Plan.controller.ts        # NEW
-├── Services/
-│   ├── DNS/
-│   ├── Rewrite/                       # NEW
-│   ├── Block/                         # NEW
-│   └── Plan/                          # NEW
-└── Router/
-    ├── DNS/DNS.route.ts
-    ├── Rewrite/Rewrite.route.ts       # NEW
-    ├── Block/Block.route.ts           # NEW
-    └── Plan/Plan.route.ts             # NEW
-```
-
----
-
-## 🔧 Service Implementations
-
-### 1. Redis.service.ts
-
-**Location:** `/Web/src/services/Cache/Redis.service.ts`
-
-**Purpose:** Singleton Redis client for all caching operations
-
-**Key Methods:**
-- `getServiceStatus()` - Check if DNS service is active
-- `getCachedResponse()` - Get full DNS response from cache
-- `cacheResponse()` - Store DNS response
-- `isBlocked()` - Check if domain is blocked
-- `getRewrite()` - Get rewrite rule
-- `getDNSRecord()` - Get DNS record from cache
-- `getUserPlan()` - Get user plan status
-- `invalidateDomain()` - Clear cache for specific domain
-
-**Implementation:**
-```typescript
-import { createClient, RedisClientType } from 'redis';
-import { Console } from 'outers';
-
-export default class RedisCache {
-  private static instance: RedisCache;
-  private client: RedisClientType;
-
-  constructor() {
-    if (RedisCache.instance) {
-      return RedisCache.instance;
-    }
-
-    this.client = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
-      socket: {
-        reconnectStrategy: (retries) => Math.min(retries * 50, 500)
-      }
-    });
-
-    this.client.on('error', (err) => Console.red('Redis Error:', err));
-    this.client.connect();
-
-    RedisCache.instance = this;
-  }
-
-  // Service Status
-  async getServiceStatus(): Promise<string> {
-    const status = await this.client.get('service:status');
-    if (status) return status;
-
-    // Fallback to DB if not cached
-    const { getCollectionClient } = await import('../../Database/mongodb.db');
-    const { DB_DEFAULT_CONFIGS } = await import('../../Config/key');
-    const serviceCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
-    const config = await serviceCollection?.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
-
-    if (config) {
-      await this.client.setEx('service:status', 60, config.Service_Status);
-      return config.Service_Status;
-    }
-
-    return 'inactive';
-  }
-
-  // DNS Response Cache
-  async getCachedResponse(queryType: string, domain: string): Promise<Buffer | null> {
-    const key = `response:${queryType}:${domain}`;
-    const cached = await this.client.getBuffer(key);
-    return cached;
-  }
-
-  async cacheResponse(queryType: string, domain: string, response: Buffer, ttl: number): Promise<void> {
-    const key = `response:${queryType}:${domain}`;
-    await this.client.setEx(key, ttl, response);
-  }
-
-  // Block List
-  async isBlocked(domain: string, identifier: string): Promise<boolean> {
-    const key = identifier === "global" ? 'block:global' : `block:client:${identifier}`;
-    return await this.client.sIsMember(key, domain);
-  }
-
-  async addToBlockList(domain: string, identifier: string): Promise<void> {
-    const key = identifier === "global" ? 'block:global' : `block:client:${identifier}`;
-    await this.client.sAdd(key, domain);
-    await this.client.expire(key, 600); // 10 min TTL
-  }
-
-  // Rewrites
-  async getRewrite(domain: string, identifier: string): Promise<any> {
-    const key = identifier === "global"
-      ? `rewrite:${domain}:global`
-      : `rewrite:${domain}:${identifier}`;
-    const cached = await this.client.get(key);
-    return cached ? JSON.parse(cached) : null;
-  }
-
-  async cacheRewrite(domain: string, identifier: string, rewrite: any): Promise<void> {
-    const key = identifier === "global"
-      ? `rewrite:${domain}:global`
-      : `rewrite:${domain}:${identifier}`;
-    await this.client.setEx(key, 300, JSON.stringify(rewrite));
-  }
-
-  // DNS Records
-  async getDNSRecord(domain: string): Promise<any> {
-    const key = `dns:${domain}`;
-    const cached = await this.client.get(key);
-    return cached ? JSON.parse(cached) : null;
-  }
-
-  async cacheDNSRecord(domain: string, record: any, ttl: number): Promise<void> {
-    const key = `dns:${domain}`;
-    await this.client.setEx(key, ttl, JSON.stringify(record));
-  }
-
-  // User Plans
-  async getUserPlan(userId: string): Promise<any> {
-    const key = `plan:${userId}`;
-    const cached = await this.client.get(key);
-    return cached ? JSON.parse(cached) : null;
-  }
-
-  async cacheUserPlan(userId: string, plan: any): Promise<void> {
-    const key = `plan:${userId}`;
-    await this.client.setEx(key, 300, JSON.stringify(plan));
-  }
-
-  // Cache invalidation
-  async invalidateServiceStatus(): Promise<void> {
-    await this.client.del('service:status');
-  }
-
-  async invalidateDomain(domain: string): Promise<void> {
-    await this.client.del(`dns:${domain}`, `response:A:${domain}`, `response:AAAA:${domain}`);
-  }
-}
-```
-
----
-
-### 2. Block.service.ts
-
-**Location:** `/Web/src/services/DB/Block.service.ts`
-
-**Purpose:** Check if domain is blocked for specific client or globally
-
-**Implementation:**
-```typescript
-import { DB_DEFAULT_CONFIGS } from "../../Config/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
-
-export class BlockService {
-  private blocksCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_BLOCKS);
-
-  async isDomainBlocked(domain: string, clientIP: string): Promise<boolean> {
-    if (!this.blocksCollection) return false;
-
-    // Check global blocks
-    const globalBlock = await this.blocksCollection.findOne({
-      domain: domain,
-      enabled: true,
-      userId: null,
-      $or: [
-        { applyToClients: { $size: 0 } },
-        { applyToClients: clientIP }
-      ]
-    });
-
-    if (globalBlock) return true;
-
-    // Check wildcard blocks (*.example.com)
-    const wildcardBlock = await this.blocksCollection.findOne({
-      blockType: "wildcard",
-      enabled: true,
-      $or: [
-        { applyToClients: { $size: 0 } },
-        { applyToClients: clientIP }
-      ]
-    });
-
-    if (wildcardBlock) {
-      const pattern = wildcardBlock.domain.replace('*.', '');
-      return domain.endsWith(pattern);
-    }
-
-    return false;
-  }
-}
-```
-
----
-
-### 3. Rewrite.service.ts
-
-**Location:** `/Web/src/services/DB/Rewrite.service.ts`
-
-**Purpose:** Get rewrite rules for domain rerouting
-
-**Implementation:**
-```typescript
-import { DB_DEFAULT_CONFIGS } from "../../Config/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
-
-export class RewriteService {
-  private rewritesCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_REWRITES);
-
-  async getRewriteRule(sourceDomain: string, clientIP: string): Promise<any> {
-    if (!this.rewritesCollection) return null;
-
-    // Priority: Client-specific → Global
-    const rules = await this.rewritesCollection.find({
-      sourceDomain: sourceDomain,
-      enabled: true,
-      $or: [
-        { applyToClients: clientIP },
-        { applyToClients: { $size: 0 } }
-      ]
-    }).sort({ priority: 1 }).limit(1).toArray();
-
-    return rules[0] || null;
-  }
-}
-```
-
----
-
-### 4. UserPlan.service.ts
-
-**Location:** `/Web/src/services/DB/UserPlan.service.ts`
-
-**Purpose:** Validate user subscription plans
-
-**Implementation:**
-```typescript
-import { DB_DEFAULT_CONFIGS } from "../../Config/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
-import { ObjectId } from "mongodb";
-
-export class UserPlanService {
-  private plansCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USER_PLANS);
-
-  async getUserPlan(userId: string): Promise<any> {
-    if (!this.plansCollection) return null;
-
-    return await this.plansCollection.findOne({
-      userId: new ObjectId(userId),
-      status: "active"
-    });
-  }
-}
-```
-
----
-
-### 5. QueryLogger.service.ts
-
-**Location:** `/Web/src/services/Logging/QueryLogger.service.ts`
-
-**Purpose:** Batch logging of DNS queries for analytics
-
-**Implementation:**
-```typescript
-import { DB_DEFAULT_CONFIGS } from "../../Config/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
-
-export default class QueryLogger {
-  private logsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_QUERY_LOGS);
-  private batchQueue: any[] = [];
-  private readonly BATCH_SIZE = 100;
-  private readonly FLUSH_INTERVAL = 5000; // 5 seconds
-
-  constructor() {
-    // Auto-flush every 5 seconds
-    setInterval(() => this.flush(), this.FLUSH_INTERVAL);
-  }
-
-  log(logEntry: any): void {
-    this.batchQueue.push(logEntry);
-
-    if (this.batchQueue.length >= this.BATCH_SIZE) {
-      this.flush();
-    }
-  }
-
-  private async flush(): Promise<void> {
-    if (this.batchQueue.length === 0 || !this.logsCollection) return;
-
-    const batch = this.batchQueue.splice(0, this.BATCH_SIZE);
-
-    try {
-      await this.logsCollection.insertMany(batch, { ordered: false });
-    } catch (error) {
-      console.error('Failed to insert query logs:', error);
-    }
-  }
-}
-```
-
----
-
-### 6. Optimized Rules.service.ts
-
-**Location:** `/Web/src/services/Start/Rules.service.ts`
-
-**Purpose:** Main DNS query processing with all optimization checks
-
-**Implementation:**
-```typescript
-import { Console } from "outers";
-import InputOutputHandler from "../../utilities/IO.utls";
-import dgram from "dgram";
-import RedisCache from "../Cache/Redis.service";
-import { DomainDBPoolService } from "../DB/DB_Pool.service";
-import { RewriteService } from "../DB/Rewrite.service";
-import { BlockService } from "../DB/Block.service";
-import { UserPlanService } from "../DB/UserPlan.service";
-import GlobalDNSforwarder from "../Forwarder/GlobalDNSforwarder.service";
-import QueryLogger from "../Logging/QueryLogger.service";
-
-export default class OptimizedRulesService {
-  private IO: InputOutputHandler;
-  private server: dgram.Socket;
-  private redis: RedisCache;
-  private queryLogger: QueryLogger;
-
-  constructor(IP_handler: InputOutputHandler, server: dgram.Socket) {
-    this.IO = IP_handler;
-    this.server = server;
-    this.redis = new RedisCache(); // Redis singleton
-    this.queryLogger = new QueryLogger();
-  }
-
-  public async execute(msg: Buffer, rinfo: dgram.RemoteInfo): Promise<void> {
-    const startTime = Date.now();
-    const queryName = this.IO.parseQueryName(msg);
-    const queryType = this.IO.parseQueryType(msg);
-    const clientIP = rinfo.address;
-
-    try {
-      // ═══════════════════════════════════════════════════
-      // [1] REDIS CACHE CHECK (0.5-1ms)
-      // ═══════════════════════════════════════════════════
-      const cachedResponse = await this.redis.getCachedResponse(queryType, queryName);
-      if (cachedResponse) {
-        this.IO.sendRawAnswer(cachedResponse, rinfo);
-        this.logQuery(queryName, clientIP, queryType, "cached", Date.now() - startTime);
-        return;
-      }
-
-      // ═══════════════════════════════════════════════════
-      // [2] SERVICE STATUS CHECK (0.5ms - Redis cached)
-      // ═══════════════════════════════════════════════════
-      const serviceStatus = await this.redis.getServiceStatus();
-      if (serviceStatus !== "active") {
-        this.sendNXDOMAIN(msg, rinfo, queryName);
-        this.logQuery(queryName, clientIP, queryType, "service_inactive", Date.now() - startTime);
-        return;
-      }
-
-      // ═══════════════════════════════════════════════════
-      // [3] BLOCK LIST CHECK (0.5ms - Redis cached)
-      // ═══════════════════════════════════════════════════
-      const isBlocked = await this.checkBlockList(queryName, clientIP);
-      if (isBlocked) {
-        this.sendNXDOMAIN(msg, rinfo, queryName);
-        this.logQuery(queryName, clientIP, queryType, "blocked", Date.now() - startTime);
-        return;
-      }
-
-      // ═══════════════════════════════════════════════════
-      // [4] REWRITE/REROUTE CHECK (1ms - Redis cached)
-      // ═══════════════════════════════════════════════════
-      const rewriteRule = await this.checkRewrite(queryName, clientIP);
-      if (rewriteRule) {
-        const targetRecord = await this.getDNSRecord(rewriteRule.targetDomain);
-        if (targetRecord) {
-          const response = this.IO.buildSendAnswer(
-            msg,
-            rinfo,
-            queryName,
-            targetRecord.value,
-            rewriteRule.ttl
-          );
-          // Cache the response
-          await this.redis.cacheResponse(queryType, queryName, response, rewriteRule.ttl);
-          this.logQuery(queryName, clientIP, queryType, "rerouted", Date.now() - startTime);
-          return;
-        }
-      }
-
-      // ═══════════════════════════════════════════════════
-      // [5] DNS RECORD LOOKUP (2ms - Redis + MongoDB)
-      // ═══════════════════════════════════════════════════
-      const record = await this.getDNSRecord(queryName);
-      if (record) {
-        // Check user plan before responding (for custom domains)
-        if (record.userId) {
-          const hasValidPlan = await this.checkUserPlan(record.userId);
-          if (!hasValidPlan) {
-            this.sendNXDOMAIN(msg, rinfo, queryName);
-            this.logQuery(queryName, clientIP, queryType, "plan_expired", Date.now() - startTime);
-            return;
-          }
-        }
-
-        const response = this.IO.buildSendAnswer(
-          msg,
-          rinfo,
-          queryName,
-          record.value,
-          record.ttl
-        );
-        await this.redis.cacheResponse(queryType, queryName, response, record.ttl);
-        this.logQuery(queryName, clientIP, queryType, "db", Date.now() - startTime);
-        return;
-      }
-
-      // ═══════════════════════════════════════════════════
-      // [6] UPSTREAM DNS FORWARDING (10-50ms)
-      // ═══════════════════════════════════════════════════
-      const upstreamResponse = await GlobalDNSforwarder(msg, queryName, 300);
-      if (upstreamResponse) {
-        this.IO.sendRawAnswer(upstreamResponse, rinfo);
-        await this.redis.cacheResponse(queryType, queryName, upstreamResponse, 300);
-        this.logQuery(queryName, clientIP, queryType, "upstream", Date.now() - startTime);
-      } else {
-        this.sendNXDOMAIN(msg, rinfo, queryName);
-        this.logQuery(queryName, clientIP, queryType, "nxdomain", Date.now() - startTime);
-      }
-
-    } catch (error) {
-      Console.red(`Query processing error for ${queryName}:`, error);
-      this.sendNXDOMAIN(msg, rinfo, queryName);
-      this.logQuery(queryName, clientIP, queryType, "error", Date.now() - startTime);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════
-  // HELPER METHODS
-  // ═══════════════════════════════════════════════════
-
-  private async checkBlockList(domain: string, clientIP: string): Promise<boolean> {
-    // Check Redis first
-    const globalBlock = await this.redis.isBlocked(domain, "global");
-    const clientBlock = await this.redis.isBlocked(domain, clientIP);
-
-    if (globalBlock || clientBlock) return true;
-
-    // If not in cache, check DB and update cache
-    const blockService = new BlockService();
-    const isBlocked = await blockService.isDomainBlocked(domain, clientIP);
-
-    if (isBlocked) {
-      await this.redis.addToBlockList(domain, clientIP || "global");
-    }
-
-    return isBlocked;
-  }
-
-  private async checkRewrite(domain: string, clientIP: string): Promise<any> {
-    // Check Redis cache
-    let rewrite = await this.redis.getRewrite(domain, clientIP);
-    if (rewrite) return rewrite;
-
-    rewrite = await this.redis.getRewrite(domain, "global");
-    if (rewrite) return rewrite;
-
-    // Check DB
-    const rewriteService = new RewriteService();
-    rewrite = await rewriteService.getRewriteRule(domain, clientIP);
-
-    if (rewrite) {
-      await this.redis.cacheRewrite(domain, clientIP || "global", rewrite);
-    }
-
-    return rewrite;
-  }
-
-  private async getDNSRecord(domain: string): Promise<any> {
-    // Check Redis
-    const cached = await this.redis.getDNSRecord(domain);
-    if (cached) return cached;
-
-    // Check MongoDB
-    const record = await new DomainDBPoolService().getDnsRecordByDomainName(domain);
-
-    if (record) {
-      await this.redis.cacheDNSRecord(domain, record, record.ttl);
-    }
-
-    return record;
-  }
-
-  private async checkUserPlan(userId: string): Promise<boolean> {
-    // Check Redis
-    const cachedPlan = await this.redis.getUserPlan(userId);
-    if (cachedPlan) {
-      return cachedPlan.status === "active" && new Date(cachedPlan.expiresAt) > Date.now();
-    }
-
-    // Check DB
-    const userPlanService = new UserPlanService();
-    const plan = await userPlanService.getUserPlan(userId);
-
-    if (plan) {
-      await this.redis.cacheUserPlan(userId, plan);
-      return plan.status === "active" && plan.expiresAt > Date.now();
-    }
-
-    return false;
-  }
-
-  private sendNXDOMAIN(msg: Buffer, rinfo: dgram.RemoteInfo, domain: string): void {
-    this.IO.buildSendAnswer(msg, rinfo, domain, "0.0.0.0", 5);
-  }
-
-  private logQuery(
-    domain: string,
-    clientIP: string,
-    queryType: string,
-    responseType: string,
-    responseTime: number
-  ): void {
-    // Async logging - don't block response
-    setImmediate(() => {
-      this.queryLogger.log({
-        queryDomain: domain,
-        clientIP,
-        queryType,
-        responseType,
-        responseTime,
-        timestamp: Date.now()
-      });
-    });
-  }
-}
-```
-
----
-
-## 📦 Dependencies
-
-### Web Service Dependencies
-
-```bash
-cd Web
-npm install redis
-npm install @types/redis --save-dev
-```
-
-### Server API Dependencies
-
-```bash
-cd server
-npm install redis
-npm install @types/redis --save-dev
-```
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-Add to `.env`:
-
-```bash
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
-REDIS_PASSWORD=your_password_here
-
-# MongoDB Configuration (existing)
-MONGODB_URI=mongodb://localhost:27017/nexoraldns
-```
-
-### Database Configuration
-
-Add to `/Web/src/Config/key.ts`:
-
-```typescript
-export const DB_DEFAULT_CONFIGS = {
-  Collections: {
-    SERVICE: "service",
-    DOMAINS: "domains",
-    DNS_RECORDS: "dns_records",
-    DNS_REWRITES: "dns_rewrites",        // NEW
-    DNS_BLOCKS: "dns_blocks",            // NEW
-    USER_PLANS: "user_plans",            // NEW
-    DNS_QUERY_LOGS: "dns_query_logs"     // NEW
-  },
-  DefaultValues: {
-    ServiceConfigs: {
-      SERVICE_NAME: "NexoralDNS"
-    }
-  }
-};
-```
-
-Add to `/server/source/core/key.ts`:
-
-```typescript
-export const DB_DEFAULT_CONFIGS = {
-  Collections: {
-    SERVICE: "service",
-    DOMAINS: "domains",
-    DNS_RECORDS: "dns_records",
-    DNS_REWRITES: "dns_rewrites",        // NEW
-    DNS_BLOCKS: "dns_blocks",            // NEW
-    USER_PLANS: "user_plans",            // NEW
-    DNS_QUERY_LOGS: "dns_query_logs"     // NEW
-  },
-  DefaultValues: {
-    ServiceConfigs: {
-      SERVICE_NAME: "NexoralDNS"
-    }
-  }
-};
-```
-
----
-
-## 🚀 Performance Targets
-
-| Check | Target Latency | Notes |
-|-------|---------------|-------|
-| Redis Cache Hit | **0.5-1ms** | 80%+ hit rate expected |
-| Service Status | **0.5ms** | Cached in Redis |
-| Block Check | **0.5ms** | Redis SET lookup |
-| Rewrite Check | **1ms** | Redis + fallback DB |
-| DNS Record DB | **2-3ms** | Redis + MongoDB |
-| User Plan Check | **0.5ms** | Cached in Redis |
-| Upstream DNS | **10-50ms** | Only for uncached |
-| **Total (Cached)** | **<2ms** | 🎯 Target |
-| **Total (Uncached DB)** | **<5ms** | 🎯 Target |
-| **Total (Upstream)** | **<50ms** | Acceptable |
-
----
-
-## 📝 Implementation Checklist
-
-### Phase 1: Redis Setup
-- [ ] Install Redis server (`sudo apt install redis-server`)
-- [ ] Create `Redis.service.ts` in `/Web/src/services/Cache/`
-- [ ] Test Redis connection
-- [ ] Configure Redis persistence (AOF + RDB)
-
-### Phase 2: Database Collections
-- [ ] Create `DNS_REWRITES` collection
-  ```javascript
-  db.createCollection("dns_rewrites")
-  db.dns_rewrites.createIndex({ sourceDomain: 1, enabled: 1 })
-  db.dns_rewrites.createIndex({ userId: 1 })
-  ```
-- [ ] Create `DNS_BLOCKS` collection
-  ```javascript
-  db.createCollection("dns_blocks")
-  db.dns_blocks.createIndex({ domain: 1, enabled: 1 })
-  db.dns_blocks.createIndex({ userId: 1 })
-  ```
-- [ ] Create `USER_PLANS` collection
-  ```javascript
-  db.createCollection("user_plans")
-  db.user_plans.createIndex({ userId: 1 })
-  db.user_plans.createIndex({ status: 1, expiresAt: 1 })
-  ```
-- [ ] Create `DNS_QUERY_LOGS` collection with TTL
-  ```javascript
-  db.createCollection("dns_query_logs")
-  db.dns_query_logs.createIndex({ timestamp: 1 }, { expireAfterSeconds: 2592000 })
-  db.dns_query_logs.createIndex({ userId: 1, timestamp: -1 })
-  db.dns_query_logs.createIndex({ clientIP: 1 })
-  ```
-
-### Phase 3: Core Services
-- [ ] Create `Block.service.ts` in `/Web/src/services/DB/`
-- [ ] Create `Rewrite.service.ts` in `/Web/src/services/DB/`
-- [ ] Create `UserPlan.service.ts` in `/Web/src/services/DB/`
-- [ ] Create `QueryLogger.service.ts` in `/Web/src/services/Logging/`
-
-### Phase 4: Update DNS Query Processing
-- [ ] Update `Rules.service.ts` with optimized flow
-- [ ] Test each check layer independently
-- [ ] Add error handling and fallbacks
-
-### Phase 5: Server API Endpoints
-- [ ] Create Rewrite Controller (`/server/source/Controller/Rewrite/`)
-  - `POST /api/rewrites` - Create rewrite rule
-  - `GET /api/rewrites` - List all rules
-  - `GET /api/rewrites/:id` - Get specific rule
-  - `PUT /api/rewrites/:id` - Update rule
-  - `DELETE /api/rewrites/:id` - Delete rule
-- [ ] Create Block Controller (`/server/source/Controller/Block/`)
-  - `POST /api/blocks` - Create block rule
-  - `GET /api/blocks` - List all blocks
-  - `DELETE /api/blocks/:id` - Delete block
-- [ ] Create Plan Controller (`/server/source/Controller/Plan/`)
-  - `GET /api/plans/:userId` - Get user plan
-  - `PUT /api/plans/:userId` - Update user plan
-- [ ] Create Analytics endpoint
-  - `GET /api/analytics/queries` - Query logs with filters
-
-### Phase 6: Cache Warming
-- [ ] Implement cache warming on server startup
-- [ ] Preload top 1000 domains from analytics
-- [ ] Preload all active rewrites
-- [ ] Preload all block lists
-- [ ] Preload service status
-
-### Phase 7: Monitoring & Analytics
-- [ ] Add metrics for cache hit rate
-- [ ] Add latency tracking per query stage
-- [ ] Add error rate monitoring
-- [ ] Create dashboard for real-time stats
-
-### Phase 8: Testing
-- [ ] Unit tests for each service
-- [ ] Integration tests for query flow
-- [ ] Load testing (1000+ req/s)
-- [ ] Failover testing (Redis down, MongoDB down)
-
----
-
-## 🔍 Monitoring & Metrics
-
-### Key Metrics to Track
-
-1. **Cache Performance**
-   - Cache hit rate (target: >80%)
-   - Average cache lookup time
-   - Redis memory usage
-
-2. **Query Performance**
-   - P50, P95, P99 latency
-   - Queries per second
-   - Error rate
-
-3. **Database Performance**
-   - MongoDB query time
-   - Connection pool usage
-   - Index hit rate
-
-4. **Business Metrics**
-   - Most queried domains
-   - Blocked queries per hour
-   - Rerouted queries per hour
-   - User plan utilization
-
-### Recommended Monitoring Tools
-
-- **Prometheus + Grafana** - Metrics visualization
-- **Redis Insight** - Redis monitoring
-- **MongoDB Compass** - Database monitoring
-- **PM2 Monitor** - Process monitoring
-
----
-
-## 🛡️ Security Considerations
-
-### 1. Redis Security
-- Use password authentication
-- Bind to localhost only (unless cluster)
-- Enable TLS for remote connections
-- Regular backup of Redis AOF/RDB
-
-### 2. Rate Limiting
-- Implement per-IP query limits
-- Block excessive queries from single source
-- DDoS protection at network level
-
-### 3. Input Validation
-- Validate all domain names
-- Sanitize user inputs in API
-- Prevent DNS amplification attacks
-
-### 4. Access Control
-- User authentication for API endpoints
-- Role-based access for admin features
-- Audit logs for sensitive operations
-
----
-
-## 🔄 Cache Invalidation Strategy
-
-### Automatic Invalidation
-```typescript
-// When DNS record is updated
-await redis.invalidateDomain(domain);
-
-// When service status changes
-await redis.invalidateServiceStatus();
-
-// When rewrite rule is modified
-await redis.del(`rewrite:${sourceDomain}:global`);
-await redis.del(`rewrite:${sourceDomain}:${clientIP}`);
-
-// When block rule is modified
-await redis.del(`block:global`);
-await redis.del(`block:client:${clientIP}`);
-```
-
-### Manual Cache Clear
-```bash
-# Clear all caches
-redis-cli FLUSHDB
-
-# Clear specific domain
-redis-cli DEL "dns:google.com" "response:A:google.com"
-
-# Clear all DNS responses
-redis-cli --scan --pattern "response:*" | xargs redis-cli DEL
-```
-
----
-
-## 🚦 High Availability Setup
-
-### Redis Cluster
-```bash
-# Master-Replica setup for failover
-redis-server --port 6379 --replicaof no one  # Master
-redis-server --port 6380 --replicaof localhost 6379  # Replica
-```
-
-### MongoDB Replica Set
-```javascript
-rs.initiate({
-  _id: "nexoral-rs",
-  members: [
-    { _id: 0, host: "localhost:27017" },
-    { _id: 1, host: "localhost:27018" },
-    { _id: 2, host: "localhost:27019" }
-  ]
-})
-```
-
-### DNS Service Clustering
-- Use PM2 cluster mode
-- Load balance across multiple instances
-- Shared Redis cache across all workers
-
----
-
-## 📚 API Documentation
-
-### Rewrite Endpoints
-
-#### Create Rewrite Rule
-```http
-POST /api/rewrites
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "sourceDomain": "google.com",
-  "targetDomain": "ankan.site",
-  "applyToClients": ["192.168.1.5"],  // Empty for global
-  "ttl": 300,
-  "priority": 10
-}
-```
-
-#### List Rewrites
-```http
-GET /api/rewrites?userId=<userId>
-Authorization: Bearer <token>
-```
-
-#### Update Rewrite
-```http
-PUT /api/rewrites/:id
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "enabled": false
-}
-```
-
-#### Delete Rewrite
-```http
-DELETE /api/rewrites/:id
-Authorization: Bearer <token>
-```
-
-### Block Endpoints
-
-#### Create Block Rule
-```http
-POST /api/blocks
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "domain": "ads.google.com",
-  "blockType": "exact",
-  "applyToClients": [],
-  "reason": "Ads"
-}
-```
-
-#### List Blocks
-```http
-GET /api/blocks?userId=<userId>
-Authorization: Bearer <token>
-```
-
-### Analytics Endpoints
-
-#### Query Logs
-```http
-GET /api/analytics/queries?startDate=2024-01-01&endDate=2024-01-31&clientIP=192.168.1.5
-Authorization: Bearer <token>
-```
-
-Response:
-```json
-{
-  "totalQueries": 150000,
-  "cachedQueries": 120000,
-  "upstreamQueries": 25000,
-  "blockedQueries": 5000,
-  "averageResponseTime": 2.3,
-  "topDomains": [
-    { "domain": "google.com", "count": 5000 },
-    { "domain": "facebook.com", "count": 3000 }
-  ]
-}
-```
-
----
-
 ## 🔞 Anti-Porn Mode Feature
 
 ### Overview
 
-NexoralDNS includes a built-in **Anti-Porn Mode** feature that provides easy-to-use adult content filtering at the DNS level. This feature automatically blocks access to 100+ known adult content websites and can be enabled for specific users, IP groups, or globally across your entire network.
+NexoralDNS includes a built-in **Anti-Porn Mode** feature that provides easy-to-use adult content filtering at the DNS level. This feature blocks access to a pre-seeded list of known adult content websites and can be enabled for specific users, IP groups, or globally across your entire network. It's a thin, purpose-built layer on top of the general `access_control_policies` / `domain_groups` ACL system described above — not a separate blocking mechanism.
 
 ### Key Features
 
-1. **Pre-configured Domain List**: Includes 100+ adult content domains (automatically maintained)
+1. **Pre-configured Domain List**: 100+ adult content domains, auto-seeded at server startup
 2. **Flexible Targeting**: Block for specific IPs, IP groups, or all users
 3. **Easy Management**: Simple UI for enabling/disabling policies
-4. **Real-time Updates**: Changes take effect within seconds via Redis cache invalidation
-5. **No Performance Impact**: Uses the existing high-performance ACL system
+4. **Real-time Updates**: Changes propagate via the `cache:invalidate` Redis pub/sub channel described above
+5. **No separate enforcement path**: Uses the same ACL check every other block policy uses (`BlockList.service.ts`)
 
 ### Architecture
 
 #### Server Components
 
 **1. Domain Group (Adult Content)**
-- **Location**: Auto-seeded at server startup
-- **Collection**: `domain_groups`
-- **Name**: `"Adult Content (Anti-Porn)"`
-- **Marker**: `isSystemGroup: true`
-- **Domains**: 100+ adult content sites with wildcard support
-- **Update**: Automatically created/updated on server restart
+- **Collection**: `domain_groups`, `isSystemGroup: true`, name `"Adult Content (Anti-Porn)"`
+- Auto-created/updated on server restart
 
-**2. AntiPornMode Service**
-- **Location**: `/server/source/Services/AntiPornMode/AntiPornMode.service.ts`
-- **Purpose**: High-level API for managing anti-porn policies
-- **Key Methods**:
-  - `enableAntiPornMode(params)` - Create blocking policy
-  - `disableAntiPornMode(policyId)` - Delete policy
-  - `toggleAntiPornMode(policyId)` - Toggle active status
-  - `getAntiPornModeStatus(filter)` - Get all anti-porn policies
-  - `isEnabledForIP(ip)` - Check if enabled for specific IP
+**2. AntiPornMode Service** — `server/source/Services/AntiPornMode/AntiPornMode.service.ts`
+- `enableAntiPornMode(params)`, `disableAntiPornMode(policyId)`, `toggleAntiPornMode(policyId)`, `getAntiPornModeStatus(filter)`, `isEnabledForIP(ip)`
 
-**3. AntiPornMode Controller**
-- **Location**: `/server/source/Controller/AntiPornMode/AntiPornMode.controller.ts`
-- **Routes**: Registered at `/api/anti-porn-mode`
-- **Features**:
-  - Request deduplication
-  - Redis cache invalidation after changes
-  - Proper error handling and validation
+**3. AntiPornMode Controller** — `server/source/Controller/AntiPornMode/AntiPornMode.controller.ts`, routed at `/api/anti-porn-mode`
 
 #### Client Components
 
-**1. AntiPornPolicyModal**
-- **Location**: `/client/components/anti-porn-mode/AntiPornPolicyModal.jsx`
-- **Purpose**: User-friendly modal for enabling anti-porn mode
-- **Features**:
-  - 2-step wizard (Target Selection → Details)
-  - Support for all target types (single IP, multiple IPs, IP groups, all users)
-  - Auto-generated policy names
-  - Real-time validation
-
-**2. AntiPornModeSection**
-- **Location**: `/client/components/anti-porn-mode/AntiPornModeSection.jsx`
-- **Purpose**: Dashboard view for managing anti-porn policies
-- **Features**:
-  - Grid view of all policies
-  - Toggle switches for quick enable/disable
-  - Delete policies with confirmation
-  - Filter by status (all/active/inactive)
-
-**3. Integration**
-- **Location**: `/client/app/dashboard/access-control/page.js`
-- **Tab**: "Anti-Porn Mode" (first tab with 🔞 icon)
-- **Navigation**: Dashboard → Access Control → Anti-Porn Mode
+- `client/components/anti-porn-mode/AntiPornPolicyModal.jsx` — 2-step wizard (target selection → details)
+- `client/components/anti-porn-mode/AntiPornModeSection.jsx` — dashboard grid view, toggle/delete/filter
+- Integrated at `client/app/dashboard/access-control/page.js` ("Anti-Porn Mode" tab)
 
 ### API Endpoints
 
 ```typescript
-// Enable anti-porn mode
-POST /api/anti-porn-mode/enable
-Body: {
+POST   /api/anti-porn-mode/enable
+DELETE /api/anti-porn-mode/:policyId
+PATCH  /api/anti-porn-mode/:policyId/toggle
+GET    /api/anti-porn-mode/status?filter=all|active|inactive
+GET    /api/anti-porn-mode/check-ip/:ip
+```
+
+`enable` body:
+```typescript
+{
   targetType: 'single_ip' | 'multiple_ips' | 'ip_group' | 'multiple_ip_groups' | 'all',
-  targetIP?: string,
-  targetIPs?: string[],
-  targetIPGroup?: string,
-  targetIPGroups?: string[],
+  targetIP?: string, targetIPs?: string[],
+  targetIPGroup?: string, targetIPGroups?: string[],
   policyName?: string
 }
-
-// Disable anti-porn mode
-DELETE /api/anti-porn-mode/:policyId
-
-// Toggle anti-porn policy status
-PATCH /api/anti-porn-mode/:policyId/toggle
-
-// Get anti-porn mode status
-GET /api/anti-porn-mode/status?filter=all|active|inactive
-
-// Check if enabled for specific IP
-GET /api/anti-porn-mode/check-ip/:ip
-```
-
-### Usage Examples
-
-#### Enable for All Users (Globally)
-
-```bash
-curl -X POST http://localhost:4773/api/anti-porn-mode/enable \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetType": "all",
-    "policyName": "Global Anti-Porn Policy"
-  }'
-```
-
-#### Enable for Specific Device
-
-```bash
-curl -X POST http://localhost:4773/api/anti-porn-mode/enable \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetType": "single_ip",
-    "targetIP": "192.168.1.100",
-    "policyName": "Kids Device Anti-Porn"
-  }'
-```
-
-#### Enable for IP Group (e.g., "Kids Devices")
-
-```bash
-curl -X POST http://localhost:4773/api/anti-porn-mode/enable \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetType": "ip_group",
-    "targetIPGroup": "507f1f77bcf86cd799439011",
-    "policyName": "Kids Group Anti-Porn"
-  }'
 ```
 
 ### How It Works
 
-1. **Initialization**: On server startup, the adult content domain group is automatically created/updated
-2. **Policy Creation**: When user enables anti-porn mode, a policy is created linking the target (IP/group/all) to the adult content domain group
-3. **DNS Resolution**: When a DNS query arrives:
-   - BlockList service checks if the domain is in any active policy
-   - Adult content domains are matched (with wildcard support)
-   - If blocked, returns `0.0.0.0` (NXDOMAIN)
-   - If allowed, continues normal resolution
-4. **Cache Invalidation**: Policy changes trigger Redis pub/sub events to clear BlockList caches across all workers
-5. **Immediate Effect**: Changes take effect within seconds (next cron cycle or cache expiry)
-
-### Blocked Content Categories
-
-The anti-porn mode blocks the following categories:
-
-1. **Major Adult Sites**: Pornhub, xVideos, xHamster, etc. (20+ sites)
-2. **Live Cam Sites**: Chaturbate, LiveJasmin, Stripchat, etc. (10+ sites)
-3. **Hentai/Anime Adult Content**: hentai.com, nhentai, hanime, etc. (5+ sites)
-4. **Adult Dating/Hookup Sites**: AdultFriendFinder, Ashley Madison, etc.
-5. **CDN & Ad Networks**: Adult content delivery networks and ad platforms
-6. **Alternative TLDs**: Common misspellings and alternative domains
-
-Total: **100+ domains** with wildcard support for subdomains
-
-### Performance
-
-- **Overhead**: Negligible (<0.1ms) - uses existing ACL system
-- **Cache Hit Rate**: 95%+ due to multi-layer caching
-- **Scalability**: Handles 10,000+ req/s with no degradation
-- **Update Latency**: Changes propagate within 3-5 seconds
-
-### Management UI
-
-The anti-porn mode can be managed through the web interface:
-
-1. Navigate to **Dashboard → Access Control → Anti-Porn Mode**
-2. Click **"Enable Anti-Porn Mode"** button
-3. Select target type (who to block)
-4. Configure details (IP, groups, or global)
-5. Click **"Enable Anti-Porn Mode"**
-
-Policies can be toggled on/off or deleted at any time.
-
-### Database Schema
-
-Anti-porn policies are stored as standard access control policies:
-
-```typescript
-{
-  _id: ObjectId,
-  policyType: "domain_user",
-  targetType: "all" | "single_ip" | "multiple_ips" | "ip_group" | "multiple_ip_groups",
-  targetIP?: string,
-  targetIPs?: string[],
-  targetIPGroup?: ObjectId,
-  targetIPGroups?: ObjectId[],
-  blockType: "domain_group",
-  domainGroup: ObjectId, // References adult content domain group
-  policyName: string,
-  isActive: boolean,
-  createdAt: number,
-  updatedAt: number
-}
-```
+1. On server startup, the adult content domain group is created/updated if missing
+2. Enabling the mode creates a policy linking the target (IP/group/all) to that domain group
+3. On each DNS query, `BlockList.service.ts` checks active policies exactly as it would for any other block rule — no special-cased fast path
+4. Policy changes trigger the `cache:invalidate` pub/sub event, clearing in-process caches across all workers within the cache's own TTL window (3-5s)
 
 ### Maintenance
 
-**Adding New Domains**:
-1. Edit `/server/source/Constants/AdultContentDomains.constant.ts`
-2. Add domains to `ADULT_CONTENT_DOMAINS` array
-3. Restart server to auto-update the domain group
-
-**Checking Status**:
-```bash
-# Check if adult content group exists
-mongo nexoral_db --eval "db.domain_groups.findOne({ isSystemGroup: true, name: 'Adult Content (Anti-Porn)' })"
-
-# List all anti-porn policies
-curl -X GET http://localhost:4773/api/anti-porn-mode/status?filter=active \
-  -H "Authorization: Bearer <token>"
-```
-
-**Troubleshooting**:
-- If policies don't take effect, check Redis: `redis-cli keys "acl:*"`
-- Force reload: Trigger cache invalidation via policy update
-- Check logs: Look for `[Anti-Porn]` prefix in server logs
+- Add domains: edit `server/source/Constants/AdultContentDomains.constant.ts`, restart to re-seed
+- Check status: `mongo nexoral_db --eval "db.domain_groups.findOne({ isSystemGroup: true, name: 'Adult Content (Anti-Porn)' })"`
+- Debug: `redis-cli keys "acl:*"`, server logs prefixed `[Anti-Porn]`
 
 ---
 
@@ -1854,384 +501,158 @@ curl -X GET http://localhost:4773/api/anti-porn-mode/status?filter=active \
 
 ### Overview
 
-NexoralDNS includes a built-in **Anti-Ads Mode** feature that provides comprehensive ad blocking and tracking prevention at the DNS level. This feature automatically blocks access to 200+ advertising and tracking domains including Google Ads, Facebook tracking, Amazon ads, and more. It can be enabled for specific users, IP groups, or globally across your entire network.
-
-### Key Features
-
-1. **Comprehensive Domain List**: Includes 200+ advertising and tracking domains based on Hagezi, AdGuard, and EasyList (2026)
-2. **Flexible Targeting**: Block for specific IPs, IP groups, or all users
-3. **Easy Management**: Simple UI for enabling/disabling policies
-4. **Real-time Updates**: Changes take effect within seconds via Redis cache invalidation
-5. **No Performance Impact**: Uses the existing high-performance ACL system
-6. **Statistics**: Blocks approximately 20% of typical web traffic identified as advertising/tracking
+Same mechanism as Anti-Porn Mode, targeting advertising/tracking domains instead — a domain group (`"Ads & Trackers (Anti-Ads)"`, 200+ domains sourced from Hagezi/AdGuard/EasyList) linked to ACL policies via the same `access_control_policies` system.
 
 ### Architecture
 
-#### Server Components
-
-**1. Domain Group (Ad Blocking)**
-- **Location**: Auto-seeded at server startup
-- **Collection**: `domain_groups`
-- **Name**: `"Ads & Trackers (Anti-Ads)"`
-- **Marker**: `isSystemGroup: true`
-- **Domains**: 200+ advertising and tracking domains with wildcard support
-- **Update**: Automatically created/updated on server restart
-- **Sources**: Hagezi DNS Blocklists, AdGuard DNS Filter, EasyList, Privacy Web Almanac 2025
-
-**2. AntiAdsMode Service**
-- **Location**: `/server/source/Services/AntiAdsMode/AntiAdsMode.service.ts`
-- **Purpose**: High-level API for managing anti-ads policies
-- **Security**: Input validation, NoSQL injection prevention, error sanitization
-- **Key Methods**:
-  - `enableAntiAdsMode(params)` - Create blocking policy
-  - `disableAntiAdsMode(policyId)` - Delete policy
-  - `toggleAntiAdsMode(policyId)` - Toggle active status
-  - `getAntiAdsModeStatus(filter)` - Get all anti-ads policies
-  - `isEnabledForIP(ip)` - Check if enabled for specific IP
-
-**3. AntiAdsMode Controller**
-- **Location**: `/server/source/Controller/AntiAdsMode/AntiAdsMode.controller.ts`
-- **Routes**: Registered at `/api/anti-ads-mode`
-- **Features**:
-  - Request deduplication
-  - Redis cache invalidation after changes
-  - Comprehensive input validation
-  - Proper error handling
-
-#### Client Components
-
-**1. AntiAdsPolicyModal**
-- **Location**: `/client/components/anti-ads-mode/AntiAdsPolicyModal.jsx`
-- **Purpose**: User-friendly modal for enabling anti-ads mode
-- **Features**:
-  - 2-step wizard (Target Selection → Details)
-  - Support for all target types (single IP, multiple IPs, IP groups, all users)
-  - Auto-generated policy names
-  - Real-time validation
-  - Domain statistics display
-
-**2. AntiAdsModeSection**
-- **Location**: `/client/components/anti-ads-mode/AntiAdsModeSection.jsx`
-- **Purpose**: Dashboard view for managing anti-ads policies
-- **Features**:
-  - Grid view of all policies
-  - Toggle switches for quick enable/disable
-  - Delete policies with confirmation
-  - Filter by status (all/active/inactive)
-  - Domain blocking statistics
-
-**3. Integration**
-- **Location**: `/client/app/dashboard/access-control/page.js`
-- **Tab**: "Anti-Ads Mode" (second tab with 🛡️ icon)
-- **Navigation**: Dashboard → Access Control → Anti-Ads Mode
+- **Service**: `server/source/Services/AntiAdsMode/AntiAdsMode.service.ts` — `enableAntiAdsMode`, `disableAntiAdsMode`, `toggleAntiAdsMode`, `getAntiAdsModeStatus`, `isEnabledForIP`
+- **Controller**: `server/source/Controller/AntiAdsMode/AntiAdsMode.controller.ts`, routed at `/api/anti-ads-mode`
+- **Client**: `client/components/anti-ads-mode/{AntiAdsPolicyModal,AntiAdsModeSection}.jsx`, `client/app/dashboard/access-control/page.js` ("Anti-Ads Mode" tab)
 
 ### API Endpoints
 
 ```typescript
-// Enable anti-ads mode
-POST /api/anti-ads-mode/enable
-Body: {
-  targetType: 'single_ip' | 'multiple_ips' | 'ip_group' | 'multiple_ip_groups' | 'all',
-  targetIP?: string,
-  targetIPs?: string[],
-  targetIPGroup?: string,
-  targetIPGroups?: string[],
-  policyName?: string
-}
-
-// Disable anti-ads mode
+POST   /api/anti-ads-mode/enable      // same body shape as anti-porn-mode
 DELETE /api/anti-ads-mode/:policyId
-
-// Toggle anti-ads policy status
-PATCH /api/anti-ads-mode/:policyId/toggle
-
-// Get anti-ads mode status
-GET /api/anti-ads-mode/status?filter=all|active|inactive
-
-// Check if enabled for specific IP
-GET /api/anti-ads-mode/check-ip/:ip
+PATCH  /api/anti-ads-mode/:policyId/toggle
+GET    /api/anti-ads-mode/status?filter=all|active|inactive
+GET    /api/anti-ads-mode/check-ip/:ip
 ```
 
-### Usage Examples
+### Domain Categories (200+ total)
 
-#### Enable for All Users (Globally)
-
-```bash
-curl -X POST http://localhost:4773/api/anti-ads-mode/enable \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetType": "all",
-    "policyName": "Global Ad Blocking Policy"
-  }'
-```
-
-#### Enable for Specific Device
-
-```bash
-curl -X POST http://localhost:4773/api/anti-ads-mode/enable \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetType": "single_ip",
-    "targetIP": "192.168.1.100",
-    "policyName": "Device Ad Blocking"
-  }'
-```
-
-#### Enable for IP Group (e.g., "Kids Devices")
-
-```bash
-curl -X POST http://localhost:4773/api/anti-ads-mode/enable \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetType": "ip_group",
-    "targetIPGroup": "507f1f77bcf86cd799439011",
-    "policyName": "Kids Group Ad Blocking"
-  }'
-```
-
-### How It Works
-
-1. **Initialization**: On server startup, the ad blocking domain group is automatically created/updated from a comprehensive list
-2. **Policy Creation**: When user enables anti-ads mode, a policy is created linking the target (IP/group/all) to the ad blocking domain group
-3. **DNS Resolution**: When a DNS query arrives:
-   - BlockList service checks if the domain is in any active policy
-   - Advertising/tracking domains are matched (with wildcard support)
-   - If blocked, returns `0.0.0.0` (NXDOMAIN)
-   - If allowed, continues normal resolution
-4. **Cache Invalidation**: Policy changes trigger Redis pub/sub events to clear BlockList caches across all workers
-5. **Immediate Effect**: Changes take effect within seconds (next cron cycle or cache expiry)
-
-### Blocked Content Categories
-
-The anti-ads mode blocks the following categories:
-
-1. **Google Advertising & Analytics** (20+ domains)
-   - DoubleClick, AdSense, GoogleAdServices, GoogleTagManager, Google Analytics
-
-2. **Facebook / Meta Advertising & Tracking** (10+ domains)
-   - Facebook Pixel, Connect, Analytics, Graph API
-
-3. **Major Ad Networks & Exchanges** (50+ domains)
-   - Amazon Advertising, Microsoft Bing Ads, Yahoo Ads, AppNexus, Criteo, Outbrain, Taboola
-
-4. **Analytics & Tracking Services** (30+ domains)
-   - Adobe Analytics, Hotjar, Mixpanel, Segment, Quantcast, Comscore, Nielsen, Chartbeat
-
-5. **Social Media Tracking** (10+ domains)
-   - Twitter/X Ads, LinkedIn Tracking, Pinterest Tracking, Reddit Tracking, TikTok Pixel
-
-6. **Mobile Ad Networks** (15+ domains)
-   - AdMob, InMobi, Unity Ads, Vungle, IronSource
-
-7. **Video Ad Platforms** (10+ domains)
-   - SpotX, FreeWheel, Brightcove Ads
-
-8. **Retargeting & Remarketing** (10+ domains)
-   - AdRoll, Perfect Audience, Retargetly
-
-9. **Affiliate & Conversion Tracking** (10+ domains)
-   - Commission Junction, ShareASale, Rakuten Advertising, Impact
-
-10. **Pop-ups & Aggressive Ads** (10+ domains)
-    - PopAds, PropellerAds, AdCash, PopCash
-
-11. **Ad CDN & Infrastructure** (15+ domains)
-    - Various ad content delivery networks and infrastructure
-
-Total: **200+ domains** with wildcard support for subdomains
-
-### Statistics
-
-Based on 2026 research:
-- **Google Analytics**: Appears on 44% of websites
-- **DoubleClick**: Appears on 32% of websites
-- **Facebook tracking**: Appears on 22% of websites
-- **Ad/tracking traffic**: Comprises ~20% of all web traffic
-- **Blocked requests**: Typically reduces ad traffic by 15-25% depending on browsing habits
-
-### Performance
-
-- **Overhead**: Negligible (<0.1ms) - uses existing ACL system
-- **Cache Hit Rate**: 95%+ due to multi-layer caching
-- **Scalability**: Handles 10,000+ req/s with no degradation
-- **Update Latency**: Changes propagate within 3-5 seconds
-- **Memory Impact**: Minimal - domain list pre-loaded at startup
-
-### Management UI
-
-The anti-ads mode can be managed through the web interface:
-
-1. Navigate to **Dashboard → Access Control → Anti-Ads Mode**
-2. Click **"Enable Anti-Ads Mode"** button
-3. Select target type (who to block)
-4. Configure details (IP, groups, or global)
-5. Click **"Enable Anti-Ads Mode"**
-
-Policies can be toggled on/off or deleted at any time.
-
-### Database Schema
-
-Anti-ads policies are stored as standard access control policies:
-
-```typescript
-{
-  _id: ObjectId,
-  policyType: "domain_user",
-  targetType: "all" | "single_ip" | "multiple_ips" | "ip_group" | "multiple_ip_groups",
-  targetIP?: string,
-  targetIPs?: string[],
-  targetIPGroup?: ObjectId,
-  targetIPGroups?: ObjectId[],
-  blockType: "domain_group",
-  domainGroup: ObjectId, // References ad blocking domain group
-  policyName: string,
-  isActive: boolean,
-  createdAt: number,
-  updatedAt: number
-}
-```
+Google Ads/Analytics, Meta/Facebook tracking, major ad networks & exchanges (Amazon, Bing, AppNexus, Criteo, Outbrain, Taboola), analytics/tracking services (Adobe, Hotjar, Mixpanel, Segment, Comscore), social media pixels, mobile ad networks (AdMob, InMobi, Unity, Vungle), video ad platforms, retargeting networks, affiliate tracking, aggressive pop-up ad networks, ad CDN infrastructure.
 
 ### Maintenance
 
-**Adding New Domains**:
-1. Edit `/server/source/Constants/AdBlockingDomains.constant.ts`
-2. Add domains to `AD_BLOCKING_DOMAINS` array
-3. Update `lastUpdated` and `version` in metadata
-4. Restart server to auto-update the domain group
+- Add domains: edit `server/source/Constants/AdBlockingDomains.constant.ts`, update `lastUpdated`/`version` metadata, restart to re-seed
+- Check status: `mongo nexoral_db --eval "db.domain_groups.findOne({ isSystemGroup: true, name: 'Ads & Trackers (Anti-Ads)' })"`
+- Debug: `redis-cli keys "acl:*"`, server logs prefixed `[Anti-Ads]`
 
-**Checking Status**:
-```bash
-# Check if ad blocking group exists
-mongo nexoral_db --eval "db.domain_groups.findOne({ isSystemGroup: true, name: 'Ads & Trackers (Anti-Ads)' })"
+### Security notes (both modes)
 
-# List all anti-ads policies
-curl -X GET http://localhost:4773/api/anti-ads-mode/status?filter=active \
-  -H "Authorization: Bearer <token>"
-
-# Check domain count
-curl -X GET http://localhost:4773/api/anti-ads-mode/status \
-  -H "Authorization: Bearer <token>"
-```
-
-**Troubleshooting**:
-- If policies don't take effect, check Redis: `redis-cli keys "acl:*"`
-- Force reload: Trigger cache invalidation via policy update
-- Check logs: Look for `[Anti-Ads]` prefix in server logs
-- Verify domain group: Check `domain_groups` collection for ad blocking group
-
-### Security Considerations
-
-The anti-ads mode implementation follows security best practices:
-
-1. **Input Validation**: All inputs validated before processing
-2. **NoSQL Injection Prevention**: Safe ObjectId conversion and query construction
-3. **XSS Prevention**: Policy names sanitized to remove dangerous characters
-4. **DoS Protection**: Array size limits (100 IPs, 50 groups)
-5. **Error Sanitization**: No internal details exposed to clients
-6. **Authentication Required**: All endpoints require valid JWT token
-
-### Comparison with Anti-Porn Mode
-
-| Feature | Anti-Porn Mode | Anti-Ads Mode |
-|---------|----------------|---------------|
-| **Domain Count** | 100+ adult content sites | 200+ ad/tracking domains |
-| **Purpose** | Block adult content | Block ads and tracking |
-| **Categories** | Adult sites, cam sites, hookup apps | Ads, analytics, trackers, social media pixels |
-| **Traffic Reduction** | Minimal (~1% of traffic) | Significant (~20% of traffic) |
-| **Use Case** | Parental controls, workplace safety | Privacy, faster browsing, bandwidth saving |
-| **Update Frequency** | Quarterly | Monthly (follows adtech changes) |
-| **Sources** | Manual curation | Hagezi, AdGuard, EasyList |
+Input validation, safe ObjectId conversion (NoSQL injection prevention), policy-name sanitization, array size limits (100 IPs / 50 groups) on policy creation, sanitized error responses, JWT-gated endpoints.
 
 ---
 
-## 🧪 Testing
+## Performance Targets
 
-### Unit Tests Example
-```typescript
-// Redis.service.test.ts
-import RedisCache from '../services/Cache/Redis.service';
+These are **targets the design aims for, not numbers verified by a load test** — there is currently no automated benchmark in this repo beyond a `dnsperf` query list (`Test/dnsperf.txt`, 49 domains) with no captured results. Treat the table below as an engineering goal, not a measured SLA.
 
-describe('RedisCache', () => {
-  let redis: RedisCache;
+| Path | Target Latency | What actually happens |
+|-------|---------------|-------|
+| Redis cache hit (record + service status) | **<2ms** | 2 sequential Redis round trips (service status, then record) — intentionally sequential, not parallelized, because either check can short-circuit the query before the more expensive path runs |
+| MongoDB lookup (cache miss) | **<5ms** | Single-flight-deduped `findOne`, sequential per CNAME hop (1 hop = 1 round trip; a 10-hop chain is ~10x a direct hit) |
+| Upstream forward | **<50ms** | 2s timeout per upstream server, automatic fallthrough across a shuffled 6-provider pool |
 
-  beforeAll(() => {
-    redis = new RedisCache();
-  });
-
-  it('should cache and retrieve DNS response', async () => {
-    const domain = 'test.com';
-    const response = Buffer.from('test');
-
-    await redis.cacheResponse('A', domain, response, 300);
-    const cached = await redis.getCachedResponse('A', domain);
-
-    expect(cached).toEqual(response);
-  });
-});
-```
-
-### Load Testing
-```bash
-# Using dnsperf
-dnsperf -d queries.txt -s 127.0.0.1 -c 100 -l 60
-
-# Using custom script
-node scripts/load-test.js --queries=10000 --concurrent=100
-```
+A rough capacity model derived from reading the code (not a benchmark — see [Testing](#testing)): aggregate steady-state throughput scales with cluster width and available hardware, roughly **hundreds of QPS on Raspberry Pi-class hardware up to tens of thousands of QPS on dedicated multi-core servers**, with MongoDB (not the Node event loop or Redis) becoming the bottleneck under sustained cache-miss-heavy load. Domain concentration (how many clients share the same popular domains vs. each hitting unique long-tail ones) matters more than raw device count, since the Redis record cache benefits *all* clients querying a given domain within its TTL window, not just the client that populated it.
 
 ---
 
-## 🎯 Future Optimizations
+## Operational Resilience
 
-1. **DNSSEC Support** - Add DNS security extensions
-2. **IPv6 Support** - Full AAAA record support
-3. **Geo-based Routing** - Return different IPs based on client location
-4. **ML-based Query Prediction** - Preload likely queries
-5. **GraphQL API** - Modern API for frontend
-6. **Webhook Integration** - Real-time notifications for events
-7. **Multi-Region Deployment** - Global DNS service
+- **Fail-safe on DB outage**: `Rules.service.ts` catches MongoDB errors at the service-status and ACL-check stages and sets `databaseOffline = true`, bypassing policy enforcement rather than returning SERVFAIL — the query still resolves via cache or upstream forward.
+- **Fail-open on ACL errors**: `BlockList.checkDomain` and `RedisCache.isDomainBlocked` both return `false` (allow) on internal errors rather than blocking all traffic.
+- **Multi-provider upstream forwarding**: 6 upstream DNS providers, shuffled per query, 2s per-server timeout with automatic fallthrough to the next provider on timeout or send failure.
+- **Automatic LAN IP rebinding**: `AutoIP_SCAN.utls.ts` polls the local IP every 10s (`Retry.Seconds`) and rebinds the UDP socket if it changes (e.g., DHCP lease renewal on the host itself), re-attaching all listeners and reconstructing `StartRulesService` to avoid stale-socket errors on in-flight queries.
+- **Self-signed DoT certificates**: auto-generated via `openssl` on first startup if absent, persisted to `/etc/nexoral/cert` (configurable via `DOT_CERT_DIR`) so the same cert survives restarts.
 
 ---
 
-## 📞 Support & Maintenance
+## Known Gaps & Non-Goals
 
-### Log Locations
-- DNS Service: `/var/log/nexoraldns/dns.log`
-- Server API: `/var/log/nexoraldns/api.log`
-- Redis: `/var/log/redis/redis-server.log`
-- MongoDB: `/var/log/mongodb/mongod.log`
+Honest list, current as of this document's last update — not aspirational:
 
-### Common Issues
+1. **No automated test suite.** `Test/` contains only a `dnsperf` query list and a docker-compose for test infra — no unit or integration tests for either `Web/` or `server/`. This is a real gap against this project's own `CLAUDE.md` testing rule.
+2. **No real-time metrics/observability.** Analytics land in MongoDB via a RabbitMQ batch consumer — queryable after the fact, but no live p50/p95/p99 dashboard. The sub-5ms targets above cannot currently be verified in production without manual querying.
+3. **Duplicated infrastructure code between `Web/` and `server/`.** `mongodb.db.ts` and `Rabbitmq.config.ts` each exist as separate, hand-copied files in both services (they're separate PM2-managed process trees and can't share a live in-memory connection, but the *source* is duplicated, not just the runtime instance). This already caused one real bug — an `assertQueue` argument mismatch between `Web`'s publisher and `server`'s consumer paths — that existed in both copies and had to be found and fixed in both independently. A shared, versioned local package was scoped as the fix but deferred by design choice.
+4. **Bare-metal deployment doesn't get the UDP buffer fix.** `Scripts/docker-entrypoint.sh` raises `net.core.rmem_max`/`wmem_max` for the Docker path; `Scripts/install.sh` (the bare-metal LAN install path) does not yet do the equivalent.
+5. **No domain rerouting/rewriting** and **no per-user plan gating** in the DNS query path, despite both being mentioned as product features elsewhere (`CLAUDE.md`, `FEATURES.md`) — see the note in [System Overview](#system-overview).
+6. **MongoDB connection pool sizing assumes co-location isn't extreme.** The CPU-scaled `maxPoolSize` targets ~200 aggregate connections for `Web/`'s cluster and another ~200 for `server/`'s cluster independently — the two don't coordinate with each other, so total real connection load against one MongoDB instance is the sum of both, not a jointly-tuned number.
 
-**High Redis Memory Usage**
+---
+
+## Testing
+
+**Current state**: `Test/` contains `dnsperf.txt` (a 49-domain query list for the external `dnsperf` load-testing tool) and a `docker-compose.yml` for spinning up test infrastructure (Mongo/Redis/RabbitMQ) — no automated unit or integration tests exist for either `Web/` or `server/` today.
+
+**Recommended immediate next step**: run `dnsperf` against a live instance —
+
 ```bash
-# Check memory stats
-redis-cli INFO memory
-
-# Clear old keys
-redis-cli --scan --pattern "response:*" | head -n 1000 | xargs redis-cli DEL
+dnsperf -d Test/dnsperf.txt -s <server-ip> -p 53 -c 100 -l 60
 ```
 
-**Slow MongoDB Queries**
-```javascript
-// Check slow queries
-db.setProfilingLevel(1, { slowms: 100 })
-db.system.profile.find().limit(5).sort({ ts: -1 }).pretty()
-```
+— on hardware matching the real target deployment, to replace the capacity estimates in this document with measured numbers.
 
-**DNS Service Not Responding**
+**Per this project's `CLAUDE.md`** ("ALWAYS test: Add/update tests in `Test/` for ANY feature change"), new feature work should come with tests even though the existing baseline doesn't have them yet.
+
+---
+
+## Deployment
+
+LAN-only — see `CLAUDE.md`. Two supported paths:
+
+### Docker (`Scripts/docker-compose.yml` / `dev.compose.yaml`)
+- `nexoraldns` service: `network_mode: host`, `privileged: true`, `cap_add: [NET_ADMIN]` — required to bind port 53/853 and to tune host-level UDP socket buffers
+- `Scripts/docker-entrypoint.sh` raises `net.core.rmem_max`/`wmem_max` to 4MB at container start before launching `pm2-runtime start ecosystem.config.js`
+- Mongo/Redis/RabbitMQ run as sibling containers with host-mapped ports for `127.0.0.1` access from the host-networked app container
+
+### Bare-metal (`Scripts/install.sh`)
+- Installs Node, PM2, and the four services directly on the host
+- Does **not** currently raise the OS-level UDP buffer ceiling (see [Known Gaps](#known-gaps--non-goals))
+
+Both paths run four PM2-managed processes per `ecosystem.config.js`: `server` (Fastify API), `client` (Next.js dashboard), `dhcp` (DHCP server), `web` (this DNS engine) — each restarting independently (`restart_delay: 5000`, `max_restarts: 3`) on crash.
+
+---
+
+## Security Considerations
+
+1. **Input validation**: domain names sanitized before DNS packet construction and MongoDB queries; ACL policy inputs validated with array size limits and safe `ObjectId` conversion
+2. **Fail-open, not fail-closed, on internal errors**: a deliberate choice (see [Operational Resilience](#operational-resilience)) — an ACL/DB outage degrades policy enforcement rather than taking down LAN-wide DNS resolution
+3. **No public exposure**: this is explicitly a LAN-only system — never expose port 53/853 or the API (4773) to the public internet; ISPs will block DNS behavior that looks like spoofing from a public IP
+4. **JWT-based admin authentication** with `session_manage` collection tracking access/refresh tokens, auto-expiring inactive sessions after 48h
+5. **Self-lockout guards** on admin user/role mutation endpoints (see RBAC section)
+6. **Rate limiting**: not verified as implemented for the DNS query path itself in this pass — worth confirming before treating this as a defense against query floods
+
+---
+
+## Future Optimizations
+
+Roughly in priority order based on what's actually been found gap-hunting this codebase, not a wishlist:
+
+1. **Extract shared Mongo/RabbitMQ connection code** into a versioned local package (npm workspaces or `file:` dependency) consumed by both `Web/` and `server/`, closing the duplication gap in [Known Gaps](#known-gaps--non-goals)
+2. **Add a test suite** — unit tests for `Rules.service.ts`'s 4-check pipeline, `BlockList.service.ts`'s wildcard matching, `DB_Pool.service.ts`'s CNAME chain resolution and circular-reference detection
+3. **Real load testing** via `dnsperf` against representative target hardware to replace estimated capacity numbers with measured ones
+4. **Real-time metrics** (Prometheus/Grafana or similar) for p50/p95/p99 query latency, cache hit rate, and per-layer timing — currently only available after-the-fact via the `analytics` collection
+5. **Bare-metal UDP buffer parity** — add the equivalent of `Scripts/docker-entrypoint.sh`'s sysctl tuning to `Scripts/install.sh`
+6. DNSSEC support, full IPv6/AAAA support, geo-based routing — longer-term, not currently scoped
+
+---
+
+## Support & Maintenance
+
+### Log Locations (Docker/PM2 — see `ecosystem.config.js`)
+- DNS engine (`Web/`): `/var/log/web.log`, `/var/log/web.err.log`
+- API (`server/`): `/var/log/server.log`, `/var/log/server.err.log`
+- Dashboard (`client/`): `/var/log/client.log`, `/var/log/client.err.log`
+- DHCP: `/var/log/dhcp.log`, `/var/log/dhcp.err.log`
+
+### Common Checks
+
 ```bash
-# Check if port 53 is listening
+# Is port 53 actually listening?
 sudo netstat -tulpn | grep :53
 
-# Restart service
-pm2 restart dns-service
+# PM2 process status / logs
+pm2 status
+pm2 logs web --lines 100
 
-# Check logs
-pm2 logs dns-service --lines 100
+# ACL cache contents
+redis-cli keys "acl:*"
+
+# Slow MongoDB queries
+db.setProfilingLevel(1, { slowms: 100 })
+db.system.profile.find().limit(5).sort({ ts: -1 }).pretty()
 ```
 
 ---
@@ -2248,5 +669,5 @@ MIT License - See LICENSE file for details
 
 ---
 
-**Last Updated:** 2026-02-16
-**Version:** 3.3.42-stable
+**Last Updated:** 2026-07-02
+**Version:** 4.7.46-stable
