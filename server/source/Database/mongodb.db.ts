@@ -1,6 +1,7 @@
 import { Collection, Document, MongoClient } from "mongodb";
 import { ClassBased, Console,  } from "outers";
 import cluster from "cluster";
+import os from "os";
 import Bcrypt from "../helper/bcrypt.helper";
 import { DB_DEFAULT_CONFIGS } from "../core/key";
 
@@ -9,16 +10,34 @@ const DB_clients = new Map<string, MongoClient>();
 const Collection_clients = new Map<string, Collection<Document>>();
 
 /**
+ * Computes a MongoDB connection pool size for this process, scaled to cluster
+ * width so aggregate connections across all workers (Cluster.ts forks
+ * floor(cpus * 0.75) of them, plus the primary) stay within a sane ceiling for
+ * a single MongoDB instance — instead of every process independently
+ * defaulting to the driver's maxPoolSize of 100 regardless of cluster width.
+ */
+const computeMongoPoolSize = (): number => {
+  const TOTAL_CONNECTION_BUDGET = 200; // aggregate connections targeted across the whole cluster
+  const MIN_POOL_PER_WORKER = 20;
+  const MAX_POOL_PER_WORKER = 50; // driver default is 100; API lookups are single fast ops, not bulk queries
+
+  const totalUsableCpus = Math.max(1, Math.floor(os.cpus().length * 0.75));
+  const perWorker = Math.floor(TOTAL_CONNECTION_BUDGET / totalUsableCpus);
+
+  return Math.min(MAX_POOL_PER_WORKER, Math.max(MIN_POOL_PER_WORKER, perWorker));
+}
+
+/**
  * Retrieves a MongoDB client instance for the specified URL.
- * 
+ *
  * If a client already exists for the URL in the connections Map, it returns the existing client.
  * Otherwise, it creates a new client, stores it in the connections Map, and returns the new client.
- * 
+ *
  * @returns {MongoClient} A MongoDB client instance
  */
 export const getMongoClient = (): MongoClient => {
   const mongoURL = DB_DEFAULT_CONFIGS.HOST;
-  const client = new MongoClient(mongoURL);
+  const client = new MongoClient(mongoURL, { maxPoolSize: computeMongoPoolSize() });
   if (!connections.has(mongoURL)) {
     connections.set(mongoURL, client);
   } else {

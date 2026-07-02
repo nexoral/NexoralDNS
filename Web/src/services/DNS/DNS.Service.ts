@@ -30,8 +30,28 @@ export default class DNS {
   }
 
   /**
+   * Enlarges the UDP socket's kernel receive/send buffers so a burst of queries
+   * doesn't overflow the default (~208KB on typical Linux) and get silently
+   * dropped before Node reads them. Must run only after the socket is bound —
+   * calling it earlier throws (the socket has no OS handle yet).
+   *
+   * The OS caps the granted size at net.core.rmem_max/wmem_max regardless of
+   * what's requested here; the actual granted value is logged so a low ceiling
+   * is visible in production instead of silently assumed to be 4MB.
+   */
+  private tuneSocketBuffers(socket: dgram.Socket): void {
+    try {
+      socket.setRecvBufferSize(4 * 1024 * 1024); // 4MB requested
+      socket.setSendBufferSize(4 * 1024 * 1024);
+      Console.bright(`DNS UDP socket buffers granted: recv=${socket.getRecvBufferSize()} send=${socket.getSendBufferSize()} (raise net.core.rmem_max/wmem_max if lower than requested)`);
+    } catch (error) {
+      Console.yellow(`Could not resize UDP socket buffers: ${error}`);
+    }
+  }
+
+  /**
    * Starts the DNS server and binds it to the specified port and local IP address.
-   * 
+   *
    * - Listens for the "listening" event and logs the server address and port.
    * - Binds the server to port 53 (default DNS port) using the local IP address obtained from `getLocalIP("any")`.
    * - Returns the current instance for method chaining.
@@ -42,6 +62,7 @@ export default class DNS {
     this.server.on("listening", () => {
       const address = this.server.address();
       Console.green(`DNS server running at udp://${address.address}:${address.port} with Worker: ${process.pid}`);
+      this.tuneSocketBuffers(this.server);
     });
 
     MongoConnector().catch((error) => {
@@ -65,11 +86,14 @@ export default class DNS {
       this.listen();
       this.listenError();
 
-      // Log successful rebinding
-      setTimeout(() => {
+      // Log successful rebinding and tune buffers once "listening" confirms the
+      // new socket actually has a bound OS handle (bind() is async — the caller
+      // here runs before that completes, so buffer tuning can't happen inline)
+      this.server.on("listening", () => {
         const address = this.server.address();
         Console.green(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker process: ${process.pid}`);
-      }, 100);
+        this.tuneSocketBuffers(this.server);
+      });
     });
     ipScanner.scan();
 

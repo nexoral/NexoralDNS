@@ -47,9 +47,10 @@ COPY --from=builder /app/ecosystem.config.js ./
 
 # Set capabilities
 RUN setcap cap_net_raw+ep /bin/ping && \
-    setcap cap_net_bind_service,cap_dac_override+ep $(which node)
+    setcap cap_net_bind_service,cap_dac_override+ep $(which node) && \
+    chmod +x ./Scripts/docker-entrypoint.sh
 
 ENV NODE_ENV=production
 EXPOSE 53/udp 53/tcp 4000 4773
 
-CMD ["sudo", "pm2-runtime", "start", "ecosystem.config.js"]
+CMD ["./Scripts/docker-entrypoint.sh"]

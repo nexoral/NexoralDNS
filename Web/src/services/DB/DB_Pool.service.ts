@@ -12,7 +12,6 @@ export class DomainDBPoolService {
   // get domain matched with the name
   public async getDnsRecordByDomainName(domainName: string, maxDepth: number = 10) {
     let currentName = domainName;
-    console.log(currentName)
     let depth = 0;
     const visited = new Set<string>();
 

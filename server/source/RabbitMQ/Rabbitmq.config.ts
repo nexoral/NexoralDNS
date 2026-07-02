@@ -17,6 +17,28 @@ class RabbitMQService {
   private readonly MAX_RECONNECT_ATTEMPTS = 10;
   private readonly RECONNECT_DELAY = 5000; // 5 seconds
 
+  // Queues already declared on the broker for this process's lifetime. A queue
+  // is a durable, broker-side object — once declared it survives channel/connection
+  // drops, so re-asserting it on every publish/consume call is pure overhead.
+  private readonly assertedQueues: Set<string> = new Set();
+
+  // Single source of truth for queue arguments — every producer and consumer
+  // must assert a given queue with identical arguments, or RabbitMQ raises
+  // PRECONDITION_FAILED (406) and closes the channel. x-max-priority is required
+  // for the `priority` option used by publish() to have any effect.
+  private async ensureQueue(queue: string): Promise<void> {
+    if (this.assertedQueues.has(queue)) return;
+
+    await this.channel!.assertQueue(queue, {
+      durable: true,
+      arguments: {
+        'x-max-priority': 10,
+      },
+    });
+
+    this.assertedQueues.add(queue);
+  }
+
   private constructor() {}
 
   /**
@@ -164,13 +186,8 @@ class RabbitMQService {
     try {
       if (!this.channel) await this.connect();
 
-      // Ensure queue exists (create if not)
-      await this.channel!.assertQueue(queue, {
-        durable: true, // Queue survives RabbitMQ restart
-        arguments: {
-          'x-max-priority': 10, // Enable priority support
-        },
-      });
+      // Ensure queue exists (create if not) — memoized, only asserts once per queue
+      await this.ensureQueue(queue);
 
       // Serialize message
       const messageBuffer = Buffer.from(JSON.stringify(message));
@@ -215,13 +232,8 @@ class RabbitMQService {
     try {
       if (!this.channel) await this.connect();
 
-      // Ensure queue exists
-      await this.channel!.assertQueue(queue, {
-        durable: true,
-        arguments: {
-          'x-max-priority': 10, // Enable priority support
-        },
-      });
+      // Ensure queue exists — memoized, only asserts once per queue
+      await this.ensureQueue(queue);
 
       // Publish all messages
       for (const message of messages) {
@@ -268,13 +280,8 @@ class RabbitMQService {
     try {
       if (!this.channel) await this.connect();
 
-      // Ensure queue exists
-      await this.channel!.assertQueue(queue, {
-        durable: true,
-        arguments: {
-          'x-max-priority': 10, // Enable priority support
-        },
-      });
+      // Ensure queue exists — memoized, only asserts once per queue
+      await this.ensureQueue(queue);
 
       // Set prefetch count (Quality of Service)
       await this.channel!.prefetch(options?.prefetch ?? 1);
@@ -382,13 +389,8 @@ class RabbitMQService {
     try {
       if (!this.channel) await this.connect();
 
-      // Ensure queue exists
-      await this.channel!.assertQueue(queue, {
-        durable: true,
-        arguments: {
-          'x-max-priority': 10, // Enable priority support
-        },
-      });
+      // Ensure queue exists — memoized, only asserts once per queue
+      await this.ensureQueue(queue);
 
       // Set prefetch to batch size
       await this.channel!.prefetch(batchSize);
@@ -445,12 +447,9 @@ class RabbitMQService {
   public async getQueueMessageCount(queue: string): Promise<number> {
     try {
       if (!this.channel) await this.connect();
-      const queueInfo = await this.channel!.assertQueue(queue, {
-        durable: true,
-        arguments: {
-          'x-max-priority': 10, // Enable priority support
-        },
-      });
+      // Ensure queue exists (memoized), then read its live stats without re-asserting
+      await this.ensureQueue(queue);
+      const queueInfo = await this.channel!.checkQueue(queue);
       return queueInfo.messageCount;
     } catch (error) {
       Console.red(`❌ Failed to get message count for queue ${queue}:`, error);

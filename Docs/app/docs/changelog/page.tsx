@@ -4,7 +4,46 @@ import type { Block } from '@/components/DocPage';
 const blocks: Block[] = [
   { type: 'timeline', versions: [
     {
-      ver: 'v3.5.44-stable', date: 'June 20, 2026', tag: 'LATEST',
+      ver: 'v5.7.46-stable', date: 'July 2, 2026', tag: 'LATEST',
+      changes: [
+        ['Improved', 'MongoDB connection pool size now scales with CPU count instead of a flat driver default — floor of 20, ceiling of 50 per worker, targeting ~200 aggregate connections across the cluster'],
+        ['Fixed',    'UDP socket buffer resizing now runs only after the socket confirms it is bound; previously threw silently and never applied, including in the upstream DNS forwarder'],
+        ['New',      'Docker entrypoint raises the OS-level UDP buffer ceiling (net.core.rmem_max/wmem_max) at container start so the buffer resize above actually takes effect'],
+        ['Fixed',    'RabbitMQ queue declarations were being re-asserted on every publish/consume call; now memoized once per queue per process, fixing an argument mismatch between publisher and consumer declarations along the way'],
+        ['Fixed',    'Removed a stray debug log firing on every cache-miss DNS lookup'],
+        ['Improved', 'Architecture documentation rewritten to match the current implementation'],
+      ],
+    },
+    {
+      ver: 'v4.7.46-stable', date: 'July 2, 2026',
+      changes: [
+        ['New',      'DNS query status handling now includes fail-safe options — queries keep resolving via cache or upstream even if MongoDB is temporarily unreachable'],
+        ['New',      'Health check service reports MongoDB, Redis, and RabbitMQ status'],
+        ['Improved', 'Cron job execution integrated into cluster master and Fastify server startup'],
+        ['Improved', 'RabbitMQ consumer batch size and timeout tuned for analytics processing'],
+        ['Improved', 'MongoDB connection initialization cleaned up, index creation syntax improved'],
+        ['Improved', 'Dockerfile and ecosystem config updated for service management; MongoDB connection initialization added to cluster setup'],
+      ],
+    },
+    {
+      ver: 'v4.6.45-stable', date: 'July 2, 2026',
+      changes: [
+        ['New',      'Log export functionality with async processing and cleanup'],
+        ['New',      'Anti-AI Mode — domain filtering for AI tools, joining Anti-Porn and Anti-Ads modes'],
+        ['New',      'User and role management routes and services (RBAC dashboard)'],
+        ['Improved', 'Permission handling for domain and user management features'],
+      ],
+    },
+    {
+      ver: 'v3.6.45-stable', date: 'July 2, 2026',
+      changes: [
+        ['Improved', 'Docs site rewritten, with a new achievements section on the homepage'],
+        ['Improved', 'UI components refactored for styling and consistency; layout and responsiveness enhanced'],
+        ['Refactor', 'Removed unused TCP broker and event mapping code'],
+      ],
+    },
+    {
+      ver: 'v3.5.44-stable', date: 'June 20, 2026',
       changes: [
         ['New',      'DNS over TCP (port 53) — RFC 1035 §4.2.2 / RFC 7766; 2-byte length-prefix framing, 30s idle timeout'],
         ['New',      'DNS over TLS / DoT (port 853) — RFC 7858; TLS 1.2+ enforced, self-signed cert auto-generated via openssl'],
