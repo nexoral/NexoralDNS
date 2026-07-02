@@ -4,7 +4,18 @@ import type { Block } from '@/components/DocPage';
 const blocks: Block[] = [
   { type: 'timeline', versions: [
     {
-      ver: 'v5.7.46-stable', date: 'July 2, 2026', tag: 'LATEST',
+      ver: 'v5.8.47-stable', date: 'July 2, 2026', tag: 'LATEST',
+      changes: [
+        ['Fixed',    'Upstream DNS forwarding no longer shares one socket across concurrent queries — a burst of many simultaneous lookups (e.g. one page load) was silently dropping most of them; traced to socket contention (verified: 20 concurrent queries through one shared socket lost 19, while giving each its own socket lost none, repeatably)'],
+        ['Improved', 'Each forwarded query now uses its own short-lived socket instead of a shared singleton, removing the transaction-ID rewriting and pending-request tracking the old design needed to disambiguate concurrent queries'],
+        ['New',      'Concurrent upstream forwards capped at 256 in-flight at once, queueing beyond that, so a large burst can no longer exhaust the process’s file descriptor limit'],
+        ['Improved', 'Upstream DNS provider list trimmed from 14 servers to 6 (Cloudflare, Google, Quad9 unfiltered) — dropped Verisign, OpenDNS (applies its own filtering even on "standard" tier), and 4x legacy Level3/CenturyLink IPs of uncertain reliability; cuts worst-case forwarding time from 28s to 12s'],
+        ['New',      'GitHub Actions workflow now detects whether a push only touched Docs/Markdown/.github/.claude files and skips the Docker build entirely for those, with a build-summary annotation either way (image size, digest, layer count on real builds)'],
+        ['Improved', 'Docs site version badge and install-command URLs are now server-rendered from GitHub’s live API (VERSION file, README.md) instead of hand-copied, cached 12h server-side and shared across all visitors'],
+      ],
+    },
+    {
+      ver: 'v5.7.46-stable', date: 'July 2, 2026',
       changes: [
         ['Improved', 'MongoDB connection pool size now scales with CPU count instead of a flat driver default — floor of 20, ceiling of 50 per worker, targeting ~200 aggregate connections across the cluster'],
         ['Fixed',    'UDP socket buffer resizing now runs only after the socket confirms it is bound; previously threw silently and never applied, including in the upstream DNS forwarder'],

@@ -66,14 +66,15 @@ NexoralDNS is a LAN-only DNS server and management system with:
         ▼                      ▼                      ▼
    [CACHE HIT]           [DB LOOKUP]           [UPSTREAM FORWARD]
    Redis record hit      MongoDB record,       No local record —
-                          single-flight-deduped forwarded to a
-                                                shuffled upstream
-                                                DNS pool (Cloudflare,
-                                                Google, Verisign,
-                                                OpenDNS, Level3,
-                                                Neustar) with per-
-                                                server 2s timeout
-                                                and automatic retry
+                          single-flight-deduped forwarded on a
+                                                dedicated per-query
+                                                socket to a shuffled
+                                                pool (Cloudflare,
+                                                Google, Quad9
+                                                unfiltered), 2s
+                                                per-server timeout,
+                                                capped at 256
+                                                concurrent forwards
 ```
 
 ### 2. Actual Query Processing Flow (4 checks, not the previously-documented 7)
@@ -192,8 +193,8 @@ NexoralDNS is a LAN-only DNS server and management system with:
                                   ▼
                     ┌────────────────────────────────┐
                     │  UPSTREAM DNS (shuffled pool)   │
-                    │  Cloudflare · Google · Verisign │
-                    │  OpenDNS · Level3 · Neustar     │
+                    │  Cloudflare · Google · Quad9    │
+                    │  (unfiltered), 6 IPs total      │
                     └────────────────────────────────┘
 ```
 
@@ -224,7 +225,7 @@ Web/src/
 │   │   └── ServiceStatusChecker.service.ts
 │   ├── DB/DB_Pool.service.ts        # DNS record + CNAME chain resolution
 │   ├── Rules/BlockList.service.ts   # ACL check, 3-layer cache
-│   └── Forwarder/GlobalDNSforwarder.service.ts  # Upstream DNS, singleton UDP socket
+│   └── Forwarder/GlobalDNSforwarder.service.ts  # Upstream DNS, dedicated per-query socket
 └── utilities/
     ├── IDNSIOHandler.ts             # Shared interface: UDP + TCP/TLS handlers implement this
     ├── IO.utls.ts                   # UDP implementation + pure DNS packet parsing
@@ -255,7 +256,7 @@ server/source/
 | `ServiceStatusChecker` | `.../Start/ServiceStatusChecker.service.ts` | Redis-cached service on/off switch, MongoDB `service` collection fallback |
 | `BlockList` | `.../Rules/BlockList.service.ts` | ACL check with 3 cache layers (local `Map` 5s → static global `Map` 3s → Redis `acl:ip:*`/`acl:all_users` sets), wildcard domain matching, fail-open on error |
 | `DomainDBPoolService` | `.../DB/DB_Pool.service.ts` | Resolves a domain to its record, walking CNAME chains up to 10 hops via sequential MongoDB `findOne` calls (each hop depends on the previous — cannot be parallelized) |
-| `DNSForwarderService` | `.../Forwarder/GlobalDNSforwarder.service.ts` | Singleton UDP socket forwarding to a shuffled upstream pool (Cloudflare/Google/Verisign/OpenDNS/Level3/Neustar), 2s per-server timeout with fallthrough, rewrites transaction IDs to multiplex concurrent forwards on one socket |
+| `GlobalDNSforwarder` | `.../Forwarder/GlobalDNSforwarder.service.ts` | Forwards each query on its own dedicated, short-lived UDP socket (not a shared singleton) to a shuffled 6-IP pool (Cloudflare/Google/Quad9 unfiltered), 2s per-server timeout with fallthrough. Concurrency capped at 256 in-flight forwards via a counting semaphore (`acquireForwardSlot`/`releaseForwardSlot`) — beyond that, requests queue for a slot rather than opening unbounded sockets |
 | `RedisCacheService` | `Web/src/Redis/Redis.cache.ts` | Singleton Redis client: generic CRUD, pub/sub (cache invalidation), ACL-specific reads (`getBlockedDomainsForIP`, `isDomainBlocked`) |
 | `RabbitMQService` | `Web/src/RabbitMQ/Rabbitmq.config.ts` (and a separately-maintained copy in `server/source/RabbitMQ/`) | Singleton AMQP client. Queue declarations are memoized per-process (`ensureQueue`) — asserted once, not on every publish/consume call |
 | `IDNSIOHandler` implementations | `IO.utls.ts` (UDP), `TCPInputOutputHandler.ts` (TCP/TLS) | Pure DNS packet parsing/building shared by all handlers; TCP/TLS variant delegates parsing to the UDP one and only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
@@ -266,8 +267,9 @@ server/source/
 
 - Both `Web/` and `server/` independently run `cluster.fork()` with `Math.max(1, Math.floor(os.cpus().length * 0.75))` workers and `cluster.schedulingPolicy = cluster.SCHED_RR` for round-robin distribution of incoming connections/datagrams across workers.
 - **MongoDB connection pooling is CPU-scaled**, not left at the driver default. Both `mongodb.db.ts` files compute `maxPoolSize` per worker as `clamp(200 / totalUsableCpus, 20, 50)` — a floor of 20 (so a single busy worker always has headroom) and a ceiling of 50 (since DNS/API lookups are single fast document reads, not bulk operations), targeting roughly 200 aggregate connections across the whole cluster rather than `workers × 100` (the driver default) with no coordination.
-- **UDP socket buffers are explicitly enlarged** (4MB requested via `setRecvBufferSize`/`setSendBufferSize`) on both the inbound query socket (`DNS.Service.ts`) and the outbound forwarder socket (`GlobalDNSforwarder.service.ts`), applied only after the socket is confirmed bound (`"listening"` event) — calling these setters on an unbound socket throws. The actual granted size is logged, since the OS caps the request at `net.core.rmem_max`/`wmem_max` regardless of what's asked for; on a stock Linux host with default sysctls (`rmem_max` = `rmem_default` = 212992 bytes), the code-level request is silently clamped back to the default unless that ceiling is separately raised.
+- **The inbound query socket's UDP buffer is explicitly enlarged** (4MB requested via `setRecvBufferSize`/`setSendBufferSize` in `DNS.Service.ts`), applied only after the socket is confirmed bound (`"listening"` event) — calling these setters on an unbound socket throws. The actual granted size is logged, since the OS caps the request at `net.core.rmem_max`/`wmem_max` regardless of what's asked for; on a stock Linux host with default sysctls (`rmem_max` = `rmem_default` = 212992 bytes), the code-level request is silently clamped back to the default unless that ceiling is separately raised.
 - The Docker deployment raises that ceiling automatically: `Scripts/docker-entrypoint.sh` writes to `/proc/sys/net/core/rmem_max`/`wmem_max` at container start (works because the `nexoraldns` service runs `privileged: true` + `network_mode: host` in `docker-compose.yml`/`dev.compose.yaml`, so there's no isolated network namespace — the write lands on the real host value). **The bare-metal `Scripts/install.sh` path does not yet do this** — see Known Gaps.
+- **Outbound upstream forwarding uses a dedicated socket per query, not one shared socket, and does not do buffer tuning** — a real production issue (frequent "no response from any DNS server" failures across unrelated domains) traced back to many concurrent queries sharing one forwarder socket: a direct test sending 20 queries through one shared socket at once dropped 19 of them; giving each query its own socket resolved 20/20, repeatably. Since buffer size wasn't the bottleneck (verified: the same loss occurred even with `rmem_max` already raised to 4MB), the fix was architectural, not a tuning knob. This also let the transaction-ID-rewriting/pending-request map the old shared-socket design needed be removed entirely — a dedicated socket has no other query to disambiguate a response from. Concurrent socket creation is capped at 256 in-flight forwards (`MAX_CONCURRENT_FORWARDS`) to bound file-descriptor usage under extreme concurrency; requests beyond the cap queue for a freed slot, trading added latency for staying alive over crashing outright.
 - **Single-flight deduplication** prevents duplicate concurrent MongoDB lookups for the same domain, but is scoped to one `StartRulesService` instance — since UDP/TCP/DoT each construct their own instance, and the IP-rebind path also constructs a fresh instance — a cold domain queried simultaneously across transports or immediately after a rebind is not deduplicated against those other instances.
 - **RabbitMQ queue declarations are memoized** per process via an `assertedQueues: Set<string>` guard in a shared `ensureQueue()` helper — every `publish`/`consume`/`publishBatch`/`consumeBatch`/`getQueueMessageCount` call site routes through it, so a queue is declared once per process lifetime rather than on every message (a queue is a durable, broker-side object that survives channel/connection drops, so re-declaring it per-message was pure overhead).
 
@@ -543,7 +545,7 @@ These are **targets the design aims for, not numbers verified by a load test** �
 |-------|---------------|-------|
 | Redis cache hit (record + service status) | **<2ms** | 2 sequential Redis round trips (service status, then record) — intentionally sequential, not parallelized, because either check can short-circuit the query before the more expensive path runs |
 | MongoDB lookup (cache miss) | **<5ms** | Single-flight-deduped `findOne`, sequential per CNAME hop (1 hop = 1 round trip; a 10-hop chain is ~10x a direct hit) |
-| Upstream forward | **<50ms** | 2s timeout per upstream server, automatic fallthrough across a shuffled 6-provider pool |
+| Upstream forward | **<50ms** | 2s timeout per upstream server, automatic fallthrough across a shuffled 6-IP/3-provider pool (worst case 12s if all 6 fail), on a dedicated per-query socket |
 
 A rough capacity model derived from reading the code (not a benchmark — see [Testing](#testing)): aggregate steady-state throughput scales with cluster width and available hardware, roughly **hundreds of QPS on Raspberry Pi-class hardware up to tens of thousands of QPS on dedicated multi-core servers**, with MongoDB (not the Node event loop or Redis) becoming the bottleneck under sustained cache-miss-heavy load. Domain concentration (how many clients share the same popular domains vs. each hitting unique long-tail ones) matters more than raw device count, since the Redis record cache benefits *all* clients querying a given domain within its TTL window, not just the client that populated it.
 
@@ -553,7 +555,7 @@ A rough capacity model derived from reading the code (not a benchmark — see [T
 
 - **Fail-safe on DB outage**: `Rules.service.ts` catches MongoDB errors at the service-status and ACL-check stages and sets `databaseOffline = true`, bypassing policy enforcement rather than returning SERVFAIL — the query still resolves via cache or upstream forward.
 - **Fail-open on ACL errors**: `BlockList.checkDomain` and `RedisCache.isDomainBlocked` both return `false` (allow) on internal errors rather than blocking all traffic.
-- **Multi-provider upstream forwarding**: 6 upstream DNS providers, shuffled per query, 2s per-server timeout with automatic fallthrough to the next provider on timeout or send failure.
+- **Multi-provider upstream forwarding**: 3 providers, 6 IPs (Cloudflare, Google, Quad9 unfiltered), shuffled per query, 2s per-server timeout with automatic fallthrough to the next provider on timeout or send failure — each query on its own dedicated socket, so one slow/failing query can't affect another's attempts.
 - **Automatic LAN IP rebinding**: `AutoIP_SCAN.utls.ts` polls the local IP every 10s (`Retry.Seconds`) and rebinds the UDP socket if it changes (e.g., DHCP lease renewal on the host itself), re-attaching all listeners and reconstructing `StartRulesService` to avoid stale-socket errors on in-flight queries.
 - **Self-signed DoT certificates**: auto-generated via `openssl` on first startup if absent, persisted to `/etc/nexoral/cert` (configurable via `DOT_CERT_DIR`) so the same cert survives restarts.
 
