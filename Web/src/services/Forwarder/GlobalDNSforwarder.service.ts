@@ -167,13 +167,21 @@ class DNSForwarderService {
       // Usually minimal handling needed for UDP socket error, maybe re-bind if closed
     });
 
-    // Optional: High buffer size for performance
-    try {
-      this.socket.setRecvBufferSize(4 * 1024 * 1024); // 4MB
-      this.socket.setSendBufferSize(4 * 1024 * 1024);
-    } catch (e) {
-      // Ignore if OS doesn't allow
-    }
+    // Buffer resizing requires a bound socket (throws EBADF otherwise) — this
+    // socket previously relied on implicit binding via the first send(), which
+    // meant the buffer size calls below always threw and were silently
+    // swallowed. Binding explicitly here (ephemeral port, all interfaces) lets
+    // "listening" fire before any query is forwarded, so tuning actually applies.
+    this.socket.on('listening', () => {
+      try {
+        this.socket.setRecvBufferSize(4 * 1024 * 1024); // 4MB requested
+        this.socket.setSendBufferSize(4 * 1024 * 1024);
+        Console.bright(`[Forwarder] UDP socket buffers granted: recv=${this.socket.getRecvBufferSize()} send=${this.socket.getSendBufferSize()} (raise net.core.rmem_max/wmem_max if lower than requested)`);
+      } catch (error) {
+        Console.yellow(`[Forwarder] Could not resize UDP socket buffers: ${error}`);
+      }
+    });
+    this.socket.bind();
   }
 
   private getNextId(): number {

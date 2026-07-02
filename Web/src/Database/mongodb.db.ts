@@ -1,9 +1,29 @@
 import { Collection, Document as MongoDocument, MongoClient } from "mongodb";
 import { Console } from "outers";
+import os from "os";
 import {DB_DEFAULT_CONFIGS} from "../Config/key";
 const connections = new Map<string, MongoClient>();
 const DB_clients = new Map<string, MongoClient>();
 const Collection_clients = new Map<string, Collection<MongoDocument>>();
+
+/**
+ * Computes a MongoDB connection pool size for this worker process, scaled to
+ * cluster width so aggregate connections across all workers (Cluster.ts forks
+ * floor(cpus * 0.75) of them) stay within a sane ceiling for a single MongoDB
+ * instance serving fast, single-document DNS lookups — instead of every worker
+ * independently defaulting to the driver's maxPoolSize of 100 regardless of
+ * how many workers are running.
+ */
+const computeMongoPoolSize = (): number => {
+  const TOTAL_CONNECTION_BUDGET = 200; // aggregate connections targeted across the whole cluster
+  const MIN_POOL_PER_WORKER = 20;
+  const MAX_POOL_PER_WORKER = 50; // driver default is 100; DNS lookups are single fast ops, not bulk queries
+
+  const totalUsableCpus = Math.max(1, Math.floor(os.cpus().length * 0.75));
+  const perWorker = Math.floor(TOTAL_CONNECTION_BUDGET / totalUsableCpus);
+
+  return Math.min(MAX_POOL_PER_WORKER, Math.max(MIN_POOL_PER_WORKER, perWorker));
+}
 
 
 /**
@@ -34,7 +54,7 @@ export const getCollectionClient = (collectionName: string): Collection<MongoDoc
 
 export default async () => {
   const mongoURL = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const client = new MongoClient(mongoURL);
+  const client = new MongoClient(mongoURL, { maxPoolSize: computeMongoPoolSize() });
   try {
     if (!connections.has(mongoURL)) {
       await client.connect();
