@@ -7,7 +7,7 @@ const REVALIDATE_SECONDS = 12 * 60 * 60; // 12 hours
 
 // Used only if GitHub is unreachable (rate limit, outage, network error), so the
 // site never breaks or shows blank content — falls back to the last-known-good values.
-const FALLBACK_VERSION = '5.7.46-stable';
+const FALLBACK_VERSION = '5.8.47-stable';
 const FALLBACK_INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/Scripts/install.sh`;
 
 interface GitHubContentsResponse {
