@@ -47,17 +47,17 @@ jobs:
             exit 0
           fi
 
-          # Anything NOT under Docs/ and NOT a *.md file anywhere in the repo counts
-          # as a real change — the Docker image (server/Web/client/DHCP, per the
-          # Dockerfile) doesn't include Docs/ or markdown at all, so a push confined
-          # to those has nothing to rebuild.
-          NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|.*\.md$)' || true)
+          # Anything NOT under Docs/, .github/, .claude/, and NOT a *.md file anywhere
+          # in the repo counts as a real change — none of these paths are part of the
+          # Docker image (server/Web/client/DHCP, per the Dockerfile), so a push
+          # confined to them has nothing to rebuild.
+          NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|.*\.md$)' || true)
 
           if [ -z "$NON_DOCS_CHANGES" ]; then
-            echo "::notice title=Docker build skipped::Only Docs/ and/or Markdown files changed in this push — none of these are part of the Docker image, skipping build/push."
+            echo "::notice title=Docker build skipped::Only Docs/, .github/, .claude/ and/or Markdown files changed in this push — none of these are part of the Docker image, skipping build/push."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Non-Docs/non-Markdown changes detected — proceeding with build."
+            echo "Non-excluded changes detected — proceeding with build."
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -68,7 +68,7 @@ jobs:
           {
             echo "### ⏭️ Docker build skipped"
             echo ""
-            echo "Only \`Docs/\` and/or Markdown files changed in this push — neither is part of the Docker image, so the build/push was skipped."
+            echo "Only \`Docs/\`, \`.github/\`, \`.claude/\` and/or Markdown files changed in this push — none of these are part of the Docker image, so the build/push was skipped."
             echo ""
             echo "| Field | Value |"
             echo "|---|---|"
