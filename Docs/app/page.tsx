@@ -1,10 +1,6 @@
 import Link from 'next/link';
 import CopyCodeBlock from '@/components/CopyCodeBlock';
-
-const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -';
-const START   = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s start';
-const STOP    = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s stop';
-const REMOVE  = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove';
+import { getLatestVersion, getInstallScriptUrl, installCommand } from '@/lib/github';
 
 const pipeline = [
   { t: 'L1', label: 'Redis cache',  tag: 'miss', c: '#f6b352' },
@@ -14,9 +10,9 @@ const pipeline = [
 ];
 
 const svcCmds = [
-  { title: 'Start', icon: '▶', flag: 'bash -s start', badgeBg: 'rgba(61,220,132,.12)', badgeFg: '#74e6a4', border: 'rgba(61,220,132,.16)', desc: 'Start NexoralDNS services if they are stopped.', cmd: START, foot: 'Starts all services without reinstalling.' },
-  { title: 'Stop',  icon: '■', flag: 'bash -s stop',  badgeBg: 'rgba(246,179,82,.12)', badgeFg: '#f6b352', border: 'rgba(246,179,82,.16)',  desc: 'Stop all NexoralDNS services gracefully.',   cmd: STOP,   foot: 'Stops services without removing the installation.' },
-  { title: 'Remove',icon: '✕', flag: 'bash -s remove',badgeBg: 'rgba(255,96,113,.12)', badgeFg: '#ff8a96', border: 'rgba(255,96,113,.16)',  desc: 'Completely uninstall NexoralDNS and all data.', cmd: REMOVE, foot: 'Removes all services, containers, images, and data.' },
+  { title: 'Start', icon: '▶', flag: 'bash -s start', badgeBg: 'rgba(61,220,132,.12)', badgeFg: '#74e6a4', border: 'rgba(61,220,132,.16)', desc: 'Start NexoralDNS services if they are stopped.', subcommand: 'start', foot: 'Starts all services without reinstalling.' },
+  { title: 'Stop',  icon: '■', flag: 'bash -s stop',  badgeBg: 'rgba(246,179,82,.12)', badgeFg: '#f6b352', border: 'rgba(246,179,82,.16)',  desc: 'Stop all NexoralDNS services gracefully.',   subcommand: 'stop',   foot: 'Stops services without removing the installation.' },
+  { title: 'Remove',icon: '✕', flag: 'bash -s remove',badgeBg: 'rgba(255,96,113,.12)', badgeFg: '#ff8a96', border: 'rgba(255,96,113,.16)',  desc: 'Completely uninstall NexoralDNS and all data.', subcommand: 'remove', foot: 'Removes all services, containers, images, and data.' },
 ];
 
 const transports = [
@@ -55,7 +51,11 @@ const explore = [
   { icon: '🧬', title: 'Architecture',    path: '/docs/architecture',    href: '/docs/architecture' },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const [version, scriptUrl] = await Promise.all([getLatestVersion(), getInstallScriptUrl()]);
+  const INSTALL = installCommand(scriptUrl);
+  const svcCmdsWithCmd = svcCmds.map(c => ({ ...c, cmd: installCommand(scriptUrl, c.subcommand) }));
+
   return (
     <>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '64px 56px 0', overflow: 'hidden' }} className="home-content">
@@ -172,7 +172,7 @@ export default function Home() {
 
         {/* ── SERVICE COMMANDS ─────────────────────────────────────────── */}
         <section style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr', gap: 16, overflow: 'hidden' }}>
-          {svcCmds.map((c, i) => (
+          {svcCmdsWithCmd.map((c, i) => (
             <div key={i} style={{ borderRadius: 16, padding: 20, background: 'rgba(12,17,26,.6)', border: `1px solid ${c.border}`, minWidth: 0, overflow: 'hidden' }}>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -198,7 +198,7 @@ export default function Home() {
             fontFamily: 'var(--font-geist-mono)', fontSize: 11.5, letterSpacing: '.08em', color: '#c4b5fd',
           }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#a78bfa', display: 'block' }} className="nd-pulse" />
-            WHAT&apos;S NEW · v3.5.44-stable
+            WHAT&apos;S NEW · v{version}
           </div>
 
           <h2 style={{ margin: '20px 0 12px', fontSize: 40, letterSpacing: '-.025em', fontWeight: 700, background: 'linear-gradient(100deg,#5b8cff,#34e1d4 40%,#a78bfa 80%)', backgroundSize: '220% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', animation: 'ndShimmer 8s linear infinite' }}>

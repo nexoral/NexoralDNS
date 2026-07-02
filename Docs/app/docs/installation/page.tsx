@@ -1,9 +1,12 @@
 import DocPage from '@/components/DocPage';
 import type { Block } from '@/components/DocPage';
+import { getInstallScriptUrl, installCommand } from '@/lib/github';
 
-const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -';
+async function getBlocks(): Promise<Block[]> {
+  const scriptUrl = await getInstallScriptUrl();
+  const INSTALL = installCommand(scriptUrl);
 
-const blocks: Block[] = [
+  return [
   { type: 'h', title: 'Quick installation' },
   { type: 'p', text: 'A single command installs Docker, downloads the latest images, and starts every service.' },
   { type: 'code', code: INSTALL, label: 'install' },
@@ -41,10 +44,10 @@ const blocks: Block[] = [
   ]},
   { type: 'callout', tone: 'warn', title: 'Change the default password', text: 'Change the default password immediately after first login — go to Settings → Change Password.' },
   { type: 'h', title: 'Service management' },
-  { type: 'code', code: 'curl -fsSL .../install.sh | bash -s start',  label: 'start services' },
-  { type: 'code', code: 'curl -fsSL .../install.sh | bash -s stop',   label: 'stop services' },
-  { type: 'code', code: 'curl -fsSL .../install.sh | bash -s update', label: 'update services' },
-  { type: 'code', code: 'curl -fsSL .../install.sh | bash -s remove', label: 'remove (irreversible)' },
+  { type: 'code', code: installCommand(scriptUrl, 'start'),  label: 'start services' },
+  { type: 'code', code: installCommand(scriptUrl, 'stop'),   label: 'stop services' },
+  { type: 'code', code: installCommand(scriptUrl, 'update'), label: 'update services' },
+  { type: 'code', code: installCommand(scriptUrl, 'remove'), label: 'remove (irreversible)' },
   { type: 'h', title: 'Verification' },
   { type: 'code', code: 'dig @192.168.1.100 google.com        # Linux/Mac\nnslookup google.com 192.168.1.100    # Windows', label: 'test resolution', prompt: false },
   { type: 'code', code: 'sudo docker compose ps', label: 'check status' },
@@ -55,9 +58,11 @@ const blocks: Block[] = [
     { icon: '🔌', title: 'API Reference',   href: '/docs/api' },
     { icon: '🔧', title: 'Troubleshooting', href: '/docs/troubleshooting' },
   ]},
-];
+  ];
+}
 
-export default function Installation() {
+export default async function Installation() {
+  const blocks = await getBlocks();
   return (
     <DocPage
       group="Get Started"

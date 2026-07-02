@@ -1,9 +1,13 @@
 import DocPage from '@/components/DocPage';
 import type { Block } from '@/components/DocPage';
+import { getInstallScriptUrl, installCommand } from '@/lib/github';
 
-const blocks: Block[] = [
+async function getBlocks(): Promise<Block[]> {
+  const scriptUrl = await getInstallScriptUrl();
+
+  return [
   { type: 'h', title: 'Command' },
-  { type: 'code', code: 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s start', label: 'start' },
+  { type: 'code', code: installCommand(scriptUrl, 'start'), label: 'start' },
   { type: 'h', title: 'What it does' },
   { type: 'list', variant: 'dot', items: [
     'Verifies NexoralDNS is installed',
@@ -23,9 +27,11 @@ const blocks: Block[] = [
 [✓] All services started successfully
 DNS Server Running (Port 53) | Web Dashboard Running (Port 4000)` },
   { type: 'callout', tone: 'info', title: 'Auto-start', text: 'By default containers use restart: unless-stopped — they auto-start after reboot unless explicitly stopped.' },
-];
+  ];
+}
 
-export default function StartCommand() {
+export default async function StartCommand() {
+  const blocks = await getBlocks();
   return (
     <DocPage
       group="Commands"

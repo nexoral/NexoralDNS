@@ -1,9 +1,12 @@
 import DocPage from '@/components/DocPage';
 import type { Block } from '@/components/DocPage';
+import { getInstallScriptUrl, installCommand } from '@/lib/github';
 
-const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -';
+async function getBlocks(): Promise<Block[]> {
+  const scriptUrl = await getInstallScriptUrl();
+  const INSTALL = installCommand(scriptUrl);
 
-const blocks: Block[] = [
+  return [
   { type: 'h', title: 'Command' },
   { type: 'code', code: INSTALL, label: 'install' },
   { type: 'h', title: 'What it does' },
@@ -25,13 +28,15 @@ Default credentials: admin / admin` },
   { type: 'callout', tone: 'warn', title: 'Change the default password', text: 'Change admin / admin immediately after first login at Settings → Change Password.' },
   { type: 'h', title: 'Troubleshooting' },
   { type: 'code', prompt: false, label: 'fixes', code: `# permission denied
-sudo curl -fsSL .../install.sh | sudo bash -
+sudo curl -fsSL ${scriptUrl} | sudo bash -
 # port 53 in use
 sudo systemctl disable systemd-resolved
 sudo systemctl stop systemd-resolved` },
-];
+  ];
+}
 
-export default function InstallCommand() {
+export default async function InstallCommand() {
+  const blocks = await getBlocks();
   return (
     <DocPage
       group="Commands"
