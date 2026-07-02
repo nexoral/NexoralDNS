@@ -7,7 +7,63 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.changes.outputs.skip }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0   # full history needed to diff against the previous commit
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Manual runs are an explicit request to build — never skip those.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manually triggered — building regardless of changed paths."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BEFORE_SHA="${{ github.event.before }}"
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "No previous commit to diff against (new branch/first push) — building."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED_FILES=$(git diff --name-only "$BEFORE_SHA" "${{ github.sha }}")
+          echo "Changed files in this push:"
+          echo "$CHANGED_FILES"
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "::notice title=Docker build skipped::No changed files detected between ${BEFORE_SHA} and ${{ github.sha }}."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Anything NOT under Docs/ and NOT a *.md file anywhere in the repo counts
+          # as a real change — the Docker image (server/Web/client/DHCP, per the
+          # Dockerfile) doesn't include Docs/ or markdown at all, so a push confined
+          # to those has nothing to rebuild.
+          NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|.*\.md$)' || true)
+
+          if [ -z "$NON_DOCS_CHANGES" ]; then
+            echo "::notice title=Docker build skipped::Only Docs/ and/or Markdown files changed in this push — none of these are part of the Docker image, skipping build/push."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Non-Docs/non-Markdown changes detected — proceeding with build."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-push:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -25,6 +81,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -33,3 +90,52 @@ jobs:
           file: ./Dockerfile
           build-args: |
             NODE_ENV=production
+
+      - name: Annotate image size and details
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="ghcr.io/${{ github.repository_owner }}/nexoraldns:latest"
+          docker pull "$IMAGE"
+
+          SIZE_BYTES=$(docker image inspect "$IMAGE" --format='{{.Size}}')
+          SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES/1024/1024}")
+          LAYERS=$(docker image inspect "$IMAGE" --format='{{len .RootFS.Layers}}')
+          DIGEST="${{ steps.build.outputs.digest }}"
+          PUSHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          echo "::notice title=Docker image pushed::${IMAGE} — ${SIZE_MB} MB, ${LAYERS} layers, digest ${DIGEST}"
+
+          {
+            echo "### 🐳 Docker image published"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Image | \`${IMAGE}\` |"
+            echo "| Digest | \`${DIGEST}\` |"
+            echo "| Size | ${SIZE_MB} MB |"
+            echo "| Layers | ${LAYERS} |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Pushed at | ${PUSHED_AT} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  skipped:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Annotate skipped build
+        shell: bash
+        run: |
+          {
+            echo "### ⏭️ Docker build skipped"
+            echo ""
+            echo "Only \`Docs/\` and/or Markdown files changed in this push — neither is part of the Docker image, so the build/push was skipped."
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Checked at | $(date -u +"%Y-%m-%dT%H:%M:%SZ") |"
+          } >> "$GITHUB_STEP_SUMMARY"

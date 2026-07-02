@@ -117,4 +117,4 @@ export default function FastifyServer() {
 if (process.argv[1] === __filename) {
   FastifyServer();
   startCronJob();
-}
+};;
