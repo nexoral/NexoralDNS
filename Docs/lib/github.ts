@@ -80,9 +80,9 @@ export async function getInstallScriptUrl(): Promise<string> {
   return match?.[0] || FALLBACK_INSTALL_SCRIPT_URL;
 }
 
-/** Builds the curl install command for a given script URL, with an optional subcommand. */
+/** Builds the command for a given script URL, using the new CLI wrapper if a subcommand is provided. */
 export function installCommand(scriptUrl: string, subcommand?: string): string {
   return subcommand
-    ? `curl -fsSL ${scriptUrl} | bash -s ${subcommand}`
-    : `curl -fsSL ${scriptUrl} | bash -`;
+    ? `sudo nexoraldns ${subcommand}`
+    : `curl -fsSL ${scriptUrl} | sudo bash -`;
 }

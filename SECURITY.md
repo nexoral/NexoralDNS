@@ -237,7 +237,7 @@ We support security research conducted in good faith. We will not pursue legal a
 1. **Keep Updated**
    ```bash
    # Check for updates regularly
-   curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s update
+   nexoraldns update
    ```
 
 2. **Change Default Credentials**
@@ -292,7 +292,7 @@ Security updates are announced through:
 
 ```bash
 # For Docker installations
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s update
+nexoraldns update
 
 # Verify update
 cat VERSION

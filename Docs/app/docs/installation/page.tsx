@@ -47,6 +47,7 @@ async function getBlocks(): Promise<Block[]> {
   { type: 'code', code: installCommand(scriptUrl, 'start'),  label: 'start services' },
   { type: 'code', code: installCommand(scriptUrl, 'stop'),   label: 'stop services' },
   { type: 'code', code: installCommand(scriptUrl, 'update'), label: 'update services' },
+  { type: 'code', code: installCommand(scriptUrl, 'pack'),   label: 'self-update CLI package' },
   { type: 'code', code: installCommand(scriptUrl, 'remove'), label: 'remove (irreversible)' },
   { type: 'h', title: 'Verification' },
   { type: 'code', code: 'dig @192.168.1.100 google.com        # Linux/Mac\nnslookup google.com 192.168.1.100    # Windows', label: 'test resolution', prompt: false },

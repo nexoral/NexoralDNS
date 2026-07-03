@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.changes.outputs.skip }}
+      skip_release: ${{ steps.changes.outputs.skip_release }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -23,17 +24,23 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Default values
+          skip_docker="false"
+          skip_release="false"
+
           # Manual runs are an explicit request to build — never skip those.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manually triggered — building regardless of changed paths."
+            echo "Manually triggered — building and releasing regardless of changed paths."
             echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "skip_release=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           BEFORE_SHA="${{ github.event.before }}"
           if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            echo "No previous commit to diff against (new branch/first push) — building."
+            echo "No previous commit to diff against (new branch/first push) — building and releasing."
             echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "skip_release=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -42,23 +49,47 @@ jobs:
           echo "$CHANGED_FILES"
 
           if [ -z "$CHANGED_FILES" ]; then
-            echo "::notice title=Docker build skipped::No changed files detected between ${BEFORE_SHA} and ${{ github.sha }}."
+            echo "::notice title=Docker build skipped::No changed files detected."
+            echo "::notice title=Release build skipped::No changed files detected."
             echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "skip_release=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Anything NOT under Docs/, .github/, .claude/, and NOT a *.md file anywhere
-          # in the repo counts as a real change — none of these paths are part of the
-          # Docker image (server/Web/client/DHCP, per the Dockerfile), so a push
-          # confined to them has nothing to rebuild.
+          # 1. Docker Build condition
+          # Anything NOT under Docs/, .github/, .claude/, and NOT a *.md file anywhere in the repo counts as a real change
           NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|.*\.md$)' || true)
-
           if [ -z "$NON_DOCS_CHANGES" ]; then
-            echo "::notice title=Docker build skipped::Only Docs/, .github/, .claude/ and/or Markdown files changed in this push — none of these are part of the Docker image, skipping build/push."
             echo "skip=true" >> "$GITHUB_OUTPUT"
+            skip_docker="true"
           else
-            echo "Non-excluded changes detected — proceeding with build."
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # 2. Package Release condition
+          # Only run if both VERSION changed AND any file in Scripts/ changed
+          version_changed=false
+          scripts_changed=false
+          if echo "$CHANGED_FILES" | grep -q "^VERSION$"; then
+            version_changed=true
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^Scripts/"; then
+            scripts_changed=true
+          fi
+
+          if [ "$version_changed" = "true" ] && [ "$scripts_changed" = "true" ]; then
+            echo "skip_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip_release=true" >> "$GITHUB_OUTPUT"
+            skip_release="true"
+            
+            if [ "$scripts_changed" = "true" ] && [ "$version_changed" = "false" ]; then
+              echo "::notice title=Release build skipped::Files under Scripts/ changed, but VERSION was not updated."
+            elif [ "$scripts_changed" = "false" ] && [ "$version_changed" = "true" ]; then
+              echo "::notice title=Release build skipped::VERSION changed, but no files under Scripts/ changed."
+            else
+              echo "::notice title=Release build skipped::Neither VERSION nor Scripts/ files changed."
+            fi
           fi
 
       - name: Annotate skipped build
@@ -68,7 +99,22 @@ jobs:
           {
             echo "### ⏭️ Docker build skipped"
             echo ""
-            echo "Only \`Docs/\`, \`.github/\`, \`.claude/\` and/or Markdown files changed in this push — none of these are part of the Docker image, so the build/push was skipped."
+            echo "Only Docs/, .github/, .claude/ and/or Markdown files changed in this push — none of these are part of the Docker image, so the build/push was skipped."
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Checked at | $(date -u +"%Y-%m-%dT%H:%M:%SZ") |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Annotate skipped release
+        if: steps.changes.outputs.skip_release == 'true'
+        shell: bash
+        run: |
+          {
+            echo "### ⏭️ Package release build skipped"
+            echo ""
+            echo "Release packaging was skipped because either the \`Scripts/\` files or the \`VERSION\` file was not updated in this push. Both must change to trigger an automated release."
             echo ""
             echo "| Field | Value |"
             echo "|---|---|"
@@ -137,7 +183,7 @@ jobs:
 
   release-packages:
     needs: detect-changes
-    if: needs.detect-changes.outputs.skip != 'true'
+    if: needs.detect-changes.outputs.skip_release != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

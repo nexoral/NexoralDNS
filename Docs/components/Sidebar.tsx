@@ -55,6 +55,7 @@ const navigation: NavSection[] = [
       { title: 'Stop', href: '/docs/commands/stop' },
       { title: 'Remove', href: '/docs/commands/remove' },
       { title: 'Update', href: '/docs/commands/update' },
+      { title: 'Pack', href: '/docs/commands/pack' },
     ],
   },
 ];
