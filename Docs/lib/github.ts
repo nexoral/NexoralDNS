@@ -83,6 +83,6 @@ export async function getInstallScriptUrl(): Promise<string> {
 /** Builds the command for a given script URL, using the new CLI wrapper if a subcommand is provided. */
 export function installCommand(scriptUrl: string, subcommand?: string): string {
   return subcommand
-    ? `sudo nexoraldns ${subcommand}`
+    ? `nexoraldns ${subcommand}`
     : `curl -fsSL ${scriptUrl} | sudo bash -`;
 }

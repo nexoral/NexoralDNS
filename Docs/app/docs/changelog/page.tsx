@@ -8,7 +8,7 @@ const blocks: Block[] = [
       changes: [
         ['New',      'Added automatic CLI packaging (.deb and .tar.gz) for amd64, arm64, and i386 architectures, published automatically to GitHub Releases on push.'],
         ['New',      'Added self-updating CLI feature via nexoraldns pack command to fetch, download, and install latest package releases directly.'],
-        ['Improved', 'Simplified CLI commands; after the first curl installation, users can manage all NexoralDNS services via direct sudo nexoraldns start/stop/update/remove commands.'],
+        ['Improved', 'Simplified CLI commands; after the first curl installation, users can manage all NexoralDNS services via direct nexoraldns start/stop/update/remove commands.'],
         ['New',      'Added automatic package registration to the installer, automatically downloading and installing the Debian package on initial deployment.'],
         ['Fixed',    'Completely uninstalls the CLI package and cleans up commands during the remove flow.'],
       ],
