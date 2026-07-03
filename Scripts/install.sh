@@ -1061,4 +1061,4 @@ if [ -f "$COMPOSE_FILE" ]; then
 else
   print_error "Failed to download docker-compose.yml"
   exit 1
-fi;;
+fi
