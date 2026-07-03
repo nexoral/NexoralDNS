@@ -3,8 +3,8 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main   # Trigger on push to main branch
-  workflow_dispatch:  # Allow manual trigger
+      - main
+  workflow_dispatch:
 
 jobs:
   detect-changes:
@@ -24,7 +24,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Default values
           skip_docker="false"
           skip_release="false"
 
@@ -56,9 +55,9 @@ jobs:
             exit 0
           fi
 
-          # 1. Docker Build condition
-          # Anything NOT under Docs/, .github/, .claude/, and NOT a *.md file anywhere in the repo counts as a real change
-          NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|.*\.md$)' || true)
+          # Scripts/install.sh and Scripts/versionControl.sh are host-side installer scripts never
+          # executed inside the container (only Scripts/docker-entrypoint.sh is), so they're excluded here.
+          NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|Scripts/install\.sh$|Scripts/versionControl\.sh$|.*\.md$)' || true)
           if [ -z "$NON_DOCS_CHANGES" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             skip_docker="true"
@@ -66,8 +65,6 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # 2. Package Release condition
-          # Only run if both VERSION changed AND any file in Scripts/ changed
           version_changed=false
           scripts_changed=false
           if echo "$CHANGED_FILES" | grep -q "^VERSION$"; then
@@ -99,7 +96,7 @@ jobs:
           {
             echo "### ⏭️ Docker build skipped"
             echo ""
-            echo "Only Docs/, .github/, .claude/ and/or Markdown files changed in this push — none of these are part of the Docker image, so the build/push was skipped."
+            echo "Only Docs/, .github/, .claude/, Scripts/install.sh, Scripts/versionControl.sh and/or Markdown files changed in this push — none of these affect the running Docker image, so the build/push was skipped."
             echo ""
             echo "| Field | Value |"
             echo "|---|---|"
@@ -198,39 +195,41 @@ jobs:
           VERSION=$(cat VERSION)
           echo "Building packages for version: $VERSION"
 
-          # Define architectures
           ARCHS=("amd64" "arm64" "i386")
 
           for ARCH in "${ARCHS[@]}"; do
-            # 1. Create packaging directory
             PKG_DIR="nexoraldns_${VERSION}_${ARCH}"
             mkdir -p "$PKG_DIR/DEBIAN"
             mkdir -p "$PKG_DIR/usr/bin"
+            mkdir -p "$PKG_DIR/etc/bash_completion.d"
 
-            # 2. Copy install.sh as nexoraldns CLI wrapper
             cp Scripts/install.sh "$PKG_DIR/usr/bin/nexoraldns"
             chmod +x "$PKG_DIR/usr/bin/nexoraldns"
 
-            # 3. Create control file
+            {
+              echo "# Bash completion for the nexoraldns CLI"
+              echo "_nexoraldns_completions() {"
+              echo "  local cur opts"
+              echo "  cur=\"\${COMP_WORDS[COMP_CWORD]}\""
+              echo "  opts=\"pack remove stop start update\""
+              echo "  COMPREPLY=(\$(compgen -W \"\${opts}\" -- \"\${cur}\"))"
+              echo "}"
+              echo "complete -F _nexoraldns_completions nexoraldns"
+            } > "$PKG_DIR/etc/bash_completion.d/nexoraldns"
+
             {
               echo "Package: nexoraldns"
               echo "Version: ${VERSION}"
               echo "Section: utils"
               echo "Priority: optional"
               echo "Architecture: ${ARCH}"
-              echo "Depends: curl, iproute2"
+              echo "Depends: curl, iproute2, bash-completion"
               echo "Maintainer: Nexoral Team <support@nexoral.in>"
               echo "Description: Advanced DNS Management & Surveillance System CLI wrapper."
             } > "$PKG_DIR/DEBIAN/control"
 
-
-            # 4. Build .deb package
             dpkg-deb --build "$PKG_DIR"
-
-            # 5. Create .tar.gz package containing the binary script
             tar -czf "nexoraldns_${VERSION}_${ARCH}.tar.gz" -C "$PKG_DIR/usr/bin" nexoraldns
-
-            # Cleanup build folder
             rm -rf "$PKG_DIR"
           done
 
@@ -239,8 +238,7 @@ jobs:
           GH_TOKEN: ${{ secrets.ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(cat VERSION)
-          
-          # Check if the release already exists, if not create it
+
           if gh release view "$VERSION" >/dev/null 2>&1; then
             echo "Release $VERSION already exists. Uploading/updating assets..."
             gh release upload "$VERSION" nexoraldns_*.deb nexoraldns_*.tar.gz --clobber
@@ -251,15 +249,13 @@ jobs:
               --notes "Automated release of NexoralDNS CLI packages and Docker image for version $VERSION."
           fi
 
-          # Keep only the last 2 releases and delete older ones
           echo "Fetching all releases..."
           ALL_RELEASES=$(gh release list --limit 100 --json tagName --jq '.[].tagName' 2>/dev/null || echo "")
-          
+
           if [ -n "$ALL_RELEASES" ]; then
-            # Convert to array
             readarray -t TAGS <<< "$ALL_RELEASES"
-            
-            # If there are more than 2 releases, keep the first 2 (index 0 and 1) and delete the rest
+
+            # gh release list returns newest-first, so index 0/1 are the 2 releases to keep
             if [ ${#TAGS[@]} -gt 2 ]; then
               echo "Found ${#TAGS[@]} releases. Keeping the 2 latest. Deleting older ones..."
               for ((i=2; i<${#TAGS[@]}; i++)); do
