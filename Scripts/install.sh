@@ -1,28 +1,94 @@
 #!/bin/bash
 
-# Color definitions
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-NC='\033[0m' # No Color
-BOLD='\033[1m'
+# ============================================================================
+# NexoralDNS CLI orchestrator.
+#
+# This file only does two things:
+#   1. Registers `nexoraldns` as a CLI command on first run.
+#   2. Loads the task modules under cli/ (installed at /usr/share/nexoraldns/cli
+#      by the .deb package, or fetched once on a fresh `curl | bash` run) and
+#      dispatches to the requested subcommand.
+#
+# All actual task logic (docker engine install/purge, remove, start, stop,
+# update, pack, deploy) lives in Scripts/cli/*.sh — see that directory.
+# ============================================================================
 
-# Function to set terminal window/tab title in VS Code and xterm terminals
-set_terminal_title() {
-  # Try writing all common window/icon/tab title escape sequences (0, 1, 2) directly to /dev/tty
-  if [ -c /dev/tty ]; then
-    printf "\033]0;%s\007\033]1;%s\007\033]2;%s\007" "$1" "$1" "$1" >/dev/tty 2>/dev/null
-  else
-    printf "\033]0;%s\007\033]1;%s\007\033]2;%s\007" "$1" "$1" "$1" 2>/dev/null
+# Installed location for CLI modules shipped by the .deb package.
+NEXORALDNS_CLI_DIR="/usr/share/nexoraldns/cli"
+
+# Every module this CLI needs, in load order (libs before commands).
+CLI_MODULES=(
+  lib-common.sh
+  lib-system-check.sh
+  lib-docker-engine.sh
+  lib-docker-compose-ops.sh
+  cmd-deploy.sh
+  cmd-pack.sh
+  cmd-remove.sh
+  cmd-stop.sh
+  cmd-start.sh
+  cmd-update.sh
+)
+
+# Locate a directory that already contains every module we need — either a
+# sibling cli/ next to this script (dev checkout) or the installed package
+# location. Prints the directory and returns 0, or returns 1 if incomplete.
+resolve_cli_dir() {
+  local candidate script_dir module all_present
+
+  if [ -n "${BASH_SOURCE:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    candidate="$script_dir/cli"
+    if [ -d "$candidate" ]; then
+      all_present=1
+      for module in "${CLI_MODULES[@]}"; do
+        [ -f "$candidate/$module" ] || { all_present=0; break; }
+      done
+      if [ "$all_present" -eq 1 ]; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    fi
   fi
+
+  if [ -d "$NEXORALDNS_CLI_DIR" ]; then
+    all_present=1
+    for module in "${CLI_MODULES[@]}"; do
+      [ -f "$NEXORALDNS_CLI_DIR/$module" ] || { all_present=0; break; }
+    done
+    if [ "$all_present" -eq 1 ]; then
+      printf '%s\n' "$NEXORALDNS_CLI_DIR"
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
-# Automatically set terminal title based on action
-case "$1" in
+# Downloads every module into a fresh temp directory. Used only on a brand
+# new machine (curl | bash) before nexoraldns has ever been installed.
+fetch_cli_modules() {
+  local tmp module
+  tmp="$(mktemp -d)"
+  for module in "${CLI_MODULES[@]}"; do
+    if ! curl -fsSL "https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/cli/$module" -o "$tmp/$module"; then
+      echo "[ERROR] Failed to download CLI module: $module" >&2
+      exit 1
+    fi
+  done
+  printf '%s\n' "$tmp"
+}
+
+CLI_DIR="$(resolve_cli_dir)" || CLI_DIR="$(fetch_cli_modules)"
+
+NEXORALDNS_CLI_LOADED=1
+for module in "${CLI_MODULES[@]}"; do
+  # shellcheck source=/dev/null
+  source "$CLI_DIR/$module"
+done
+
+# Set the terminal title immediately based on the requested action.
+case "${1:-}" in
   remove) set_terminal_title "NexoralDNS Uninstaller" ;;
   stop)   set_terminal_title "Stopping NexoralDNS" ;;
   start)  set_terminal_title "Starting NexoralDNS" ;;
@@ -30,723 +96,16 @@ case "$1" in
   *)      set_terminal_title "NexoralDNS Installer" ;;
 esac
 
-
-# Function to print colored output
-print_status() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-# System detection functions
-detect_linux() {
-    if [[ "$OSTYPE" != "linux-gnu"* ]]; then
-        return 1
-    fi
-    return 0
-}
-
-detect_debian_based() {
-    if ! command -v apt &> /dev/null; then
-        return 1
-    fi
-    return 0
-}
-
-detect_supported_distro() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        case "$ID" in
-            ubuntu|zorin|linuxmint|debian)
-                return 0
-                ;;
-            *)
-                return 1
-                ;;
-        esac
-    else
-        return 1
-    fi
-}
-
-# Ensure systemd-resolved is running; if it's not active, start it.
-ensure_systemd_resolved_running() {
-  if ! command -v systemctl >/dev/null 2>&1; then
-    print_warning "systemctl not found; cannot manage systemd-resolved."
-    return 2
-  fi
-
-  if systemctl is-active --quiet systemd-resolved; then
-    print_status "systemd-resolved is already active."
-    return 0
-  fi
-
-  print_status "systemd-resolved is not active — enabling and restarting service..."
-  # First enable the service so it starts automatically at boot
-  if sudo systemctl enable systemd-resolved >/dev/null 2>&1; then
-    print_status "systemd-resolved enabled for automatic startup at boot."
-    # Then restart the service to activate it now
-    if sudo systemctl restart systemd-resolved >/dev/null 2>&1; then
-      if systemctl is-active --quiet systemd-resolved; then
-        print_success "systemd-resolved enabled and started successfully."
-        return 0
-      fi
-    fi
-  fi
-
-  print_error "Failed to start systemd-resolved."
-  return 1
-}
-
-# If systemd-resolved is enabled, disable and stop it (useful when you must free port 53).
-disable_systemd_resolved_if_enabled() {
-  if ! command -v systemctl >/dev/null 2>&1; then
-    print_warning "systemctl not found; cannot manage systemd-resolved."
-    return 2
-  fi
-
-  local acted=0
-  # If the service is active (running) stop it so port 53 is freed
-  if systemctl is-active --quiet systemd-resolved 2>/dev/null; then
-    print_status "systemd-resolved is active — stopping now to free port 53..."
-    if sudo systemctl stop systemd-resolved >/dev/null 2>&1; then
-      print_success "systemd-resolved stopped."
-      acted=1
-    else
-      print_error "Failed to stop systemd-resolved."
-      return 1
-    fi
-  fi
-
-  # If the service is enabled, disable it so it doesn't restart at boot
-  if systemctl is-enabled --quiet systemd-resolved 2>/dev/null; then
-    print_status "systemd-resolved is enabled — disabling now..."
-    if sudo systemctl disable systemd-resolved >/dev/null 2>&1; then
-      print_success "systemd-resolved disabled."
-      acted=1
-    else
-      print_error "Failed to disable systemd-resolved."
-      return 1
-    fi
-  fi
-
-  if [ $acted -eq 0 ]; then
-    print_status "systemd-resolved was neither active nor enabled (nothing to do)."
-  fi
-  return 0
-}
-
-# Update /etc/resolv.conf to use the given nameserver IP.
-# Replaces existing nameserver lines and preserves other lines.
-set_resolv_nameserver() {
-  local ns_ip="$1"
-  if [ -z "$ns_ip" ]; then
-    print_warning "No nameserver IP provided to set_resolv_nameserver"
-    return 1
-  fi
-
-  print_status "Updating /etc/resolv.conf nameserver -> $ns_ip"
-
-  # Capture existing non-nameserver lines (if any)
-  local rest
-  rest=$(sudo grep -vE '^[[:space:]]*nameserver' /etc/resolv.conf 2>/dev/null || true)
-
-  # If it's a symlink (commonly managed by systemd-resolved), replace it with a regular file
-  if [ -L /etc/resolv.conf ]; then
-    print_warning "/etc/resolv.conf is a symlink; replacing it with a regular file"
-    sudo rm -f /etc/resolv.conf
-  fi
-
-  # Write the new resolv.conf atomically
-  sudo bash -c "printf 'nameserver %s\n' '$ns_ip' > /etc/resolv.conf"
-
-  if [ -n "$rest" ]; then
-    printf '%s\n' "$rest" | sudo tee -a /etc/resolv.conf > /dev/null
-  fi
-
-  print_success "/etc/resolv.conf updated to use nameserver $ns_ip"
-  return 0
-}
-
-# Check that required TCP ports are free (default: 4000 and 4773).
-# Returns 0 when all ports are free, 1 if any port is in use.
-check_ports_free() {
-  local ports=(4000 4773)
-  local port
-  local occupied=0
-
-  for port in "${ports[@]}"; do
-    if command -v lsof >/dev/null 2>&1; then
-      if sudo lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-        print_error "Port $port is already in use."
-        occupied=1
-      else
-        print_status "Port $port is free."
-      fi
-    else
-      # fallback to ss if lsof isn't available
-      if ss -ltn 2>/dev/null | awk '{print $4}' | grep -Eq ":[0-9]*:$port$|:$port\b"; then
-        print_error "Port $port is already in use."
-        occupied=1
-      else
-        print_status "Port $port is free."
-      fi
-    fi
-  done
-
-  return $occupied
-}
-
-# Compare semantic version strings: compare a and b
-# returns: 1 if a>b (remote>local), 2 if a<b, 0 if equal
-version_compare() {
-  local a="$1" b="$2"
-  local IFS=.
-  local raw1 raw2 i
-  local -a ver1 ver2
-
-  # Strip suffix (ignore -beta/-stable)
-  raw1="${a%%-*}"
-  raw2="${b%%-*}"
-
-  read -ra ver1 <<<"$raw1"
-  read -ra ver2 <<<"$raw2"
-
-  # pad shorter array with zeros
-  for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do ver1[i]=0; done
-  for ((i=${#ver2[@]}; i<${#ver1[@]}; i++)); do ver2[i]=0; done
-
-  for ((i=0; i<${#ver1[@]}; i++)); do
-    if ((10#${ver1[i]} > 10#${ver2[i]})); then return 1; fi
-    if ((10#${ver1[i]} < 10#${ver2[i]})); then return 2; fi
-  done
-  return 0
-}
-
-# System compatibility checks function
-check_system_compatibility() {
-  print_status "Checking system compatibility..."
-
-  # Check if running on Linux
-  if ! detect_linux; then
-    print_error "This installer only supports Linux systems."
-    print_status "Requirements:"
-    echo "  • Linux operating system"
-    echo "  • Debian-based distribution (Ubuntu, Zorin OS, Linux Mint, Debian)"
-    echo "  • APT package manager"
-    exit 1
-  fi
-
-  print_success "✓ Linux system detected"
-
-  # Check if Debian-based (has apt)
-  if ! detect_debian_based; then
-    print_error "This installer requires a Debian-based Linux distribution with APT package manager."
-    print_status "Supported distributions:"
-    echo "  • Ubuntu (18.04 LTS or newer)"
-    echo "  • Zorin OS (15 or newer)"
-    echo "  • Linux Mint (19 or newer)"
-    echo "  • Debian (10 or newer)"
-    print_status "Your system appears to be missing the APT package manager."
-    exit 1
-  fi
-
-  print_success "✓ Debian-based system detected"
-
-  # Check if supported distribution
-  if ! detect_supported_distro; then
-    if [ -f /etc/os-release ]; then
-      . /etc/os-release
-      print_error "Unsupported Linux distribution: $PRETTY_NAME"
-    else
-      print_error "Unable to detect Linux distribution."
-    fi
-    print_status "Supported distributions:"
-    echo "  • Ubuntu (18.04 LTS or newer)"
-    echo "  • Zorin OS (15 or newer)"
-    echo "  • Linux Mint (19 or newer)"
-    echo "  • Debian (10 or newer)"
-    print_warning "Other Debian-based distributions may work but are not officially supported."
-    exit 1
-  fi
-
-  if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    print_success "✓ Supported distribution detected: $PRETTY_NAME"
-  fi
-
-  # Check system resources
-  print_status "Checking system resources..."
-
-  # Check available RAM (minimum 2GB required)
-  TOTAL_RAM_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-  TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
-  MIN_RAM_GB=2
-
-  if [ "$TOTAL_RAM_GB" -lt "$MIN_RAM_GB" ]; then
-    print_error "Insufficient RAM detected: ${TOTAL_RAM_GB}GB available"
-    print_status "Minimum required: ${MIN_RAM_GB}GB RAM"
-    print_warning "NexoralDNS requires at least ${MIN_RAM_GB}GB of available RAM to run properly."
-    exit 1
-  fi
-
-  print_success "✓ RAM check passed: ${TOTAL_RAM_GB}GB available"
-
-  # Check available storage (minimum 10GB required)
-  AVAILABLE_STORAGE_KB=$(df "$HOME" | awk 'NR==2 {print $4}')
-  AVAILABLE_STORAGE_GB=$((AVAILABLE_STORAGE_KB / 1024 / 1024))
-  MIN_STORAGE_GB=10
-
-  if [ "$AVAILABLE_STORAGE_GB" -lt "$MIN_STORAGE_GB" ]; then
-    print_error "Insufficient storage space: ${AVAILABLE_STORAGE_GB}GB available"
-    print_status "Minimum required: ${MIN_STORAGE_GB}GB free storage"
-    print_warning "NexoralDNS requires at least ${MIN_STORAGE_GB}GB of free storage space."
-    exit 1
-  fi
-
-  print_success "✓ Storage check passed: ${AVAILABLE_STORAGE_GB}GB available"
-  echo ""
-}
-
-
-
-
-# Pull a Docker image while rendering our own progress bar in the terminal.
-# Progress is derived from docker's per-layer status stream, so the bar stays
-# in sync with the real pull, but docker's raw layer output is never shown.
-# Each layer counts as 2 units of work: download complete + extract complete.
-pull_image_with_progress() {
-  local img="$1"
-  local label="$2"
-
-  # No TTY (output piped/redirected): a redrawing bar would produce garbage,
-  # so keep the previous quiet behaviour.
-  if [ ! -t 1 ]; then
-    sudo docker pull "$img" > /dev/null 2>&1
-    return $?
-  fi
-
-  sudo docker pull "$img" 2>&1 | {
-    local total=0 done_units=0 pct=0 last_pct=-1
-    local bar_width=30 filled bar line
-    printf "${GREEN}[INFO]${NC} %s [%-${bar_width}s]   0%%" "$label" ""
-    while IFS= read -r line; do
-      case "$line" in
-        *": Pulling fs layer")          total=$((total + 2)) ;;
-        *": Already exists")            total=$((total + 2)); done_units=$((done_units + 2)) ;;
-        *": Download complete")         done_units=$((done_units + 1)) ;;
-        *": Pull complete")             done_units=$((done_units + 1)) ;;
-        "Status: Image is up to date"*) total=2; done_units=2 ;;
-      esac
-      [ "$total" -eq 0 ] && continue
-      pct=$(( done_units * 100 / total ))
-      [ "$pct" -gt 100 ] && pct=100
-      [ "$pct" -eq "$last_pct" ] && continue
-      last_pct=$pct
-      filled=$(( pct * bar_width / 100 ))
-      bar=$(printf '%*s' "$filled" '' | tr ' ' '#')
-      printf "\r${GREEN}[INFO]${NC} %s [%-${bar_width}s] %3d%%" "$label" "$bar" "$pct"
-    done
-    # Clear the bar line so the caller's success/warning message replaces it
-    printf '\r\033[2K'
-  }
-  return "${PIPESTATUS[0]}"
-}
-
-# Pull required images from registry before stopping system services (so DNS works during pull)
-pull_required_images() {
-  # Friendly service-oriented labels instead of raw image names
-  local entries=(
-    "mongo:latest|MongoDB|Configuring"
-    "redis:latest|Redis|Configuring"
-    "rabbitmq:management|RabbitMQ|Configuring"
-    "ghcr.io/nexoral/nexoraldns:latest|NexoralDNS|Installing"
-  )
-  local entry img label verb
-  print_status "Pulling required Docker images before stopping DNS..."
-  for entry in "${entries[@]}"; do
-    IFS='|' read -r img label verb <<< "$entry"
-    if pull_image_with_progress "$img" "${verb} ${label}"; then
-      if [ "$verb" = "Installing" ]; then
-        print_success "${label} installed."
-      else
-        print_success "${label} configured."
-      fi
-    else
-      print_warning "Failed to configure ${label} (continue anyway)"
-    fi
-  done
-}
-
-# Run docker compose but first pull required images (used for first-time/default install)
-run_docker_compose_with_pull() {
-  local command="$1"
-  local message="$2"
-  print_status "$message"
-  pull_required_images
-  # After pulling images, disable systemd-resolved if enabled so containers can bind to 53
-  disable_systemd_resolved_if_enabled
-  cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
-}
-
-# Run docker compose without pulling images first (used for start/stop flows)
-run_docker_compose() {
-  local command="$1"
-  local message="$2"
-  print_status "$message"
-  # If bringing containers up, ensure systemd-resolved is disabled before starting
-  if [[ "$command" == *"up -d"* ]]; then
-    disable_systemd_resolved_if_enabled
-  fi
-  cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
-}
-
-# Check for pack argument (self-update CLI package)
-if [[ "$1" == "pack" ]]; then
-    ARCH=$(dpkg --print-architecture 2>/dev/null)
-    echo "Detected architecture: $ARCH"
-    
-    if [[ "$ARCH" != "amd64" && "$ARCH" != "arm64" && "$ARCH" != "i386" ]]; then
-        print_error "Unsupported architecture: $ARCH"
-        exit 1
-    fi
-    
-    print_status "Checking for latest nexoraldns package version..."
-    REPO="nexoral/NexoralDNS"
-    RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
-    
-    if [ -z "$RELEASE_INFO" ]; then
-        print_error "Could not fetch release information from GitHub."
-        exit 1
-    fi
-    
-    REMOTE_VER=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-    if [ -z "$REMOTE_VER" ]; then
-        print_error "Could not parse latest version tag."
-        exit 1
-    fi
-    
-    LOCAL_VER=$(dpkg -s nexoraldns 2>/dev/null | grep -i "^Version:" | awk '{print $2}')
-    if [ -z "$LOCAL_VER" ]; then
-        LOCAL_VER="0.0.0"
-    fi
-    
-    print_status "Local CLI Version: ${LOCAL_VER} | Remote CLI Version: ${REMOTE_VER}"
-    
-    version_compare "$REMOTE_VER" "$LOCAL_VER"
-    comp=$?
-    if [ $comp -ne 1 ]; then
-        print_success "NexoralDNS CLI package is already up to date!"
-        exit 0
-    fi
-    
-    PKG="nexoraldns_${REMOTE_VER}_${ARCH}.deb"
-    URL="https://github.com/${REPO}/releases/download/${REMOTE_VER}/${PKG}"
-    print_status "Downloading package: $PKG from $URL"
-    
-    TEMP_DEB="/tmp/$PKG"
-    if curl -fsSL "$URL" -o "$TEMP_DEB"; then
-        print_status "Installing latest package..."
-        sudo dpkg -i "$TEMP_DEB"
-        rm -f "$TEMP_DEB"
-        print_success "NexoralDNS CLI package successfully updated to ${REMOTE_VER}!"
-    else
-        print_error "Failed to download package from $URL"
-        exit 1
-    fi
-    exit 0
-fi
-
-# Check for remove argument
-if [[ "$1" == "remove" ]]; then
-    clear
-    set_terminal_title "NexoralDNS Uninstaller"
-    echo -e "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║${NC}                                                              ${RED}║${NC}"
-    echo -e "${RED}║${NC}          ${BOLD}${WHITE}NexoralDNS Uninstaller${NC}                          ${RED}║${NC}"
-    echo -e "${RED}║${NC}                                                              ${RED}║${NC}"
-    echo -e "${RED}║${NC}        ${WHITE}This will completely remove NexoralDNS${NC}              ${RED}║${NC}"
-    echo -e "${RED}║${NC}                                                              ${RED}║${NC}"
-    echo -e "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    DOWNLOAD_DIR="$HOME/NexoralDNS"
-    
-    # Check if running in non-interactive mode (piped input)
-    if [[ ! -t 0 ]]; then
-        print_warning "Non-interactive mode detected. Proceeding with removal..."
-        REPLY="y"
-    else
-        print_warning "This will remove all NexoralDNS configurations and data!"
-        read -p "Are you sure you want to continue? (y/N): " -n 1 -r
-        echo
-    fi
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_status "Uninstallation cancelled."
-        exit 0
-    fi
-    
-    print_status "Stopping NexoralDNS services..."
-    if [ -d "$DOWNLOAD_DIR" ]; then
-        cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
-        print_success "Services stopped successfully."
-    else
-        print_warning "NexoralDNS directory not found."
-    fi
-    
-  # Ensure systemd-resolved is running after shutdown
-  ensure_systemd_resolved_running
-  # Reset local resolver to systemd stub resolver
-  set_resolv_nameserver "127.0.0.53"
-    
-    print_status "Removing Docker images..."
-    sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
-    sudo docker rmi mongo:latest 2>/dev/null || true
-    sudo docker rmi redis:latest 2>/dev/null || true
-    sudo docker rmi rabbitmq:management 2>/dev/null || true
-    print_success "Docker images removed."
-    
-    print_status "Removing NexoralDNS directory..."
-    if [ -d "$DOWNLOAD_DIR" ]; then
-        rm -rf "$DOWNLOAD_DIR"
-        print_success "Directory removed: $DOWNLOAD_DIR"
-    else
-        print_warning "Directory not found: $DOWNLOAD_DIR"
-    fi
-    
-    print_status "Cleaning up Docker volumes..."
-    sudo docker volume rm nexoraldns_mongodb_data 2>/dev/null || true
-    sudo docker volume rm nexoraldns_redis_data 2>/dev/null || true
-    sudo docker volume rm nexoraldns_rabbitmq_data 2>/dev/null || true
-    print_success "Docker volumes cleaned."
-
-    # Remove firewall rules if UFW is enabled
-    if command -v ufw &> /dev/null; then
-      if sudo ufw status | grep -q "Status: active"; then
-        print_status "Removing firewall rules..."
-        for port in 53 4000 4773; do
-          if sudo ufw delete allow $port > /dev/null 2>&1; then
-            print_success "Port $port rule removed from UFW"
-          fi
-        done
-        if sudo ufw reload > /dev/null 2>&1; then
-          print_success "UFW firewall rules updated"
-        fi
-    fi
-    fi
-
-    # Remove the nexoraldns command / package itself
-    print_status "Removing CLI package..."
-    if dpkg -s nexoraldns >/dev/null 2>&1; then
-        sudo dpkg -P nexoraldns >/dev/null 2>&1 || true
-    fi
-    sudo rm -f /usr/bin/nexoraldns 2>/dev/null || true
-    print_success "CLI package removed."
-
-    echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${NC}                    ${BOLD}${GREEN}Uninstallation Complete!${NC}                  ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${WHITE}NexoralDNS has been completely removed from your system${NC}  ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${YELLOW}Don't forget to:${NC}                                      ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${WHITE}• Reset your router's DNS settings${NC}                     ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${WHITE}• Remove any static IP reservations${NC}                    ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
-    
-    exit 0
-fi
-
-# Check for stop argument
-if [[ "$1" == "stop" ]]; then
-    clear
-    set_terminal_title "Stopping NexoralDNS"
-    echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${YELLOW}║${NC}                                                              ${YELLOW}║${NC}"
-    echo -e "${YELLOW}║${NC}          ${BOLD}${WHITE}Stopping NexoralDNS Services${NC}                   ${YELLOW}║${NC}"
-    echo -e "${YELLOW}║${NC}                                                              ${YELLOW}║${NC}"
-    echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    DOWNLOAD_DIR="$HOME/NexoralDNS"
-    
-    if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
-        print_status "Stopping NexoralDNS services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
-        print_success "All NexoralDNS services have been stopped successfully!"
-    # Ensure systemd-resolved is running after shutdown
-    ensure_systemd_resolved_running
-  # Reset local resolver to systemd stub resolver
-  set_resolv_nameserver "127.0.0.53"
-    else
-        print_warning "NexoralDNS installation not found or docker-compose.yml missing."
-        print_status "Please ensure NexoralDNS is installed in $DOWNLOAD_DIR"
-    fi
-    
-    exit 0
-fi
-
-# Check for start argument
-if [[ "$1" == "start" ]]; then
-  # Ensure required ports are free; abort if any are occupied
-  if ! check_ports_free; then
-    print_error "One or more required ports are in use (4000, 4773). Please free them and try again."
-    exit 1
-  fi
-  # Ensure systemd-resolved is running after shutdown
-  ensure_systemd_resolved_running
-    clear
-    set_terminal_title "Starting NexoralDNS"
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}          ${BOLD}${WHITE}Starting NexoralDNS Services${NC}                   ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    DOWNLOAD_DIR="$HOME/NexoralDNS"
-    
-    if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
-        
-  print_status "Starting NexoralDNS services..."
-  run_docker_compose "up -d" "Starting NexoralDNS services (this may take a few minutes)..."
-  print_success "All NexoralDNS services have been started successfully!"
-        
-        # Get the DHCP IP address
-        print_status "Detecting network configuration..."
-        DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
-        if [ -z "$DHCP_IP" ]; then
-            DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
-        fi
-
-        # Update system resolver to point to this server so containers and host use NexoralDNS
-        if [ -n "$DHCP_IP" ]; then
-          set_resolv_nameserver "$DHCP_IP"
-        else
-          print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
-        fi
-        
-        echo ""
-        echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║${NC}                    ${BOLD}${GREEN}Services Started!${NC}                       ${GREEN}║${NC}"
-        echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-        if [ -n "$DHCP_IP" ]; then
-            echo -e "${GREEN}║${NC}  ${WHITE}Server IP:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC}                              ${GREEN}║${NC}"
-            echo -e "${GREEN}║${NC}  ${WHITE}Web Interface:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}              ${GREEN}║${NC}"
-        else
-            echo -e "${GREEN}║${NC}  ${WHITE}Web Interface:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}              ${GREEN}║${NC}"
-        fi
-        echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-        echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
-    else
-        print_error "NexoralDNS installation not found or docker-compose.yml missing."
-        print_status "Please run the installation first:"
-        echo "curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -"
-    fi
-    
-    exit 0
-fi
-
-# Check for update argument: compare remote vs local and update only if remote > local
-if [[ "$1" == "update" ]]; then
-  # Run system compatibility checks
-  check_system_compatibility
-
-  DOWNLOAD_DIR="$HOME/NexoralDNS"
-  COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
-  # Ensure systemd-resolved is running after shutdown
-  ensure_systemd_resolved_running
-  # Reset local resolver to systemd stub resolver
-  set_resolv_nameserver "127.0.0.53"
-
-  if [ ! -d "$DOWNLOAD_DIR" ] || [ ! -f "$COMPOSE_FILE" ]; then
-    print_error "NexoralDNS not installed. Run the installer first (no args)."
-    exit 1
-  fi
-
-  print_status "Checking remote version for update..."
-  remote_version=$(curl -s https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION 2>/dev/null || echo "")
-  if [ -z "$remote_version" ]; then
-    print_error "Could not fetch remote version information. Aborting update."
-    exit 1
-  fi
-
-  VERSION_FILE="$DOWNLOAD_DIR/VERSION"
-  # Read local version (if present)
-  local_version=""
-  if [ -f "$VERSION_FILE" ]; then
-    local_version=$(cat "$VERSION_FILE" 2>/dev/null || true)
-  fi
-
-  print_status "Remote version: ${remote_version}  |  Local version: ${local_version:-'(none)'}"
-
-  # Compare versions: remote vs local
-  version_compare "$remote_version" "$local_version"
-  result=$?
-  if [ $result -eq 1 ]; then
-    print_status "Remote version ($remote_version) is newer than local ($local_version). Updating..."
-    # If compose file exists and services are running, bring them down first to safely replace images
-    if [ -f "$COMPOSE_FILE" ]; then
-      print_status "Stopping running NexoralDNS services before update..."
-      cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1 || true
-      print_success "Services stopped."
-    fi
-    print_status "Removing old NexoralDNS image..."
-    sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
-    echo "$remote_version" > "$VERSION_FILE"
-    run_docker_compose_with_pull "up -d" "Updating services (downloading new image, please wait)..."
-    print_success "Update complete."
-
-            # Get the DHCP IP address
-        print_status "Detecting network configuration..."
-        DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
-        if [ -z "$DHCP_IP" ]; then
-            DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
-        fi
-
-        # Update system resolver to point to this server so containers and host use NexoralDNS
-        if [ -n "$DHCP_IP" ]; then
-          set_resolv_nameserver "$DHCP_IP"
-        else
-          print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
-        fi
-        
-    exit 0
-  else
-    print_status "Local version ($local_version) is up-to-date or newer than remote ($remote_version). No update performed."
-
-    # Get the DHCP IP address
-    print_status "Detecting network configuration..."
-    DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
-    if [ -z "$DHCP_IP" ]; then
-        DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
-    fi
-
-    # Revert system resolver to point to this server
-    if [ -n "$DHCP_IP" ]; then
-      set_resolv_nameserver "$DHCP_IP"
-    else
-      print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
-    fi
-
-    # Disable systemd-resolved since we're using NexoralDNS
-    disable_systemd_resolved_if_enabled
-
-    exit 0
-  fi
-fi
+# Dispatch to the requested subcommand. Each cmd_* function exits the process
+# itself, so execution only falls through to the default install/reinstall
+# flow below when no subcommand matched.
+case "${1:-}" in
+  pack)   cmd_pack "$@" ;;
+  remove) cmd_remove "$@" ;;
+  stop)   cmd_stop "$@" ;;
+  start)  cmd_start "$@" ;;
+  update) cmd_update "$@" ;;
+esac
 
 # For any other case (default install or reinstall)
 
@@ -755,7 +114,7 @@ if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s ne
     print_status "Registering nexoraldns CLI command..."
     ARCH=$(dpkg --print-architecture 2>/dev/null)
     echo "Detected architecture: $ARCH"
-    
+
     DEB_INSTALLED=false
     if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "i386" ]]; then
         REPO="nexoral/NexoralDNS"
@@ -790,275 +149,4 @@ if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s ne
     fi
 fi
 
-# Run system compatibility checks
-check_system_compatibility
-
-# Ensure required ports are free; abort if any are occupied
-if ! check_ports_free; then
-  print_error "One or more required ports are in use (4000, 4773). Please free them and try again."
-  exit 1
-fi
-# Ensure systemd-resolved is running after shutdown
-ensure_systemd_resolved_running
-
-# Fetch version for welcome banner
-VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
-REMOTE_VERSION=$(curl -s "$VERSION_URL" 2>/dev/null || echo "Unknown")
-
-# Welcome Banner
-clear
-set_terminal_title "NexoralDNS Installer"
-echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}          ${BOLD}${WHITE}Welcome to NexoralDNS Server Installation${NC}         ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}                    ${PURPLE}Version: ${BOLD}${WHITE}${REMOTE_VERSION}${NC}                     ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}        ${BLUE}This script will install and configure Docker${NC}         ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}        ${BLUE}and deploy the NexoralDNS server automatically${NC}        ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-
-print_status "Checking and configuring firewall..."
-
-# Check if UFW is enabled and allow required ports
-if command -v ufw &> /dev/null; then
-  if sudo ufw status | grep -q "Status: active"; then
-    print_status "UFW firewall is active. Configuring ports..."
-
-    # Allow required ports
-    for port in 53 4000 4773; do
-      if sudo ufw allow $port > /dev/null 2>&1; then
-        print_success "Port $port allowed in UFW"
-      else
-        print_warning "Failed to allow port $port in UFW"
-      fi
-    done
-
-    # Reload UFW to apply changes
-    if sudo ufw reload > /dev/null 2>&1; then
-      print_success "UFW firewall rules updated"
-    fi
-  else
-    print_status "UFW is installed but not active"
-  fi
-else
-  print_status "UFW firewall not installed"
-fi
-
-echo ""
-
-print_status "Checking Docker installation..."
-
-# Check if Docker is installed
-if ! command -v docker &> /dev/null; then
-  print_warning "Docker is not installed. Installing Docker..."
-  
-  # Add Docker's official GPG key
-  print_status "Updating package repositories..."
-  sudo apt-get update > /dev/null 2>&1
-  print_status "Installing required packages..."
-  sudo apt-get install -y ca-certificates curl > /dev/null 2>&1
-  sudo install -m 0755 -d /etc/apt/keyrings
-  print_status "Adding Docker's official GPG key..."
-  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-  sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-  # Add the repository to Apt sources
-  print_status "Adding Docker repository..."
-  echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
-    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  sudo apt-get update > /dev/null 2>&1
-
-  # Install Docker and Docker Compose plugin
-  print_status "Installing Docker and Docker Compose..."
-  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin > /dev/null 2>&1
-  
-  # Add current user to docker group
-  print_status "Adding user $USER to docker group..."
-  sudo groupadd docker
-  sudo usermod -aG docker "$USER"
-
-  # Check if installation was successful
-  if ! command -v docker &> /dev/null; then
-    print_error "Docker installation failed."
-    exit 1
-  fi
-  
-  print_success "Docker has been installed successfully."
-else
-  print_success "Docker is already installed."
-fi
-
-# Check if Docker Compose is available
-print_status "Checking Docker Compose availability..."
-if ! sudo docker compose version &> /dev/null; then
-  print_warning "Docker Compose is not available. Installing Docker Compose plugin..."
-  sudo apt-get install -y docker-compose-plugin > /dev/null 2>&1
-  
-  if ! sudo docker compose version &> /dev/null; then
-    print_error "Docker Compose installation failed."
-    exit 1
-  fi
-  
-  print_success "Docker Compose has been installed successfully."
-else
-  print_success "Docker Compose is already available."
-fi
-
-# Function to run docker compose with progress indication
-run_docker_compose() {
-    local command="$1"
-    local message="$2"
-    print_status "$message"
-    # If bringing containers up, ensure systemd-resolved is disabled before starting
-    if [[ "$command" == *"up -d"* ]]; then
-      disable_systemd_resolved_if_enabled
-    fi
-    cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
-}
-
-
-# Create directory if it doesn't exist
-DOWNLOAD_DIR="$HOME/NexoralDNS"
-if [ ! -d "$DOWNLOAD_DIR" ]; then
-  print_status "Creating directory ${BOLD}$DOWNLOAD_DIR${NC}..."
-  mkdir -p "$DOWNLOAD_DIR"
-else
-  print_status "Using existing directory ${BOLD}$DOWNLOAD_DIR${NC}..."
-fi
-
-# Check if docker-compose.yml already exists
-COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
-if [ -f "$COMPOSE_FILE" ]; then
-  print_warning "Existing docker-compose.yml found. Stopping current services..."
-  cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
-  print_status "Removing existing docker-compose.yml..."
-  sudo rm -rf "$COMPOSE_FILE"
-fi
-
-# Download the docker-compose.yml file
-print_status "Downloading latest docker-compose.yml from GitHub..."
-DOWNLOAD_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/docker-compose.yml"
-if curl -L "$DOWNLOAD_URL" -o "$COMPOSE_FILE" > /dev/null 2>&1; then
-  print_success "docker-compose.yml downloaded successfully"
-else
-  print_error "Failed to download docker-compose.yml"
-  exit 1
-fi
-
-if [ -f "$COMPOSE_FILE" ]; then
-  # Download and check VERSION file
-  VERSION_FILE="$DOWNLOAD_DIR/VERSION"
-  
-  print_status "Checking version information..."
-  remote_version=$(curl -s "$VERSION_URL")
-  
-  if [ -n "$remote_version" ]; then
-    echo -e "    ${CYAN}Remote version:${NC} ${BOLD}$remote_version${NC}"
-    
-    # Check if local VERSION file exists
-    if [ -f "$VERSION_FILE" ]; then
-      local_version=$(cat "$VERSION_FILE")
-      echo -e "    ${CYAN}Local version:${NC}  ${BOLD}$local_version${NC}"
-      
-      # using top-level version_compare() helper
-      
-      version_compare "$remote_version" "$local_version"
-      comparison_result=$?
-      
-      if [ $comparison_result -eq 0 ]; then
-        print_success "Versions are identical. Starting services..."
-        run_docker_compose_with_pull "up -d" "Starting Docker containers (this may take a few minutes on first run)..."
-      elif [ $comparison_result -eq 1 ] && [[ "$remote_version" == *"-stable" ]]; then
-        print_warning "New stable version available! Updating..."
-        print_status "Removing old Docker image..."
-        sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
-        echo "$remote_version" > "$VERSION_FILE"
-        run_docker_compose_with_pull "up -d" "Starting updated services (downloading new image, please wait)..."
-      else
-        print_status "Local version is current. Starting services..."
-        run_docker_compose "up -d" "Starting Docker containers..."
-      fi
-    else
-      print_status "First time installation. Creating version file..."
-      echo "$remote_version" > "$VERSION_FILE"
-  run_docker_compose_with_pull "up -d" "Starting services (downloading images, this may take several minutes)..."
-    fi
-  else
-  print_warning "Could not fetch version information. Starting services with current setup..."
-  run_docker_compose "up -d" "Starting Docker containers..."
-  fi
-  
-  echo ""
-  print_success "NexoralDNS services have been started successfully!"
-  
-  # Get the DHCP IP address
-  print_status "Detecting network configuration..."
-  DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
-  if [ -z "$DHCP_IP" ]; then
-    DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
-  fi
-  # Update resolv.conf so the machine uses the NexoralDNS server as its nameserver
-  if [ -n "$DHCP_IP" ]; then
-    set_resolv_nameserver "$DHCP_IP"
-  else
-    print_warning "Could not detect DHCP IP; /etc/resolv.conf left unchanged"
-  fi
-  
-  echo ""
-  echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${CYAN}║${NC}                    ${BOLD}${GREEN}Installation Complete!${NC}                    ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
-  echo -e "${CYAN}║${NC}                    ${BOLD}${YELLOW}Important Configuration${NC}                 ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  if [ -n "$DHCP_IP" ]; then
-    echo -e "${CYAN}║${NC}  ${WHITE}Server IP:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC}                              ${CYAN}║${NC}"
-  else
-    echo -e "${CYAN}║${NC}  ${WHITE}Server IP:${NC} ${BOLD}${RED}Unable to detect${NC}                       ${CYAN}║${NC}"
-  fi
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}  ${YELLOW}To use NexoralDNS for all LAN devices:${NC}               ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}  ${WHITE}1. Access your Router's Admin Panel${NC}                   ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}  ${WHITE}2. Navigate to DHCP/DNS Settings${NC}                      ${CYAN}║${NC}"
-  if [ -n "$DHCP_IP" ]; then
-    echo -e "${CYAN}║${NC}  ${WHITE}3. Set Primary DNS Server to:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC}           ${CYAN}║${NC}"
-  else
-    echo -e "${CYAN}║${NC}  ${WHITE}3. Set Primary DNS Server to: ${BOLD}${RED}[Your Server IP]${NC}     ${CYAN}║${NC}"
-  fi
-  echo -e "${CYAN}║${NC}  ${WHITE}4. Save and restart your router${NC}                       ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
-  echo -e "${CYAN}║${NC}                    ${BOLD}${BLUE}Web Interface Setup${NC}                     ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  if [ -n "$DHCP_IP" ]; then
-    echo -e "${CYAN}║${NC}  ${WHITE}1. Open browser and go to:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}         ${CYAN}║${NC}"
-  else
-    echo -e "${CYAN}║${NC}  ${WHITE}1. Open browser and go to:${NC} ${BOLD}${GREEN}http://localhost:4000${NC}         ${CYAN}║${NC}"
-  fi
-  echo -e "${CYAN}║${NC}  ${WHITE}2. Login with Username:${NC} ${BOLD}admin${NC}                    ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}  ${WHITE}3. Login with Password:${NC} ${BOLD}admin${NC}                     ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}  ${WHITE}4. Change the default password immediately${NC}            ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}  ${WHITE}5. Activate NexoralDNS with your Cloud Key${NC}            ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
-  echo -e "${CYAN}║${NC}  ${RED}${BOLD}CRITICAL: Set Static IP for this machine!${NC}           ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}  ${WHITE}To avoid DNS service interruption:${NC}                    ${CYAN}║${NC}"
-  if [ -n "$DHCP_IP" ]; then
-    echo -e "${CYAN}║${NC}  ${WHITE}• Reserve/Static IP:${NC} ${BOLD}${GREEN}${DHCP_IP}${NC} in router settings    ${CYAN}║${NC}"
-  else
-    echo -e "${CYAN}║${NC}  ${WHITE}• Reserve current IP in router DHCP settings${NC}          ${CYAN}║${NC}"
-  fi
-  echo -e "${CYAN}║${NC}  ${WHITE}• This prevents IP changes that break DNS${NC}             ${CYAN}║${NC}"
-  echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-  echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
-else
-  print_error "Failed to download docker-compose.yml"
-  exit 1
-fi
+cmd_deploy "$@"

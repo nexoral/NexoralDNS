@@ -55,9 +55,10 @@ jobs:
             exit 0
           fi
 
-          # Scripts/install.sh and Scripts/versionControl.sh are host-side installer scripts never
-          # executed inside the container (only Scripts/docker-entrypoint.sh is), so they're excluded here.
-          NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|Scripts/install\.sh$|Scripts/versionControl\.sh$|.*\.md$)' || true)
+          # Scripts/install.sh, Scripts/versionControl.sh, and Scripts/cli/* are host-side installer
+          # scripts never executed inside the container (only Scripts/docker-entrypoint.sh is), so
+          # they're excluded here.
+          NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|Scripts/install\.sh$|Scripts/versionControl\.sh$|Scripts/cli/|.*\.md$)' || true)
           if [ -z "$NON_DOCS_CHANGES" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             skip_docker="true"
@@ -201,10 +202,14 @@ jobs:
             PKG_DIR="nexoraldns_${VERSION}_${ARCH}"
             mkdir -p "$PKG_DIR/DEBIAN"
             mkdir -p "$PKG_DIR/usr/bin"
+            mkdir -p "$PKG_DIR/usr/share/nexoraldns/cli"
             mkdir -p "$PKG_DIR/etc/bash_completion.d"
 
             cp Scripts/install.sh "$PKG_DIR/usr/bin/nexoraldns"
             chmod +x "$PKG_DIR/usr/bin/nexoraldns"
+
+            cp Scripts/cli/*.sh "$PKG_DIR/usr/share/nexoraldns/cli/"
+            chmod 0644 "$PKG_DIR/usr/share/nexoraldns/cli"/*.sh
 
             {
               echo "# Bash completion for the nexoraldns CLI"
@@ -229,7 +234,7 @@ jobs:
             } > "$PKG_DIR/DEBIAN/control"
 
             dpkg-deb --build "$PKG_DIR"
-            tar -czf "nexoraldns_${VERSION}_${ARCH}.tar.gz" -C "$PKG_DIR/usr/bin" nexoraldns
+            tar -czf "nexoraldns_${VERSION}_${ARCH}.tar.gz" -C "$PKG_DIR/usr" bin/nexoraldns share/nexoraldns/cli
             rm -rf "$PKG_DIR"
           done
 
