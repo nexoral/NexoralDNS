@@ -22,7 +22,7 @@ cmd_start() {
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    DOWNLOAD_DIR="$HOME/NexoralDNS"
+    DOWNLOAD_DIR="$(resolve_download_dir)"
 
     if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
 

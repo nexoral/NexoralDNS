@@ -18,7 +18,7 @@ cmd_remove() {
     echo -e "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    DOWNLOAD_DIR="$HOME/NexoralDNS"
+    DOWNLOAD_DIR="$(resolve_download_dir)"
 
     # Check if running in non-interactive mode (piped input)
     if [[ ! -t 0 ]]; then
