@@ -20,7 +20,6 @@ cmd_remove() {
 
     DOWNLOAD_DIR="$(resolve_download_dir)"
 
-    # Check if running in non-interactive mode (piped input)
     if [[ ! -t 0 ]]; then
         print_warning "Non-interactive mode detected. Proceeding with removal..."
         REPLY="y"
@@ -43,9 +42,8 @@ cmd_remove() {
         print_warning "NexoralDNS directory not found."
     fi
 
-  # Ensure systemd-resolved is running after shutdown
   ensure_systemd_resolved_running
-  # Reset local resolver to systemd stub resolver
+  # 127.0.0.53 is systemd-resolved's stub resolver address.
   set_resolv_nameserver "127.0.0.53"
 
     print_status "Removing Docker images..."
@@ -69,7 +67,6 @@ cmd_remove() {
     sudo docker volume rm nexoraldns_rabbitmq_data 2>/dev/null || true
     print_success "Docker volumes cleaned."
 
-    # Remove firewall rules if UFW is enabled
     if command -v ufw &> /dev/null; then
       if sudo ufw status | grep -q "Status: active"; then
         print_status "Removing firewall rules..."
@@ -84,7 +81,6 @@ cmd_remove() {
     fi
     fi
 
-    # Remove the nexoraldns command / package itself
     print_status "Removing CLI package..."
     if dpkg -s nexoraldns >/dev/null 2>&1; then
         sudo dpkg -P nexoraldns >/dev/null 2>&1 || true
@@ -93,7 +89,6 @@ cmd_remove() {
     sudo rm -rf /usr/share/nexoraldns 2>/dev/null || true
     print_success "CLI package removed."
 
-    # Fully remove Docker and Docker Compose from this machine
     purge_docker_completely
 
     echo ""

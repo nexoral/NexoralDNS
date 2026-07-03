@@ -7,22 +7,17 @@ fi
 # `nexoraldns` (no subcommand) — default install/reinstall flow: system
 # checks, firewall, Docker Engine, docker-compose.yml, and bring the stack up.
 cmd_deploy() {
-# Run system compatibility checks
 check_system_compatibility
 
-# Ensure required ports are free; abort if any are occupied
 if ! check_ports_free; then
   print_error "One or more required ports are in use (4000, 4773). Please free them and try again."
   exit 1
 fi
-# Ensure systemd-resolved is running after shutdown
 ensure_systemd_resolved_running
 
-# Fetch version for welcome banner
 VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
 REMOTE_VERSION=$(curl -s "$VERSION_URL" 2>/dev/null || echo "Unknown")
 
-# Welcome Banner
 clear
 set_terminal_title "NexoralDNS Installer"
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
@@ -39,12 +34,10 @@ echo ""
 
 print_status "Checking and configuring firewall..."
 
-# Check if UFW is enabled and allow required ports
 if command -v ufw &> /dev/null; then
   if sudo ufw status | grep -q "Status: active"; then
     print_status "UFW firewall is active. Configuring ports..."
 
-    # Allow required ports
     for port in 53 4000 4773; do
       if sudo ufw allow $port > /dev/null 2>&1; then
         print_success "Port $port allowed in UFW"
@@ -53,7 +46,6 @@ if command -v ufw &> /dev/null; then
       fi
     done
 
-    # Reload UFW to apply changes
     if sudo ufw reload > /dev/null 2>&1; then
       print_success "UFW firewall rules updated"
     fi
@@ -68,7 +60,6 @@ echo ""
 
 install_docker_engine
 
-# Create directory if it doesn't exist
 DOWNLOAD_DIR="$(resolve_download_dir)"
 if [ ! -d "$DOWNLOAD_DIR" ]; then
   print_status "Creating directory ${BOLD}$DOWNLOAD_DIR${NC}..."
@@ -77,7 +68,6 @@ else
   print_status "Using existing directory ${BOLD}$DOWNLOAD_DIR${NC}..."
 fi
 
-# Check if docker-compose.yml already exists
 COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
 if [ -f "$COMPOSE_FILE" ]; then
   print_warning "Existing docker-compose.yml found. Stopping current services..."
@@ -86,7 +76,6 @@ if [ -f "$COMPOSE_FILE" ]; then
   sudo rm -rf "$COMPOSE_FILE"
 fi
 
-# Download the docker-compose.yml file
 print_status "Downloading latest docker-compose.yml from GitHub..."
 DOWNLOAD_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/docker-compose.yml"
 if curl -L "$DOWNLOAD_URL" -o "$COMPOSE_FILE" > /dev/null 2>&1; then
@@ -97,7 +86,6 @@ else
 fi
 
 if [ -f "$COMPOSE_FILE" ]; then
-  # Download and check VERSION file
   VERSION_FILE="$DOWNLOAD_DIR/VERSION"
 
   print_status "Checking version information..."
@@ -106,12 +94,9 @@ if [ -f "$COMPOSE_FILE" ]; then
   if [ -n "$remote_version" ]; then
     echo -e "    ${CYAN}Remote version:${NC} ${BOLD}$remote_version${NC}"
 
-    # Check if local VERSION file exists
     if [ -f "$VERSION_FILE" ]; then
       local_version=$(cat "$VERSION_FILE")
       echo -e "    ${CYAN}Local version:${NC}  ${BOLD}$local_version${NC}"
-
-      # using top-level version_compare() helper
 
       version_compare "$remote_version" "$local_version"
       comparison_result=$?
@@ -142,13 +127,11 @@ if [ -f "$COMPOSE_FILE" ]; then
   echo ""
   print_success "NexoralDNS services have been started successfully!"
 
-  # Get the DHCP IP address
   print_status "Detecting network configuration..."
   DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
   if [ -z "$DHCP_IP" ]; then
     DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
   fi
-  # Update resolv.conf so the machine uses the NexoralDNS server as its nameserver
   if [ -n "$DHCP_IP" ]; then
     set_resolv_nameserver "$DHCP_IP"
   else

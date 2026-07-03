@@ -4,16 +4,14 @@ if [ -z "${NEXORALDNS_CLI_LOADED:-}" ]; then
   exit 1
 fi
 
-# Pull a Docker image while rendering our own progress bar in the terminal.
-# Progress is derived from docker's per-layer status stream, so the bar stays
-# in sync with the real pull, but docker's raw layer output is never shown.
+# Renders our own progress bar in the terminal, derived from docker's
+# per-layer status stream (docker's raw layer output is never shown).
 # Each layer counts as 2 units of work: download complete + extract complete.
 pull_image_with_progress() {
   local img="$1"
   local label="$2"
 
-  # No TTY (output piped/redirected): a redrawing bar would produce garbage,
-  # so keep the previous quiet behaviour.
+  # No TTY (output piped/redirected): a redrawing bar would produce garbage.
   if [ ! -t 1 ]; then
     sudo docker pull "$img" > /dev/null 2>&1
     return $?
@@ -46,9 +44,8 @@ pull_image_with_progress() {
   return "${PIPESTATUS[0]}"
 }
 
-# Pull required images from registry before stopping system services (so DNS works during pull)
+# Pulls before system services are stopped, so DNS keeps working during the pull.
 pull_required_images() {
-  # Friendly service-oriented labels instead of raw image names
   local entries=(
     "mongo:latest|MongoDB|Configuring"
     "redis:latest|Redis|Configuring"
@@ -71,23 +68,20 @@ pull_required_images() {
   done
 }
 
-# Run docker compose but first pull required images (used for first-time/default install)
 run_docker_compose_with_pull() {
   local command="$1"
   local message="$2"
   print_status "$message"
   pull_required_images
-  # After pulling images, disable systemd-resolved if enabled so containers can bind to 53
+  # So containers can bind to port 53.
   disable_systemd_resolved_if_enabled
   cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
 }
 
-# Run docker compose without pulling images first (used for start/stop flows)
 run_docker_compose() {
   local command="$1"
   local message="$2"
   print_status "$message"
-  # If bringing containers up, ensure systemd-resolved is disabled before starting
   if [[ "$command" == *"up -d"* ]]; then
     disable_systemd_resolved_if_enabled
   fi

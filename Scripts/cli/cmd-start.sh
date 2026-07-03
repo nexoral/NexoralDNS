@@ -6,12 +6,10 @@ fi
 
 # `nexoraldns start` — start the NexoralDNS Docker services.
 cmd_start() {
-  # Ensure required ports are free; abort if any are occupied
   if ! check_ports_free; then
     print_error "One or more required ports are in use (4000, 4773). Please free them and try again."
     exit 1
   fi
-  # Ensure systemd-resolved is running after shutdown
   ensure_systemd_resolved_running
     clear
     set_terminal_title "Starting NexoralDNS"
@@ -30,14 +28,12 @@ cmd_start() {
   run_docker_compose "up -d" "Starting NexoralDNS services (this may take a few minutes)..."
   print_success "All NexoralDNS services have been started successfully!"
 
-        # Get the DHCP IP address
         print_status "Detecting network configuration..."
         DHCP_IP=$(ip route get 8.8.8.8 | awk 'NR==1 {print $7}' 2>/dev/null)
         if [ -z "$DHCP_IP" ]; then
             DHCP_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
         fi
 
-        # Update system resolver to point to this server so containers and host use NexoralDNS
         if [ -n "$DHCP_IP" ]; then
           set_resolv_nameserver "$DHCP_IP"
         else
