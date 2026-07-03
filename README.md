@@ -13,39 +13,41 @@
 **One-command installation:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -
+curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -
 ```
 
-> ✅ **That's it!** The script will automatically install Docker, download the latest version, and start the NexoralDNS server.
+> ✅ **That's it!** The script will automatically install the `nexoraldns` CLI package, configure Docker, and start the server.
+
+Once installed, you can manage the NexoralDNS server using the `nexoraldns` CLI command directly in your terminal:
 
 **Start services:**
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s start
+nexoraldns start
 ```
-
-> ▶️ **Start NexoralDNS services** if they are stopped.
+> ▶️ **Start all NexoralDNS services** if they are stopped.
 
 **Stop services:**
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s stop
+nexoraldns stop
 ```
-
-> ⏹️ **Stop all NexoralDNS services** without removing the installation.
-
-**Complete removal:**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s remove
-```
+> ⏹️ **Stop all NexoralDNS services** without removing configurations.
 
 **Update services:**
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | bash -s update
+nexoraldns update
 ```
+> 🔄 **Update NexoralDNS services** (checks and pulls the latest Docker images).
 
+**Update CLI package:**
+```bash
+nexoraldns pack
+```
+> 📦 **Self-update the nexoraldns CLI package** itself to the latest version from GitHub Releases.
+
+**Complete removal:**
+```bash
+nexoraldns remove
+```
 > 🗑️ **This will completely remove NexoralDNS** including all configurations, services, and data.
 
 ---

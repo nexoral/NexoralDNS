@@ -11,6 +11,26 @@ WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
+# Function to set terminal window/tab title in VS Code and xterm terminals
+set_terminal_title() {
+  # Try writing all common window/icon/tab title escape sequences (0, 1, 2) directly to /dev/tty
+  if [ -c /dev/tty ]; then
+    printf "\033]0;%s\007\033]1;%s\007\033]2;%s\007" "$1" "$1" "$1" >/dev/tty 2>/dev/null
+  else
+    printf "\033]0;%s\007\033]1;%s\007\033]2;%s\007" "$1" "$1" "$1" 2>/dev/null
+  fi
+}
+
+# Automatically set terminal title based on action
+case "$1" in
+  remove) set_terminal_title "NexoralDNS Uninstaller" ;;
+  stop)   set_terminal_title "Stopping NexoralDNS" ;;
+  start)  set_terminal_title "Starting NexoralDNS" ;;
+  update) set_terminal_title "NexoralDNS Updater" ;;
+  *)      set_terminal_title "NexoralDNS Installer" ;;
+esac
+
+
 # Function to print colored output
 print_status() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -301,55 +321,70 @@ check_system_compatibility() {
 
 
 
+# Pull a Docker image while rendering our own progress bar in the terminal.
+# Progress is derived from docker's per-layer status stream, so the bar stays
+# in sync with the real pull, but docker's raw layer output is never shown.
+# Each layer counts as 2 units of work: download complete + extract complete.
+pull_image_with_progress() {
+  local img="$1"
+  local label="$2"
+
+  # No TTY (output piped/redirected): a redrawing bar would produce garbage,
+  # so keep the previous quiet behaviour.
+  if [ ! -t 1 ]; then
+    sudo docker pull "$img" > /dev/null 2>&1
+    return $?
+  fi
+
+  sudo docker pull "$img" 2>&1 | {
+    local total=0 done_units=0 pct=0 last_pct=-1
+    local bar_width=30 filled bar line
+    printf "${GREEN}[INFO]${NC} %s [%-${bar_width}s]   0%%" "$label" ""
+    while IFS= read -r line; do
+      case "$line" in
+        *": Pulling fs layer")          total=$((total + 2)) ;;
+        *": Already exists")            total=$((total + 2)); done_units=$((done_units + 2)) ;;
+        *": Download complete")         done_units=$((done_units + 1)) ;;
+        *": Pull complete")             done_units=$((done_units + 1)) ;;
+        "Status: Image is up to date"*) total=2; done_units=2 ;;
+      esac
+      [ "$total" -eq 0 ] && continue
+      pct=$(( done_units * 100 / total ))
+      [ "$pct" -gt 100 ] && pct=100
+      [ "$pct" -eq "$last_pct" ] && continue
+      last_pct=$pct
+      filled=$(( pct * bar_width / 100 ))
+      bar=$(printf '%*s' "$filled" '' | tr ' ' '#')
+      printf "\r${GREEN}[INFO]${NC} %s [%-${bar_width}s] %3d%%" "$label" "$bar" "$pct"
+    done
+    # Clear the bar line so the caller's success/warning message replaces it
+    printf '\r\033[2K'
+  }
+  return "${PIPESTATUS[0]}"
+}
+
 # Pull required images from registry before stopping system services (so DNS works during pull)
 pull_required_images() {
-  local images=("mongo:latest" "redis:latest" "rabbitmq:management" "ghcr.io/nexoral/nexoraldns:latest")
-  local img
+  # Friendly service-oriented labels instead of raw image names
+  local entries=(
+    "mongo:latest|MongoDB|Configuring"
+    "redis:latest|Redis|Configuring"
+    "rabbitmq:management|RabbitMQ|Configuring"
+    "ghcr.io/nexoral/nexoraldns:latest|NexoralDNS|Installing"
+  )
+  local entry img label verb
   print_status "Pulling required Docker images before stopping DNS..."
-  for img in "${images[@]}"; do
-    # Friendly service-oriented messages instead of raw image names
-    case "$img" in
-      mongo:*)
-        print_status "Configuring MongoDB..."
-        if sudo docker pull "$img" > /dev/null 2>&1; then
-          print_success "MongoDB configured."
-        else
-          print_warning "Failed to configure MongoDB (continue anyway)"
-        fi
-        ;;
-      redis:*)
-        print_status "Configuring Redis..."
-        if sudo docker pull "$img" > /dev/null 2>&1; then
-          print_success "Redis configured."
-        else
-          print_warning "Failed to configure Redis (continue anyway)"
-        fi
-        ;;
-      rabbitmq:*)
-        print_status "Configuring RabbitMQ..."
-        if sudo docker pull "$img" > /dev/null 2>&1; then
-          print_success "RabbitMQ configured."
-        else
-          print_warning "Failed to configure RabbitMQ (continue anyway)"
-        fi
-        ;;
-      *nexoraldns*|*nexoral* )
-        print_status "Installing NexoralDNS..."
-        if sudo docker pull "$img" > /dev/null 2>&1; then
-          print_success "NexoralDNS image pulled."
-        else
-          print_warning "Failed to pull NexoralDNS image (continue anyway)"
-        fi
-        ;;
-      *)
-        print_status "Pulling $img..."
-        if sudo docker pull "$img" > /dev/null 2>&1; then
-          print_success "Pulled $img"
-        else
-          print_warning "Failed to pull $img (continue anyway)"
-        fi
-        ;;
-    esac
+  for entry in "${entries[@]}"; do
+    IFS='|' read -r img label verb <<< "$entry"
+    if pull_image_with_progress "$img" "${verb} ${label}"; then
+      if [ "$verb" = "Installing" ]; then
+        print_success "${label} installed."
+      else
+        print_success "${label} configured."
+      fi
+    else
+      print_warning "Failed to configure ${label} (continue anyway)"
+    fi
   done
 }
 
@@ -376,9 +411,71 @@ run_docker_compose() {
   cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
 }
 
+# Check for pack argument (self-update CLI package)
+if [[ "$1" == "pack" ]]; then
+    ARCH=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
+    print_status "Checking for latest nexoraldns package version..."
+    
+    REPO="nexoral/NexoralDNS"
+    RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
+    
+    if [ -z "$RELEASE_INFO" ]; then
+        print_error "Could not fetch release information from GitHub."
+        exit 1
+    fi
+    
+    REMOTE_VER=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+    if [ -z "$REMOTE_VER" ]; then
+        print_error "Could not parse latest version tag."
+        exit 1
+    fi
+    
+    LOCAL_VER=$(dpkg -s nexoraldns 2>/dev/null | grep -i "^Version:" | awk '{print $2}')
+    if [ -z "$LOCAL_VER" ]; then
+        LOCAL_VER="0.0.0"
+    fi
+    
+    print_status "Local CLI Version: ${LOCAL_VER} | Remote CLI Version: ${REMOTE_VER}"
+    
+    version_compare "$REMOTE_VER" "$LOCAL_VER"
+    comp=$?
+    if [ $comp -ne 1 ]; then
+        print_success "NexoralDNS CLI package is already up to date!"
+        exit 0
+    fi
+    
+    print_status "New version ${REMOTE_VER} available. Downloading..."
+    
+    DEB_NAME="nexoraldns_${REMOTE_VER}_${ARCH}.deb"
+    DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep "$DEB_NAME" | cut -d'"' -f4 | head -n 1)
+    
+    if [ -z "$DOWNLOAD_URL" ]; then
+        DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep -E "nexoraldns_.*_${ARCH}\.deb" | cut -d'"' -f4 | head -n 1)
+    fi
+    
+    if [ -z "$DOWNLOAD_URL" ]; then
+        print_error "Could not find a package matching your architecture (${ARCH}) in the latest release."
+        exit 1
+    fi
+    
+    TEMP_DEB=$(mktemp /tmp/nexoraldns_XXXXXX.deb)
+    if curl -L "$DOWNLOAD_URL" -o "$TEMP_DEB"; then
+        print_status "Installing latest package..."
+        sudo dpkg -i "$TEMP_DEB"
+        rm -f "$TEMP_DEB"
+        print_success "NexoralDNS CLI package successfully updated to ${REMOTE_VER}!"
+    else
+        print_error "Failed to download update package."
+        rm -f "$TEMP_DEB"
+        exit 1
+    fi
+    exit 0
+fi
+
 # Check for remove argument
 if [[ "$1" == "remove" ]]; then
     clear
+    set_terminal_title "NexoralDNS Uninstaller"
     echo -e "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${RED}║${NC}                                                              ${RED}║${NC}"
     echo -e "${RED}║${NC}          ${BOLD}${WHITE}NexoralDNS Uninstaller${NC}                          ${RED}║${NC}"
@@ -472,6 +569,7 @@ fi
 # Check for stop argument
 if [[ "$1" == "stop" ]]; then
     clear
+    set_terminal_title "Stopping NexoralDNS"
     echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${YELLOW}║${NC}                                                              ${YELLOW}║${NC}"
     echo -e "${YELLOW}║${NC}          ${BOLD}${WHITE}Stopping NexoralDNS Services${NC}                   ${YELLOW}║${NC}"
@@ -507,6 +605,7 @@ if [[ "$1" == "start" ]]; then
   # Ensure systemd-resolved is running after shutdown
   ensure_systemd_resolved_running
     clear
+    set_terminal_title "Starting NexoralDNS"
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}          ${BOLD}${WHITE}Starting NexoralDNS Services${NC}                   ${GREEN}║${NC}"
@@ -648,6 +747,47 @@ fi
 
 # For any other case (default install or reinstall)
 
+# Ensure the CLI package is installed on the host
+if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s nexoraldns >/dev/null 2>&1; then
+    print_status "Registering nexoraldns CLI command..."
+    ARCH=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
+    REPO="nexoral/NexoralDNS"
+    RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
+    
+    DEB_INSTALLED=false
+    if [ -n "$RELEASE_INFO" ]; then
+        REMOTE_VER=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+        if [ -n "$REMOTE_VER" ]; then
+            DEB_NAME="nexoraldns_${REMOTE_VER}_${ARCH}.deb"
+            DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep "$DEB_NAME" | cut -d'"' -f4 | head -n 1)
+            if [ -z "$DOWNLOAD_URL" ]; then
+                DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep -E "nexoraldns_.*_${ARCH}\.deb" | cut -d'"' -f4 | head -n 1)
+            fi
+            if [ -n "$DOWNLOAD_URL" ]; then
+                TEMP_DEB=$(mktemp /tmp/nexoraldns_XXXXXX.deb)
+                if curl -L "$DOWNLOAD_URL" -o "$TEMP_DEB"; then
+                    if sudo dpkg -i "$TEMP_DEB" >/dev/null 2>&1; then
+                        DEB_INSTALLED=true
+                        print_success "CLI package (nexoraldns) installed successfully."
+                    fi
+                fi
+                rm -f "$TEMP_DEB"
+            fi
+        fi
+    fi
+
+    # Fallback if package download/install failed
+    if [ "$DEB_INSTALLED" = "false" ]; then
+        if [ -f "$0" ] && [[ "$0" == *"install.sh" ]]; then
+            sudo cp "$0" /usr/bin/nexoraldns && sudo chmod +x /usr/bin/nexoraldns
+            print_success "CLI shortcut registered as 'nexoraldns'."
+        else
+            sudo curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh -o /usr/bin/nexoraldns && sudo chmod +x /usr/bin/nexoraldns
+            print_success "CLI shortcut registered as 'nexoraldns' from GitHub."
+        fi
+    fi
+fi
+
 # Run system compatibility checks
 check_system_compatibility
 
@@ -665,6 +805,7 @@ REMOTE_VERSION=$(curl -s "$VERSION_URL" 2>/dev/null || echo "Unknown")
 
 # Welcome Banner
 clear
+set_terminal_title "NexoralDNS Installer"
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}          ${BOLD}${WHITE}Welcome to NexoralDNS Server Installation${NC}         ${CYAN}║${NC}"
