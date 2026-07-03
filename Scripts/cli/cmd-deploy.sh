@@ -69,7 +69,7 @@ echo ""
 install_docker_engine
 
 # Create directory if it doesn't exist
-DOWNLOAD_DIR="$HOME/NexoralDNS"
+DOWNLOAD_DIR="$(resolve_download_dir)"
 if [ ! -d "$DOWNLOAD_DIR" ]; then
   print_status "Creating directory ${BOLD}$DOWNLOAD_DIR${NC}..."
   mkdir -p "$DOWNLOAD_DIR"

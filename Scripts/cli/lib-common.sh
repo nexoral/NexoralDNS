@@ -226,3 +226,24 @@ version_compare() {
   done
   return 0
 }
+
+# Resolve the invoking user's real home directory regardless of how the CLI
+# was invoked. `sudo` resets $HOME to root's home by default, so
+# `sudo nexoraldns start` and a plain `nexoraldns start` would otherwise
+# disagree on every $HOME-relative path (root's install one-liner runs
+# entirely under sudo too). When running as root via sudo, resolve the
+# invoking user's real home instead of root's.
+resolve_real_home() {
+  local real_home="$HOME"
+  if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    local sudo_home
+    sudo_home=$(getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6)
+    [ -n "$sudo_home" ] && real_home="$sudo_home"
+  fi
+  printf '%s\n' "$real_home"
+}
+
+# Resolve the NexoralDNS data directory consistently regardless of invocation.
+resolve_download_dir() {
+  printf '%s/NexoralDNS\n' "$(resolve_real_home)"
+}

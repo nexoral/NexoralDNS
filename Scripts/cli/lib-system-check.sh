@@ -73,8 +73,9 @@ check_system_compatibility() {
 
   print_success "✓ RAM check passed: ${TOTAL_RAM_GB}GB available"
 
-  # Check available storage (minimum 10GB required)
-  AVAILABLE_STORAGE_KB=$(df "$HOME" | awk 'NR==2 {print $4}')
+  # Check available storage (minimum 10GB required) at the directory NexoralDNS
+  # will actually install into, not just wherever $HOME happens to point right now.
+  AVAILABLE_STORAGE_KB=$(df "$(resolve_real_home)" | awk 'NR==2 {print $4}')
   AVAILABLE_STORAGE_GB=$((AVAILABLE_STORAGE_KB / 1024 / 1024))
   MIN_STORAGE_GB=10
 

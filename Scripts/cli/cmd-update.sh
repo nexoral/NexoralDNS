@@ -10,7 +10,7 @@ cmd_update() {
   # Run system compatibility checks
   check_system_compatibility
 
-  DOWNLOAD_DIR="$HOME/NexoralDNS"
+  DOWNLOAD_DIR="$(resolve_download_dir)"
   COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
   # Ensure systemd-resolved is running after shutdown
   ensure_systemd_resolved_running
