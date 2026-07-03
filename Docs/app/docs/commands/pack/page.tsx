@@ -3,7 +3,7 @@ import type { Block } from '@/components/DocPage';
 
 const blocks: Block[] = [
   { type: 'h', title: 'Command' },
-  { type: 'code', code: 'sudo nexoraldns pack', label: 'pack' },
+  { type: 'code', code: 'nexoraldns pack', label: 'pack' },
   { type: 'h', title: 'What it does' },
   { type: 'list', variant: 'dot', items: [
     'Detects the current host machine CPU architecture (amd64, arm64, or i386)',
