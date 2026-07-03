@@ -413,9 +413,15 @@ run_docker_compose() {
 
 # Check for pack argument (self-update CLI package)
 if [[ "$1" == "pack" ]]; then
-    ARCH=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
-    print_status "Checking for latest nexoraldns package version..."
+    ARCH=$(dpkg --print-architecture 2>/dev/null)
+    echo "Detected architecture: $ARCH"
     
+    if [[ "$ARCH" != "amd64" && "$ARCH" != "arm64" && "$ARCH" != "i386" ]]; then
+        print_error "Unsupported architecture: $ARCH"
+        exit 1
+    fi
+    
+    print_status "Checking for latest nexoraldns package version..."
     REPO="nexoral/NexoralDNS"
     RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
     
@@ -444,29 +450,18 @@ if [[ "$1" == "pack" ]]; then
         exit 0
     fi
     
-    print_status "New version ${REMOTE_VER} available. Downloading..."
+    PKG="nexoraldns_${REMOTE_VER}_${ARCH}.deb"
+    URL="https://github.com/${REPO}/releases/download/${REMOTE_VER}/${PKG}"
+    print_status "Downloading package: $PKG from $URL"
     
-    DEB_NAME="nexoraldns_${REMOTE_VER}_${ARCH}.deb"
-    DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep "$DEB_NAME" | cut -d'"' -f4 | head -n 1)
-    
-    if [ -z "$DOWNLOAD_URL" ]; then
-        DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep -E "nexoraldns_.*_${ARCH}\.deb" | cut -d'"' -f4 | head -n 1)
-    fi
-    
-    if [ -z "$DOWNLOAD_URL" ]; then
-        print_error "Could not find a package matching your architecture (${ARCH}) in the latest release."
-        exit 1
-    fi
-    
-    TEMP_DEB=$(mktemp /tmp/nexoraldns_XXXXXX.deb)
-    if curl -L "$DOWNLOAD_URL" -o "$TEMP_DEB"; then
+    TEMP_DEB="/tmp/$PKG"
+    if curl -fsSL "$URL" -o "$TEMP_DEB"; then
         print_status "Installing latest package..."
         sudo dpkg -i "$TEMP_DEB"
         rm -f "$TEMP_DEB"
         print_success "NexoralDNS CLI package successfully updated to ${REMOTE_VER}!"
     else
-        print_error "Failed to download update package."
-        rm -f "$TEMP_DEB"
+        print_error "Failed to download package from $URL"
         exit 1
     fi
     exit 0
@@ -548,8 +543,16 @@ if [[ "$1" == "remove" ]]; then
         if sudo ufw reload > /dev/null 2>&1; then
           print_success "UFW firewall rules updated"
         fi
-      fi
     fi
+    fi
+
+    # Remove the nexoraldns command / package itself
+    print_status "Removing CLI package..."
+    if dpkg -s nexoraldns >/dev/null 2>&1; then
+        sudo dpkg -P nexoraldns >/dev/null 2>&1 || true
+    fi
+    sudo rm -f /usr/bin/nexoraldns 2>/dev/null || true
+    print_success "CLI package removed."
 
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
@@ -750,22 +753,21 @@ fi
 # Ensure the CLI package is installed on the host
 if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s nexoraldns >/dev/null 2>&1; then
     print_status "Registering nexoraldns CLI command..."
-    ARCH=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
-    REPO="nexoral/NexoralDNS"
-    RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
+    ARCH=$(dpkg --print-architecture 2>/dev/null)
+    echo "Detected architecture: $ARCH"
     
     DEB_INSTALLED=false
-    if [ -n "$RELEASE_INFO" ]; then
-        REMOTE_VER=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-        if [ -n "$REMOTE_VER" ]; then
-            DEB_NAME="nexoraldns_${REMOTE_VER}_${ARCH}.deb"
-            DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep "$DEB_NAME" | cut -d'"' -f4 | head -n 1)
-            if [ -z "$DOWNLOAD_URL" ]; then
-                DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o '"browser_download_url": "[^"]*' | grep -E "nexoraldns_.*_${ARCH}\.deb" | cut -d'"' -f4 | head -n 1)
-            fi
-            if [ -n "$DOWNLOAD_URL" ]; then
-                TEMP_DEB=$(mktemp /tmp/nexoraldns_XXXXXX.deb)
-                if curl -L "$DOWNLOAD_URL" -o "$TEMP_DEB"; then
+    if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "i386" ]]; then
+        REPO="nexoral/NexoralDNS"
+        RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
+        if [ -n "$RELEASE_INFO" ]; then
+            REMOTE_VER=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+            if [ -n "$REMOTE_VER" ]; then
+                PKG="nexoraldns_${REMOTE_VER}_${ARCH}.deb"
+                URL="https://github.com/${REPO}/releases/download/${REMOTE_VER}/${PKG}"
+                print_status "Downloading package: $PKG from $URL"
+                TEMP_DEB="/tmp/$PKG"
+                if curl -fsSL "$URL" -o "$TEMP_DEB"; then
                     if sudo dpkg -i "$TEMP_DEB" >/dev/null 2>&1; then
                         DEB_INSTALLED=true
                         print_success "CLI package (nexoraldns) installed successfully."

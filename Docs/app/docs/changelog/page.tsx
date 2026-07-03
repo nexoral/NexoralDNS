@@ -4,7 +4,17 @@ import type { Block } from '@/components/DocPage';
 const blocks: Block[] = [
   { type: 'timeline', versions: [
     {
-      ver: 'v5.8.47-stable', date: 'July 2, 2026', tag: 'LATEST',
+      ver: 'v5.8.48-stable', date: 'July 4, 2026', tag: 'LATEST',
+      changes: [
+        ['New',      'Added automatic CLI packaging (.deb and .tar.gz) for amd64, arm64, and i386 architectures, published automatically to GitHub Releases on push.'],
+        ['New',      'Added self-updating CLI feature via nexoraldns pack command to fetch, download, and install latest package releases directly.'],
+        ['Improved', 'Simplified CLI commands; after the first curl installation, users can manage all NexoralDNS services via direct sudo nexoraldns start/stop/update/remove commands.'],
+        ['New',      'Added automatic package registration to the installer, automatically downloading and installing the Debian package on initial deployment.'],
+        ['Fixed',    'Completely uninstalls the CLI package and cleans up commands during the remove flow.'],
+      ],
+    },
+    {
+      ver: 'v5.8.47-stable', date: 'July 2, 2026',
       changes: [
         ['Fixed',    'Upstream DNS forwarding no longer shares one socket across concurrent queries — a burst of many simultaneous lookups (e.g. one page load) was silently dropping most of them; traced to socket contention (verified: 20 concurrent queries through one shared socket lost 19, while giving each its own socket lost none, repeatably)'],
         ['Improved', 'Each forwarded query now uses its own short-lived socket instead of a shared singleton, removing the transaction-ID rewriting and pending-request tracking the old design needed to disambiguate concurrent queries'],

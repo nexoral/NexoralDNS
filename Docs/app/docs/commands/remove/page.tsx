@@ -16,6 +16,7 @@ async function getBlocks(): Promise<Block[]> {
     'Stops and removes all containers, images and volumes',
     'Deletes networks and the installation directory',
     'Restores original DNS configuration and cleans up config files',
+    'Purges the nexoraldns CLI package and executable command shortcuts',
   ]},
   { type: 'h', title: 'What is NOT removed' },
   { type: 'list', variant: 'check', items: [

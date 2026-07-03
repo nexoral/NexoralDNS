@@ -268,7 +268,7 @@ Note: This is source-available software. Code contributions are not accepted, bu
 - If the `update` command fails to fetch new images or the network is restricted, you can remove and reinstall the service as a recovery path:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -s remove
+nexoraldns remove
 ```
 
 - If removal also fails due to network/DNS problems, re-enable the system resolver and restart it to restore system DNS resolution before retrying:
@@ -291,7 +291,7 @@ nameserver 127.0.0.53
 If you need to completely remove NexoralDNS from your system:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -s remove
+nexoraldns remove
 ```
 
 This will:
