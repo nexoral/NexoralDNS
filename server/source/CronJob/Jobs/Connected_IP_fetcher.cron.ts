@@ -1,6 +1,7 @@
 import { exec } from "child_process";
 import { readFile } from "fs/promises";
 import { networkInterfaces } from "os";
+import { reverse } from "dns/promises";
 import getLocalIPRange from "../../utilities/GetWLANIP.utls";
 import { Retry } from "outers";
 import { pingIP } from "../../helper/IP_Ping.helper";
@@ -104,6 +105,24 @@ export async function getOwnMachineInfo(targetIP: string): Promise<{ ip: string;
   };
 }
 
+export async function getDNSHostnames(ipList: string[]): Promise<Map<string, string>> {
+  const hostnameMap = new Map<string, string>();
+
+  const dnsLookups = ipList.map(async (ip) => {
+    try {
+      const hostnames = await reverse(ip);
+      if (hostnames && hostnames.length > 0) {
+        hostnameMap.set(ip, hostnames[0]);
+      }
+    } catch (error) {
+      // DNS lookup failed, skip this IP
+    }
+  });
+
+  await Promise.all(dnsLookups);
+  return hostnameMap;
+}
+
 export async function fetchConnectedIP(): Promise<Boolean> {
   const connectedIPList: string[] = [];
   const currentIP = getLocalIPRange("any");
@@ -133,7 +152,10 @@ export async function fetchConnectedIP(): Promise<Boolean> {
       await Promise.all(batch);
     }
 
-    // Step 2: Poll ARP table with smart resolution
+    // Step 2: DNS lookup for connected IPs only
+    const hostnameMap = await getDNSHostnames(connectedIPList);
+
+    // Step 3: Poll ARP table with smart resolution
     let arpTable = await getARPTable();
     const maxRetries = 8;
     const pollInterval = 150;
@@ -155,14 +177,17 @@ export async function fetchConnectedIP(): Promise<Boolean> {
       }
     }
 
-    // Step 3: Build device list from connected IPs and ARP table
+    // Step 4: Build device list from connected IPs, DNS, and ARP table
     const availableIPs: object[] = [];
 
     for (const ipAddress of connectedIPList) {
       const arpEntry = arpTable.get(ipAddress);
+      const hostname = hostnameMap.get(ipAddress);
+
       availableIPs.push({
         ip: ipAddress,
         mac: arpEntry?.mac || "unknown",
+        hostname: hostname,
         status: "connected",
         lastSeen: Date.now(),
       });
