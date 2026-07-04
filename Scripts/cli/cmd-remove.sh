@@ -89,14 +89,33 @@ cmd_remove() {
     sudo rm -rf /usr/share/nexoraldns 2>/dev/null || true
     print_success "CLI package removed."
 
-    purge_docker_completely
+    # Ask user before removing Docker and Docker Compose
+    echo ""
+    print_warning "Docker and Docker Compose are still installed on your system."
+
+    if [[ ! -t 0 ]]; then
+        print_status "Non-interactive mode detected. Skipping Docker removal prompt..."
+        REMOVE_DOCKER="n"
+    else
+        read -p "Would you like to remove Docker and Docker Compose? (y/N): " -n 1 -r
+        echo
+        REMOVE_DOCKER="${REPLY}"
+    fi
+
+    if [[ $REMOVE_DOCKER =~ ^[Yy]$ ]]; then
+        purge_docker_completely
+        DOCKER_REMOVED="${WHITE}Docker and Docker Compose have been removed${NC}"
+    else
+        print_status "Docker and Docker Compose were not removed. You can remove them manually later if needed."
+        DOCKER_REMOVED="${WHITE}Docker and Docker Compose are still installed on your system${NC}"
+    fi
 
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${NC}                    ${BOLD}${GREEN}Uninstallation Complete!${NC}                  ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}  ${WHITE}NexoralDNS has been completely removed from your system${NC}  ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${WHITE}Docker and Docker Compose have also been removed${NC}         ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  $DOCKER_REMOVED                         ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}  ${YELLOW}Don't forget to:${NC}                                      ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}  ${WHITE}• Reset your router's DNS settings${NC}                     ${GREEN}║${NC}"
