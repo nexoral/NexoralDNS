@@ -4,11 +4,9 @@ if [ -z "${NEXORALDNS_CLI_LOADED:-}" ]; then
   exit 1
 fi
 
-# System compatibility checks function
 check_system_compatibility() {
   print_status "Checking system compatibility..."
 
-  # Check if running on Linux
   if ! detect_linux; then
     print_error "This installer only supports Linux systems."
     print_status "Requirements:"
@@ -20,7 +18,6 @@ check_system_compatibility() {
 
   print_success "✓ Linux system detected"
 
-  # Check if Debian-based (has apt)
   if ! detect_debian_based; then
     print_error "This installer requires a Debian-based Linux distribution with APT package manager."
     print_status "Supported distributions:"
@@ -34,7 +31,6 @@ check_system_compatibility() {
 
   print_success "✓ Debian-based system detected"
 
-  # Check if supported distribution
   if ! detect_supported_distro; then
     if [ -f /etc/os-release ]; then
       . /etc/os-release
@@ -56,10 +52,8 @@ check_system_compatibility() {
     print_success "✓ Supported distribution detected: $PRETTY_NAME"
   fi
 
-  # Check system resources
   print_status "Checking system resources..."
 
-  # Check available RAM (minimum 2GB required)
   TOTAL_RAM_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
   TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
   MIN_RAM_GB=2
@@ -73,8 +67,8 @@ check_system_compatibility() {
 
   print_success "✓ RAM check passed: ${TOTAL_RAM_GB}GB available"
 
-  # Check available storage (minimum 10GB required) at the directory NexoralDNS
-  # will actually install into, not just wherever $HOME happens to point right now.
+  # resolve_real_home, not $HOME directly: checks space where NexoralDNS will
+  # actually install, which can differ from $HOME under sudo.
   AVAILABLE_STORAGE_KB=$(df "$(resolve_real_home)" | awk 'NR==2 {print $4}')
   AVAILABLE_STORAGE_GB=$((AVAILABLE_STORAGE_KB / 1024 / 1024))
   MIN_STORAGE_GB=10

@@ -87,7 +87,6 @@ for module in "${CLI_MODULES[@]}"; do
   source "$CLI_DIR/$module"
 done
 
-# Set the terminal title immediately based on the requested action.
 case "${1:-}" in
   remove) set_terminal_title "NexoralDNS Uninstaller" ;;
   stop)   set_terminal_title "Stopping NexoralDNS" ;;
@@ -107,9 +106,7 @@ case "${1:-}" in
   update) cmd_update "$@" ;;
 esac
 
-# For any other case (default install or reinstall)
-
-# Ensure the CLI package is installed on the host
+# Anything else falls through to the default install/reinstall flow.
 if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s nexoraldns >/dev/null 2>&1; then
     print_status "Registering nexoraldns CLI command..."
     ARCH=$(dpkg --print-architecture 2>/dev/null)
@@ -137,7 +134,6 @@ if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s ne
         fi
     fi
 
-    # Fallback if package download/install failed
     if [ "$DEB_INSTALLED" = "false" ]; then
         if [ -f "$0" ] && [[ "$0" == *"install.sh" ]]; then
             sudo cp "$0" /usr/bin/nexoraldns && sudo chmod +x /usr/bin/nexoraldns
