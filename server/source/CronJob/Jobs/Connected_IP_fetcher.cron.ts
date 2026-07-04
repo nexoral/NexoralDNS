@@ -1,5 +1,6 @@
 import { exec } from "child_process";
-// Get Current WAN IP
+import { readFile } from "fs/promises";
+import { networkInterfaces } from "os";
 import getLocalIPRange from "../../utilities/GetWLANIP.utls";
 import { Retry } from "outers";
 import { pingIP } from "../../helper/IP_Ping.helper";
@@ -7,26 +8,16 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { promisify } from "util";
 
-
+interface ARPEntry {
+  ip: string;
+  mac: string;
+  flags: string;
+}
 
 function ipToNumber(ip: string): number {
   return ip.split(".").reduce((acc, octet) => (acc << 8) + parseInt(octet), 0);
 }
 
-
-/**
- * Converts a numeric representation of an IP address to its dotted decimal notation.
- * 
- * This function takes a 32-bit integer representation of an IPv4 address and
- * converts it to the standard dotted decimal format (e.g., "192.168.0.1").
- * 
- * @param num - A 32-bit integer representing an IPv4 address
- * @returns The IP address in dotted decimal notation (e.g., "192.168.0.1")
- * 
- * @example
- * // Returns "192.168.0.1"
- * numberToIP(3232235521);
- */
 function numberToIP(num: number): string {
   return [
     (num >> 24) & 255,
@@ -36,12 +27,6 @@ function numberToIP(num: number): string {
   ].join(".");
 }
 
-
-
-/**
- * Get the current WiFi SSID using nmcli (Linux only).
- */
- 
 export async function getWiFiSSID(): Promise<string | null> {
   const execAsync = promisify(exec);
   try {
@@ -54,72 +39,156 @@ export async function getWiFiSSID(): Promise<string | null> {
   }
 }
 
+export async function getARPTable(): Promise<Map<string, ARPEntry>> {
+  const arpMap = new Map<string, ARPEntry>();
+  try {
+    const arpContent = await readFile("/proc/net/arp", "utf-8");
+    const lines = arpContent.split("\n");
 
-/**
- * Fetches and pings all IP addresses within the local IP range.
- * 
- * This function runs on a schedule, executing once every hour. For each IP address
- * in the local network range, it performs a ping operation and logs whether the IP
- * is reachable or not.
- * 
- * @returns A Promise that resolves when the current execution cycle completes
- * @example
- * // Schedule the IP scanning job
- * await fetchConnectedIP();
- */
-export async function fetchConnectedIP(): Promise<Boolean> {
-    const availableIPs: object[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const parts = line.split(/\s+/);
+      if (parts.length >= 6) {
+        const entry: ARPEntry = {
+          ip: parts[0],
+          flags: parts[2],
+          mac: parts[3],
+        };
+        arpMap.set(entry.ip, entry);
+      }
+    }
+
+    // Add own machine's MAC if not already in ARP table
     const currentIP = getLocalIPRange("any");
-    const  SSID = await getWiFiSSID();
-    console.log(`Current SSID: ${SSID}`);
-    console.log(`Scanning IP range: ${currentIP.minIP} - ${currentIP.maxIP}`);
-    // Fetch service config to update connected IPs
-    const serviceCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
-    const serviceConfig = await serviceCol?.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
-    if (currentIP && serviceConfig) {
-      const minNum = ipToNumber(currentIP.minIP);
-      const maxNum = ipToNumber(currentIP.maxIP);
-      const batchSize = 100;
+    const ownMachine = await getOwnMachineInfo(currentIP.ip);
+    if (ownMachine.ip !== "unknown" && !arpMap.has(ownMachine.ip)) {
+      arpMap.set(ownMachine.ip, {
+        ip: ownMachine.ip,
+        mac: ownMachine.mac,
+        flags: "own",
+      });
+    }
+  } catch (error) {
+    console.error("Error reading ARP table:", error);
+  }
+  return arpMap;
+}
 
-      for (let batchStart = minNum; batchStart <= maxNum; batchStart += batchSize) {
-        const batch = [];
-        for (let i = batchStart; i < batchStart + batchSize && i <= maxNum; i++) {
-          const ipAddress = numberToIP(i);
-          batch.push(
-            pingIP(ipAddress).then((pingResult) => {
-              if (pingResult) {
-                availableIPs.push({ ip: ipAddress, status: "connected", lastSeen: Date.now() });
-                console.log(`IP ${ipAddress} is connected.`);
-              }
-            })
-          );
+export async function getOwnMachineInfo(targetIP: string): Promise<{ ip: string; mac: string }> {
+  try {
+    const interfaces = networkInterfaces();
+
+    for (const interfaceData of Object.values(interfaces)) {
+      if (!interfaceData) continue;
+
+      for (const iface of interfaceData) {
+        if (iface.family === "IPv4" && !iface.internal) {
+          if (iface.address === targetIP) {
+            return {
+              ip: iface.address,
+              mac: iface.mac,
+            };
+          }
         }
-        await Promise.all(batch); // wait for this batch to finish
+      }
+    }
+  } catch (error) {
+    console.error("Error getting own machine info:", error);
+  }
+
+  return {
+    ip: "unknown",
+    mac: "unknown",
+  };
+}
+
+export async function fetchConnectedIP(): Promise<Boolean> {
+  const connectedIPList: string[] = [];
+  const currentIP = getLocalIPRange("any");
+  const SSID = await getWiFiSSID();
+
+  const serviceCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+  const serviceConfig = await serviceCol?.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
+
+  if (currentIP && serviceConfig) {
+    const minNum = ipToNumber(currentIP.minIP);
+    const maxNum = ipToNumber(currentIP.maxIP);
+    const batchSize = 100;
+
+    // Step 1: Ping all IPs in batches
+    for (let batchStart = minNum; batchStart <= maxNum; batchStart += batchSize) {
+      const batch = [];
+      for (let i = batchStart; i < batchStart + batchSize && i <= maxNum; i++) {
+        const ipAddress = numberToIP(i);
+        batch.push(
+          pingIP(ipAddress).then((pingResult) => {
+            if (pingResult) {
+              connectedIPList.push(ipAddress);
+            }
+          })
+        );
+      }
+      await Promise.all(batch);
+    }
+
+    // Step 2: Poll ARP table with smart resolution
+    let arpTable = await getARPTable();
+    const maxRetries = 8;
+    const pollInterval = 150;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const resolved = connectedIPList.filter(ip => {
+        const entry = arpTable.get(ip);
+        return entry && entry.mac !== "unknown" && entry.mac !== "00:00:00:00:00:00";
+      });
+      const unresolved = connectedIPList.filter(ip => !resolved.includes(ip));
+
+      if (unresolved.length === 0) {
+        break;
       }
 
-      const update_Fields = {
-        Current_WiFi_SSID: SSID,
-        Current_Local_IP: currentIP.ip,
-        Current_Subnet_Mask: currentIP.subnetMask,
-        Current_IP_Range: `${currentIP.minIP} - ${currentIP.maxIP}`,
-        List_of_Connected_Devices_Info: availableIPs,
-        Total_Connected_Devices_To_Router: availableIPs.length,
-        Connected_At: Date.now(),
-        Next_Expected_Sync_At: new Date(Date.now() + 60 * 1000), // +1 minute
-        Last_Synced_At: Date.now()
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        arpTable = await getARPTable();
       }
-      await serviceCol?.updateOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME }, { $set: update_Fields });
-      console.log(`Connected IPs updated with status: ${availableIPs.length} devices found.`);
-      return true;
     }
-    else {
-      console.log("Could not determine local IP range or service config missing.");
-      return false;
+
+    // Step 3: Build device list from connected IPs and ARP table
+    const availableIPs: object[] = [];
+
+    for (const ipAddress of connectedIPList) {
+      const arpEntry = arpTable.get(ipAddress);
+      availableIPs.push({
+        ip: ipAddress,
+        mac: arpEntry?.mac || "unknown",
+        status: "connected",
+        lastSeen: Date.now(),
+      });
     }
-};
+
+    const update_Fields = {
+      Current_WiFi_SSID: SSID,
+      Current_Local_IP: currentIP.ip,
+      Current_Subnet_Mask: currentIP.subnetMask,
+      Current_IP_Range: `${currentIP.minIP} - ${currentIP.maxIP}`,
+      List_of_Connected_Devices_Info: availableIPs,
+      Total_Connected_Devices_To_Router: availableIPs.length,
+      Connected_At: Date.now(),
+      Next_Expected_Sync_At: new Date(Date.now() + 60 * 1000),
+      Last_Synced_At: Date.now()
+    };
+
+    await serviceCol?.updateOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME }, { $set: update_Fields });
+    return true;
+  }
+
+  return false;
+}
 
 export const IpConnectionCronJob = async () => {
   Retry.Minutes(async () => {
     await fetchConnectedIP();
   }, 2, true);
-}
+};

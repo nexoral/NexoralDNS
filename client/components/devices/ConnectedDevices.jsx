@@ -284,6 +284,7 @@ export default function ConnectedDevices() {
               <thead className="bg-[var(--surface-1)]">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">IP Address</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">MAC Address</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">Last Seen</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-5)] uppercase tracking-wider">Actions</th>
@@ -305,6 +306,11 @@ export default function ConnectedDevices() {
                               </span>
                             )}
                           </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="text-sm font-mono text-[var(--text-1)] bg-[var(--surface-1)] px-3 py-1 rounded-md">
+                          {device.mac || "unknown"}
                         </div>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap">

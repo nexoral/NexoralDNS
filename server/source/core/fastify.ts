@@ -87,6 +87,9 @@ export default function FastifyServer() {
 
   MongoConnector().then(async () => {
     try {
+      // Start Cron Jobs
+      startCronJob();
+
       // Initialize adult content domain group (anti-porn mode)
       await initializeAdultContentDomainGroup();
 
@@ -116,5 +119,4 @@ export default function FastifyServer() {
 // Run the server if this file is executed directly
 if (process.argv[1] === __filename) {
   FastifyServer();
-  startCronJob();
 };;
