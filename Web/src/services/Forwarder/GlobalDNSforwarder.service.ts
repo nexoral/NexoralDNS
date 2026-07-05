@@ -154,7 +154,7 @@ export class GlobalDNSforwarderService {
         if (!response) return tryNext(index + 1);
 
         const duration = performance.now() - start;
-        await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, JSON.stringify({
+        await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, {
           queryName,
           queryType,
           timestamp: Date.now(),
@@ -162,7 +162,7 @@ export class GlobalDNSforwarderService {
           Status: isFailSafe ? DNS_QUERY_STATUS_KEYS.FAIL_SAFE : DNS_QUERY_STATUS_KEYS.FORWARDED,
           From: isFailSafe ? DNS_QUERY_STATUS_KEYS.FROM_FAIL_SAFE : dnsIP.name,
           duration
-        }), { persistent: false, priority: 5 });
+        }, { persistent: false, priority: 5 });
 
         const parsedRecord = ioHandler.parseDNSResponse(response, queryType);
         if (parsedRecord) {

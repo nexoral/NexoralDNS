@@ -43,7 +43,7 @@ export default class DefaultTTLService {
       throw new Error("Service configuration not found.");
     }
 
-    const defaultTTL = serviceData.DefaultTTL || DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.DefaultTTL;
+    const defaultTTL = serviceData.DefaultTTL !== undefined ? serviceData.DefaultTTL : DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.DefaultTTL;
 
     console.log(`Current Default TTL: ${defaultTTL} seconds`);
 
@@ -62,7 +62,7 @@ export default class DefaultTTLService {
     console.log(`Updating Default TTL to: ${newTTL} seconds`);
 
     // Validate TTL value
-    if (!newTTL || typeof newTTL !== "number") {
+    if (typeof newTTL !== "number" || isNaN(newTTL)) {
       const ErrorResponse = new BuildResponse(
         reply,
         StatusCodes.BAD_REQUEST,
@@ -73,14 +73,14 @@ export default class DefaultTTLService {
       });
     }
 
-    if (newTTL < 10 || newTTL > 86400) {
+    if (newTTL < 0 || newTTL > 86400) {
       const ErrorResponse = new BuildResponse(
         reply,
         StatusCodes.BAD_REQUEST,
         "TTL value out of range"
       );
       return ErrorResponse.send({
-        error: "TTL must be between 10 and 86400 seconds (10 seconds to 24 hours)"
+        error: "TTL must be between 0 and 86400 seconds (0 seconds to 24 hours)"
       });
     }
 

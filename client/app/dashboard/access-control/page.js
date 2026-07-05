@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import Sidebar from '../../../components/dashboard/Sidebar';
 import Header from '../../../components/dashboard/Header';
 import Button from '../../../components/ui/Button';
 import useAuthStore from '../../../stores/authStore';
+import api from '../../../services/api';
 import PoliciesTab from '../../../components/access-control/PoliciesTab';
 import DomainGroupsTab from '../../../components/access-control/DomainGroupsTab';
 import IPGroupsTab from '../../../components/access-control/IPGroupsTab';
@@ -12,7 +14,20 @@ import IPGroupsTab from '../../../components/access-control/IPGroupsTab';
 export default function AccessControlPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('policies');
+  const [isInvalidating, setIsInvalidating] = useState(false);
   const { user } = useAuthStore();
+
+  const handleInvalidateCache = async () => {
+    setIsInvalidating(true);
+    try {
+      const response = await api.invalidateAccessControlCache();
+      toast.success(response.data.data?.message || 'ACL cache refreshed');
+    } catch (err) {
+      toast.error(err.response?.data?.data?.error || 'Failed to invalidate cache');
+    } finally {
+      setIsInvalidating(false);
+    }
+  };
 
   const tabs = [
     { id: 'policies', label: 'Policies', icon: '🛡️' },
@@ -33,9 +48,19 @@ export default function AccessControlPage() {
 
         <main className="p-4 lg:p-6">
           {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-[var(--text-1)] mb-2">Access Control</h1>
-            <p className="text-[var(--text-3)]">Manage blocking policies, domain groups, and access restrictions</p>
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-[var(--text-1)] mb-2">Access Control</h1>
+              <p className="text-[var(--text-3)]">Manage blocking policies, domain groups, and access restrictions</p>
+            </div>
+            <Button
+              onClick={handleInvalidateCache}
+              variant="secondary"
+              size="sm"
+              isLoading={isInvalidating}
+            >
+              {isInvalidating ? 'Refreshing...' : 'Refresh ACL Cache'}
+            </Button>
           </div>
 
           {/* Tab Navigation */}

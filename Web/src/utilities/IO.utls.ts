@@ -52,7 +52,7 @@ export default class InputOutputHandler implements IDNSIOHandler {
     rinfo: dgram.RemoteInfo,
     domain: string,
     ResponseIP: string = "0.0.0.0",
-    ttl: number = 10
+    ttl: number = 0
   ): boolean {
     try {
       if (!this.isSocketRunning()) {

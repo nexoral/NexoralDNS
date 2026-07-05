@@ -16,6 +16,8 @@ export default function RecentLogs({ logs }) {
   };
 
   const getStatusBadgeColor = (status) => {
+    if (!status) return 'bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-4)]';
+    if (status.includes('BLOCKED')) return 'bg-[rgba(255,96,113,0.15)] text-[var(--red)] border-[rgba(255,96,113,0.30)]';
     if (status.includes('FORWARDED')) return 'bg-[rgba(91,140,255,0.12)] text-[var(--blue)] border-[rgba(91,140,255,0.25)]';
     if (status.includes('RESOLVED')) return 'bg-[rgba(61,220,132,0.12)] text-[var(--green)] border-[rgba(61,220,132,0.25)]';
     if (status.includes('FAILED')) return 'bg-[rgba(255,96,113,0.12)] text-[var(--red)] border-[rgba(255,96,113,0.25)]';

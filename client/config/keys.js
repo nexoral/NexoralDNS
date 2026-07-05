@@ -33,6 +33,8 @@ export const config = {
     GET_CACHE_STATS: '/api/settings/get-cache-stat',
     DELETE_ALL_CACHE: '/api/settings/delete-all-dns-cache',
     DELETE_SPECIFIC_CACHE: '/api/settings/delete-specific-cache-key',
+    // Access Control - Cache
+    INVALIDATE_ACCESS_CONTROL_CACHE: '/api/access-control/cache/invalidate',
     // Access Control - Policies
     CREATE_ACCESS_CONTROL_POLICY: '/api/access-control/policy',
     GET_ACCESS_CONTROL_POLICIES: '/api/access-control/policies',

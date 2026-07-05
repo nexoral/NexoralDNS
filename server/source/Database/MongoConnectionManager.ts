@@ -7,6 +7,7 @@ import { DB_DEFAULT_CONFIGS } from '../core/key';
 export class MongoConnectionManager {
   private client: MongoClient | null = null;
   private isConnecting = false;
+  private connectionLogged = false;
   private readonly MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
 
   /**
@@ -80,7 +81,10 @@ export class MongoConnectionManager {
     });
 
     this.client.on('connectionCreated', () => {
-      Console.bright('🟢 MongoDB connection created');
+      if (!this.connectionLogged) {
+        this.connectionLogged = true;
+        Console.bright('🟢 MongoDB connection created');
+      }
     });
   }
 

@@ -8,24 +8,22 @@ import { RedisCacheService } from '../../Redis/Redis.cache';
  * Uses Redis to store and query blocked domains per IP
  */
 export default class BlockList {
-  // In-memory cache for recently checked domains (per instance)
-  private readonly localCache: Map<string, { blocked: boolean; timestamp: number }>;
-  private readonly CACHE_TTL = 5000; // 5 seconds local cache
+  private static instance: BlockList;
 
-  // Shared cache across all instances (class-level)
+  private readonly localCache: Map<string, { blocked: boolean; timestamp: number }>;
+  private readonly CACHE_TTL = 5000;
+
   private static globalCache: Map<string, { blocked: boolean; timestamp: number }> = new Map();
-  private static GLOBAL_CACHE_TTL = 3000; // 3 seconds
+  private static GLOBAL_CACHE_TTL = 3000;
 
   constructor() {
     this.localCache = new Map();
+    BlockList.instance = this;
   }
 
-  /**
-   * Clear all in-memory caches (both instance and global)
-   * This should be called when ACL policies are updated
-   */
   public static clearAllCaches(): void {
     BlockList.globalCache.clear();
+    BlockList.instance?.localCache.clear();
     console.log('[BlockList] Cleared all in-memory caches');
   }
 

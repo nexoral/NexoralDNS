@@ -181,4 +181,24 @@ export default class AccessControlController {
       }
     );
   }
+
+  /**
+   * Invalidate ACL cache - reloads all policies from MongoDB to Redis and flushes DNS engine caches
+   */
+  public static async invalidateCache(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
+
+    try {
+      const result = await policyService.invalidateCache();
+      const Responser = new BuildResponse(reply, StatusCodes.OK, "ACL cache invalidated successfully");
+      return Responser.send({
+        lastUpdated: result.lastUpdated,
+        stats: result.stats,
+        message: "ACL policies reloaded from database. DNS engine caches flushed."
+      });
+    } catch (error) {
+      const Responser = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to invalidate ACL cache");
+      return Responser.send({ error: "Failed to reload ACL policies" });
+    }
+  }
 }

@@ -6,6 +6,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { ObjectId } from "mongodb";
 import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export interface DomainEntry {
   domain: string;
@@ -193,6 +194,10 @@ export default class AccessControlPolicyService {
         error: `A policy with the name "${policyData.policyName}" already exists`
       });
     }
+
+    // Trim all IP fields to prevent whitespace mismatches
+    if (policyData.targetIP) policyData.targetIP = policyData.targetIP.trim();
+    if (policyData.targetIPs) policyData.targetIPs = policyData.targetIPs.map(ip => ip.trim());
 
     // Convert string IDs to ObjectIds for references
     const newPolicy: any = {
@@ -445,6 +450,10 @@ export default class AccessControlPolicyService {
       }
     }
 
+    // Trim all IP fields to prevent whitespace mismatches
+    if (updateData.targetIP) updateData.targetIP = updateData.targetIP.trim();
+    if (updateData.targetIPs) updateData.targetIPs = updateData.targetIPs.map(ip => ip.trim());
+
     // Update the policy
     const updatedFields = {
       ...updateData,
@@ -598,5 +607,19 @@ export default class AccessControlPolicyService {
       policyId,
       message: `Policy "${existingPolicy.policyName}" has been deleted successfully`
     });
+  }
+
+  /**
+   * Force-reload ACL policies from MongoDB to Redis and invalidate all caches
+   * This ensures the DNS engine picks up the latest policy changes immediately
+   */
+  public async invalidateCache(): Promise<{ lastUpdated: number; stats: Record<string, unknown> | null }> {
+    await forceReloadACLPolicies();
+
+    const redisService = container.get<RedisCacheService>('RedisCacheService');
+    const raw = await redisService.get('acl:metadata');
+    const stats = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+
+    return { lastUpdated: Date.now(), stats };
   }
 }
