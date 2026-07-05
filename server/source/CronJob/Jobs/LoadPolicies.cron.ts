@@ -164,10 +164,21 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 
   console.log(`[ACL] Expanded ${expandedPolicies.length} policies`);
 
-  // Build Redis data structure
-  // Store domains as JSON strings to preserve wildcard state
-  const ipToDomains = new Map<string, Set<string>>();
-  const allUsersBlockedDomains = new Set<string>();
+  // Build Redis data structure — split exact vs wildcard so the DNS engine can
+  // do O(1) SISMEMBER lookups for exact matches and scan only the small wildcard
+  // sets. Exact domains are stored as plain strings; wildcard entries as JSON.
+  const ipToExact = new Map<string, Set<string>>();   // acl:ip:{ip}:exact
+  const ipToWild = new Map<string, Set<string>>();    // acl:ip:{ip}:wild
+  const allUsersExact = new Set<string>();            // acl:all_users:exact
+  const allUsersWild = new Set<string>();             // acl:all_users:wild
+
+  const addEntry = (exactSet: Set<string>, wildSet: Set<string>, entry: DomainEntry) => {
+    if (entry.isWildcard) {
+      wildSet.add(JSON.stringify(entry)); // preserve pattern shape for boundary matching
+    } else {
+      exactSet.add(entry.domain);         // plain string for SISMEMBER
+    }
+  };
 
   for (const policy of expandedPolicies) {
     if (!policy.isActive) continue;
@@ -176,24 +187,22 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
       if (ip === '*') {
         // Policy applies to all users
         for (const domainEntry of policy.blockedDomains) {
-          // Store as JSON to preserve wildcard state
-          allUsersBlockedDomains.add(JSON.stringify(domainEntry));
+          addEntry(allUsersExact, allUsersWild, domainEntry);
         }
       } else {
         // Policy applies to specific IP
-        if (!ipToDomains.has(ip)) {
-          ipToDomains.set(ip, new Set());
-        }
-        const domainSet = ipToDomains.get(ip)!;
+        if (!ipToExact.has(ip)) ipToExact.set(ip, new Set());
+        if (!ipToWild.has(ip)) ipToWild.set(ip, new Set());
         for (const domainEntry of policy.blockedDomains) {
-          // Store as JSON to preserve wildcard state
-          domainSet.add(JSON.stringify(domainEntry));
+          addEntry(ipToExact.get(ip)!, ipToWild.get(ip)!, domainEntry);
         }
       }
     }
   }
 
-  console.log(`[ACL] Built lookup structure: ${ipToDomains.size} IPs, ${allUsersBlockedDomains.size} global blocks`);
+  const trackedIPs = new Set<string>([...ipToExact.keys(), ...ipToWild.keys()]);
+  const globalBlockCount = allUsersExact.size + allUsersWild.size;
+  console.log(`[ACL] Built lookup structure: ${trackedIPs.size} IPs, ${globalBlockCount} global blocks`);
 
   const redisClient = await container.get<RedisCacheService>('RedisCacheService').getClient();
   const ONE_DAY = 86400;
@@ -214,22 +223,35 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
     pipeline.del(oldAclKeys);
   }
 
-  if (allUsersBlockedDomains.size > 0) {
-    pipeline.sAdd('acl:all_users', Array.from(allUsersBlockedDomains));
-    pipeline.expire('acl:all_users', ONE_DAY);
+  if (allUsersExact.size > 0) {
+    pipeline.sAdd('acl:all_users:exact', Array.from(allUsersExact));
+    pipeline.expire('acl:all_users:exact', ONE_DAY);
+  }
+  if (allUsersWild.size > 0) {
+    pipeline.sAdd('acl:all_users:wild', Array.from(allUsersWild));
+    pipeline.expire('acl:all_users:wild', ONE_DAY);
   }
 
-  for (const [ip, domains] of ipToDomains.entries()) {
-    const key = `acl:ip:${ip}`;
-    pipeline.sAdd(key, Array.from(domains));
-    pipeline.expire(key, ONE_DAY);
+  for (const ip of trackedIPs) {
+    const exact = ipToExact.get(ip);
+    const wild = ipToWild.get(ip);
+    if (exact && exact.size > 0) {
+      const key = `acl:ip:${ip}:exact`;
+      pipeline.sAdd(key, Array.from(exact));
+      pipeline.expire(key, ONE_DAY);
+    }
+    if (wild && wild.size > 0) {
+      const key = `acl:ip:${ip}:wild`;
+      pipeline.sAdd(key, Array.from(wild));
+      pipeline.expire(key, ONE_DAY);
+    }
   }
 
   const metadata = {
     totalPolicies: activePolicies.length,
     expandedPolicies: expandedPolicies.length,
-    trackedIPs: ipToDomains.size,
-    globalBlocks: allUsersBlockedDomains.size,
+    trackedIPs: trackedIPs.size,
+    globalBlocks: globalBlockCount,
     lastUpdated: Date.now(),
     loadDuration: Date.now() - startTime
   };

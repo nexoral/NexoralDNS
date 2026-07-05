@@ -129,18 +129,19 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       { code: 18, name: "Refresh Connected IPs" },
       { code: 19, name: "Create DNS Record" },
       { code: 20, name: "Delete DNS Record" },
-      { code: 21, name: "Modify DNS Record" }
+      { code: 21, name: "Modify DNS Record" },
+      { code: 22, name: "View DNS Record" }
     ],
     DefaultRoles: [
       {
         role: "Super Admin",
         code: 1,
-        permissions: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+        permissions: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
       },
       {
         role: "Admin",
         code: 2,
-        permissions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 18]
+        permissions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 18, 19, 20, 21, 22]
       },
       {
         role: "Moderator",

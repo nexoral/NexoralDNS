@@ -7,6 +7,8 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
+import { RedisCacheService } from "../../Redis/Redis.cache";
+import CacheKeys from "../../Redis/CacheKeys.cache";
 
 // db connections
 import { ObjectId } from "mongodb";
@@ -82,6 +84,10 @@ export default class DnsAddService {
         Responser.setMessage("Failed to add DNS records");
         return Responser.send("Failed to add DNS records");
       }
+
+      // Invalidate any stale engine cache for this record name (engine keys by name).
+      // Covers the case where the name was previously queried and negatively cached.
+      await container.get<RedisCacheService>('RedisCacheService').delete(`${CacheKeys.Domain_DNS_Record}:${dnsRecords[0].name}`);
 
       return Responser.send({ domainId: existingDomain._id, dnsRecordIds: dnsInsertResult.insertedIds });
     }

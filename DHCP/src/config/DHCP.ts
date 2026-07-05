@@ -10,10 +10,10 @@ async function connectRedis(): Promise<RedisClientType> {
   const client = createClient({
     url: REDIS_URL,
     socket: {
-      reconnectStrategy: (retries) => {
-        if (retries > 10) return new Error('Max reconnection attempts reached');
-        return Math.min(retries * 100, 3000);
-      }
+      // Never permanently give up: returning an Error here tells node-redis to
+      // stop reconnecting for good, which would silently drop ALL future
+      // IP-change events. Keep retrying forever with a capped backoff instead.
+      reconnectStrategy: (retries) => Math.min(retries * 100, 3000)
     }
   }) as RedisClientType;
 

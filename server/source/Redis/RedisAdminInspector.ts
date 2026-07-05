@@ -8,14 +8,22 @@ export class RedisAdminInspector {
   async getAllRecords(pattern = '*', limit = 1000, skip = 0): Promise<any[]> {
     try {
       const client = await this.connectionManager.getClient();
-      const keys = await client.keys(pattern);
+
+      // Enumerate keys with SCAN — KEYS is O(N) and blocks the entire Redis server.
+      const keys: string[] = [];
+      let cursor = '0';
+      do {
+        const reply = await client.scan(cursor, { MATCH: pattern, COUNT: 100 });
+        cursor = reply.cursor;
+        keys.push(...reply.keys);
+      } while (cursor !== '0');
+
       const paginatedKeys = keys.slice(skip, skip + limit);
 
-      const records: any[] = [];
-
-      for (const key of paginatedKeys) {
-        const type = await client.type(key);
-        const ttl = await client.ttl(key);
+      // Resolve each key's type/ttl/value concurrently (auto-pipelined) instead of
+      // sequential round-trips.
+      const records = await Promise.all(paginatedKeys.map(async (key) => {
+        const [type, ttl] = await Promise.all([client.type(key), client.ttl(key)]);
 
         let value: any;
         let size = 0;
@@ -40,14 +48,14 @@ export class RedisAdminInspector {
           value = null;
         }
 
-        records.push({
+        return {
           key,
           type,
           ttl: ttl === -1 ? 'no expiry' : ttl,
           value: type === 'string' ? value : `${type}(${size})`,
           expiresAt: ttl === -1 ? 'never' : new Date(Date.now() + ttl * 1000).toISOString()
-        });
-      }
+        };
+      }));
 
       return records;
     } catch (error) {

@@ -5,7 +5,6 @@ import { MongoConnectionManager } from './MongoConnectionManager';
 import { DB_DEFAULT_CONFIGS } from '../Config/key';
 
 export class MongoCollectionManager {
-  private collectionCache = new Map<string, Collection<Document>>();
   private initialized = false;
 
   constructor(private connectionManager: MongoConnectionManager) {}
@@ -34,9 +33,11 @@ export class MongoCollectionManager {
         DB_DEFAULT_CONFIGS.Collections.RULES,
       ];
 
+      // Touch each collection once so any lazy setup runs; handles are NOT cached
+      // for reuse — getCollection() resolves them fresh so a client reconnect
+      // (new MongoClient) never leaves callers holding a dead handle.
       for (const colName of collections) {
-        const col = db.collection(colName);
-        this.collectionCache.set(colName, col);
+        db.collection(colName);
       }
 
       Console.green('✅ All collections initialized');
@@ -51,17 +52,12 @@ export class MongoCollectionManager {
    * Get a collection by name
    */
   getCollection(collectionName: string): Collection<Document> | undefined {
-    const collection = this.collectionCache.get(collectionName);
-    if (!collection) {
-      Console.yellow(`⚠️ Collection not found: ${collectionName}`);
+    try {
+      // Resolve fresh from the current client each call (resilient to reconnects).
+      return this.connectionManager.getDatabase().collection(collectionName);
+    } catch (error) {
+      Console.yellow(`⚠️ Collection not available: ${collectionName}`, error);
+      return undefined;
     }
-    return collection;
-  }
-
-  /**
-   * Get all cached collections
-   */
-  getAllCollections(): Map<string, Collection<Document>> {
-    return this.collectionCache;
   }
 }

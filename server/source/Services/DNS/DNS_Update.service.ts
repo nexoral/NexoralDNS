@@ -38,6 +38,19 @@ export default class DnsUpdateService {
       Responser.setMessage("DNS record not found");
       return Responser.send("DNS record not found");
     }
+
+    // Ownership enforcement: the record's domain must belong to the caller.
+    // Return 404 (not 403) so we don't reveal that another user's record exists.
+    const ownedDomain = await DomainCollectionClient.findOne({
+      _id: new ObjectId(existingDNS.domainId),
+      userId: new ObjectId(user._id)
+    });
+    if (!ownedDomain) {
+      Responser.setStatusCode(StatusCodes.NOT_FOUND);
+      Responser.setMessage("DNS record not found");
+      return Responser.send("DNS record not found");
+    }
+
     for (const dnskey in existingDNS) {
       if (dnskey === 'value' && existingDNS[dnskey] !== value) {
         const existingValue = await DNSCollectionClient.find({ value: value }).toArray();
@@ -81,7 +94,13 @@ export default class DnsUpdateService {
         return Responser.send("Failed to update DNS record");
       }
 
-      container.get<RedisCacheService>('RedisCacheService').delete(`${CacheKeys.Domain_DNS_Record}:${DnsDetails.name}`)
+      // Invalidate the engine cache (keyed by record name). On rename, clear both
+      // the old and the new name so neither serves a stale record.
+      const cache = container.get<RedisCacheService>('RedisCacheService');
+      await cache.delete(`${CacheKeys.Domain_DNS_Record}:${DnsDetails.name}`);
+      if (name && name !== DnsDetails.name) {
+        await cache.delete(`${CacheKeys.Domain_DNS_Record}:${name}`);
+      }
       return Responser.send({ dnsRecordIds: dnsUpdateResult.upsertedId });
     }
 

@@ -6,6 +6,7 @@ export class RabbitMQConnectionManager {
   private connection: any = null;
   private channel: Channel | null = null;
   private isConnecting = false;
+  private reconnecting = false;
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 10;
   private readonly RECONNECT_DELAY = 5000;
@@ -42,7 +43,8 @@ export class RabbitMQConnectionManager {
 
     } catch (error) {
       Console.red('❌ Failed to connect to RabbitMQ:', error);
-      await this.handleReconnection();
+      // Do NOT block the caller on reconnection — detach it to the background.
+      this.scheduleReconnect();
       throw error;
     } finally {
       this.isConnecting = false;
@@ -52,35 +54,47 @@ export class RabbitMQConnectionManager {
   private setupEventHandlers(): void {
     if (!this.connection) return;
 
-    this.connection.on('error', async (err: any) => {
+    this.connection.on('error', (err: any) => {
       Console.red('❌ RabbitMQ connection error:', err);
-      await this.handleReconnection();
+      this.scheduleReconnect();
     });
 
-    this.connection.on('close', async () => {
+    this.connection.on('close', () => {
       Console.yellow('🔴 RabbitMQ connection closed');
       this.connection = null;
       this.channel = null;
-      await this.handleReconnection();
+      this.scheduleReconnect();
     });
   }
 
-  private async handleReconnection(): Promise<void> {
-    this.reconnectAttempts++;
-    if (this.reconnectAttempts > this.MAX_RECONNECT_ATTEMPTS) {
-      Console.red(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
-      return;
+  /**
+   * Starts a single background reconnection loop (idempotent). Callers on the
+   * request/response path are never blocked — only the very first connection is
+   * awaited at startup. Subsequent reconnects run detached here.
+   */
+  private scheduleReconnect(): void {
+    if (this.reconnecting) return; // one loop at a time
+    this.reconnecting = true;
+    void this.reconnectLoop();
+  }
+
+  private async reconnectLoop(): Promise<void> {
+    while (this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+      this.reconnectAttempts++;
+      Console.yellow(`⏳ Reconnecting to RabbitMQ in ${this.RECONNECT_DELAY / 1000}s (attempt ${this.reconnectAttempts})`);
+      await new Promise(resolve => setTimeout(resolve, this.RECONNECT_DELAY));
+
+      try {
+        await this.connect(); // resets reconnectAttempts to 0 on success
+        this.reconnecting = false;
+        return;
+      } catch {
+        // stay in the loop; scheduleReconnect() from connect() no-ops while reconnecting
+      }
     }
 
-    Console.yellow(`⏳ Reconnecting to RabbitMQ in ${this.RECONNECT_DELAY / 1000}s (attempt ${this.reconnectAttempts + 1})`);
-
-    await new Promise(resolve => setTimeout(resolve, this.RECONNECT_DELAY));
-
-    try {
-      await this.connect();
-    } catch (error) {
-      Console.red('❌ Reconnection failed:', error);
-    }
+    Console.red(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
+    this.reconnecting = false;
   }
 
   private async waitForConnection(): Promise<void> {
