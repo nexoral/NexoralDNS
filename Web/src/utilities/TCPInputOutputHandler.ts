@@ -3,7 +3,7 @@
 import net from "node:net";
 import dgram from "node:dgram";
 import { IDNSIOHandler } from "./IDNSIOHandler";
-import InputOutputHandler from "./IO.utls";
+import { DNSPacketCodec } from "./DNSPacketCodec";
 
 /**
  * TCP/TLS variant of the DNS IO handler (RFC 1035 §4.2.2).
@@ -16,30 +16,24 @@ import InputOutputHandler from "./IO.utls";
  */
 export default class TCPInputOutputHandler implements IDNSIOHandler {
   private readonly tcpSocket: net.Socket;
-  // Used only for pure Buffer parsing — the null socket is never accessed
-  // during parsing (same pattern as GlobalDNSforwarder.service.ts).
-  private readonly parser: InputOutputHandler;
 
   constructor(socket: net.Socket) {
     this.tcpSocket = socket;
-    this.parser = new InputOutputHandler(null as any);
   }
 
-  // ── Pure parsing — delegate to shared parser ─────────────────────────────
-
   public parseQueryName(msg: Buffer, offset = 12): string {
-    return this.parser.parseQueryName(msg, offset);
+    return DNSPacketCodec.parseQueryName(msg, offset);
   }
 
   public parseQueryType(msg: Buffer): string {
-    return this.parser.parseQueryType(msg);
+    return DNSPacketCodec.parseQueryType(msg);
   }
 
   public parseDNSResponse(
     response: Buffer,
     queryType: string
   ): { type: string; name: string; value: string; ttl: number } | null {
-    return this.parser.parseDNSResponse(response, queryType);
+    return DNSPacketCodec.parseDNSResponse(response, queryType);
   }
 
   // ── Send methods — TCP socket with 2-byte length prefix ──────────────────
@@ -53,7 +47,7 @@ export default class TCPInputOutputHandler implements IDNSIOHandler {
   ): boolean {
     try {
       if (this.tcpSocket.destroyed) return false;
-      const payload = this.buildDNSResponsePayload(msg, domain, ResponseIP, ttl);
+      const payload = DNSPacketCodec.buildResponsePayload(msg, domain, ResponseIP, ttl);
       this.writeWithLengthPrefix(payload);
       return true;
     } catch {
@@ -76,55 +70,7 @@ export default class TCPInputOutputHandler implements IDNSIOHandler {
   private writeWithLengthPrefix(payload: Buffer): void {
     const lengthPrefix = Buffer.allocUnsafe(2);
     lengthPrefix.writeUInt16BE(payload.length, 0);
-    // Concat into a single write to keep length + payload in one TCP segment.
     this.tcpSocket.write(Buffer.concat([lengthPrefix, payload]));
-  }
-
-  /**
-   * Mirrors the DNS response packet construction in InputOutputHandler.buildSendAnswer
-   * but returns a Buffer instead of calling udpInstance.send(), so it can be
-   * passed to writeWithLengthPrefix for TCP framing.
-   */
-  private buildDNSResponsePayload(
-    msg: Buffer,
-    domain: string,
-    ResponseIP: string,
-    ttl: number
-  ): Buffer {
-    const transactionId = msg.subarray(0, 2);
-    const flags = Buffer.from([0x81, 0x80]);
-    const qdcount = Buffer.from([0x00, 0x01]);
-    let ancount = Buffer.from([0x00, 0x01]);
-    const nscount = Buffer.from([0x00, 0x00]);
-    const arcount = Buffer.from([0x00, 0x00]);
-
-    let offset = 12;
-    const labels: string[] = [];
-    while (msg[offset] !== 0) {
-      const length = msg[offset];
-      labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
-      offset += length + 1;
-    }
-    const queryName = labels.join(".");
-    const question = msg.subarray(12, offset + 5);
-
-    let answer = Buffer.alloc(0);
-    if (queryName === domain) {
-      const name = Buffer.from([0xc0, 0x0c]);
-      const type = Buffer.from([0x00, 0x01]);
-      const cls = Buffer.from([0x00, 0x01]);
-      const ttlBuffer = Buffer.alloc(4);
-      ttlBuffer.writeUInt32BE(ttl, 0);
-      const rdlength = Buffer.from([0x00, 0x04]);
-      const rdata = Buffer.from(ResponseIP.split(".").map((o) => parseInt(o)));
-      answer = Buffer.concat([name, type, cls, ttlBuffer, rdlength, rdata]);
-    } else {
-      ancount = Buffer.from([0x00, 0x00]);
-    }
-
-    return Buffer.concat([
-      transactionId, flags, qdcount, ancount, nscount, arcount, question, answer,
-    ]);
   }
 
   // ── Utility ──────────────────────────────────────────────────────────────
