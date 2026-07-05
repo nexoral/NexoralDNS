@@ -1,6 +1,6 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import amqp, { Channel } from 'amqplib';
-import { Console } from 'outers';
 
 export class RabbitMQConnectionManager {
   private connection: any = null;
@@ -25,15 +25,15 @@ export class RabbitMQConnectionManager {
     try {
       const rabbitURL = process.env.RABBITMQ_URI || 'amqp://localhost:5672';
 
-      Console.bright('📡 Connecting to RabbitMQ...');
-      Console.bright(`   URL: ${rabbitURL}`);
+      logger.info('📡 Connecting to RabbitMQ...');
+      logger.info(`   URL: ${rabbitURL}`);
 
       const connection = await amqp.connect(rabbitURL);
       this.connection = connection;
-      Console.green('✅ Connected to RabbitMQ successfully!');
+      logger.info('✅ Connected to RabbitMQ successfully!');
 
       this.channel = await connection.createChannel();
-      Console.green('✅ RabbitMQ channel created!');
+      logger.info('✅ RabbitMQ channel created!');
 
       this.setupEventHandlers();
 
@@ -41,7 +41,7 @@ export class RabbitMQConnectionManager {
       return this.channel;
 
     } catch (error) {
-      Console.red('❌ Failed to connect to RabbitMQ:', error);
+      logger.error('❌ Failed to connect to RabbitMQ:', error);
       await this.handleReconnection();
       throw error;
     } finally {
@@ -53,12 +53,12 @@ export class RabbitMQConnectionManager {
     if (!this.connection) return;
 
     this.connection.on('error', async (err: any) => {
-      Console.red('❌ RabbitMQ connection error:', err);
+      logger.error('❌ RabbitMQ connection error:', err);
       await this.handleReconnection();
     });
 
     this.connection.on('close', async () => {
-      Console.yellow('🔴 RabbitMQ connection closed');
+      logger.warn('🔴 RabbitMQ connection closed');
       this.connection = null;
       this.channel = null;
       await this.handleReconnection();
@@ -68,18 +68,18 @@ export class RabbitMQConnectionManager {
   private async handleReconnection(): Promise<void> {
     this.reconnectAttempts++;
     if (this.reconnectAttempts > this.MAX_RECONNECT_ATTEMPTS) {
-      Console.red(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
+      logger.error(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
       return;
     }
 
-    Console.yellow(`⏳ Reconnecting to RabbitMQ in ${this.RECONNECT_DELAY / 1000}s (attempt ${this.reconnectAttempts + 1})`);
+    logger.warn(`⏳ Reconnecting to RabbitMQ in ${this.RECONNECT_DELAY / 1000}s (attempt ${this.reconnectAttempts + 1})`);
 
     await new Promise(resolve => setTimeout(resolve, this.RECONNECT_DELAY));
 
     try {
       await this.connect();
     } catch (error) {
-      Console.red('❌ Reconnection failed:', error);
+      logger.error('❌ Reconnection failed:', error);
     }
   }
 
@@ -100,7 +100,7 @@ export class RabbitMQConnectionManager {
 
   async close(): Promise<void> {
     try {
-      Console.bright('🔌 Closing RabbitMQ connection...');
+      logger.info('🔌 Closing RabbitMQ connection...');
 
       if (this.channel) {
         await this.channel.close();
@@ -112,9 +112,9 @@ export class RabbitMQConnectionManager {
         this.connection = null;
       }
 
-      Console.green('✅ RabbitMQ connection closed');
+      logger.info('✅ RabbitMQ connection closed');
     } catch (error) {
-      Console.red('❌ Error closing RabbitMQ connection:', error);
+      logger.error('❌ Error closing RabbitMQ connection:', error);
     }
   }
 

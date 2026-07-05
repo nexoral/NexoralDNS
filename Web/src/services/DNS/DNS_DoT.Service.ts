@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import dgram from "node:dgram";
-import { Console } from "outers";
+import logger from "../../utilities/logger";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
 import container from "../../container/appContainer";
@@ -66,7 +66,7 @@ export function loadOrGenerateCerts(): { cert: Buffer; key: Buffer } {
     return { cert: fs.readFileSync(CERT_FILE), key: fs.readFileSync(KEY_FILE) };
   }
 
-  Console.yellow("DoT: No TLS certs found — generating self-signed certificate via openssl...");
+  logger.warn("DoT: No TLS certs found — generating self-signed certificate via openssl...");
   const { cert, key } = generateSelfSigned();
 
   // Persist to disk so the same cert survives restarts (avoids re-trust prompts).
@@ -74,9 +74,9 @@ export function loadOrGenerateCerts(): { cert: Buffer; key: Buffer } {
     fs.mkdirSync(CERT_DIR, { recursive: true });
     atomicWrite(CERT_FILE, cert, 0o644);
     atomicWrite(KEY_FILE, key, 0o600);
-    Console.green(`DoT: Self-signed TLS cert saved to ${CERT_DIR}`);
+    logger.info(`DoT: Self-signed TLS cert saved to ${CERT_DIR}`);
   } catch {
-    Console.yellow("DoT: Cannot persist TLS certs to disk — using in-memory only.");
+    logger.warn("DoT: Cannot persist TLS certs to disk — using in-memory only.");
   }
 
   return { cert, key };
@@ -119,7 +119,7 @@ export default class DNS_DoT {
   public start(): this {
     this.server.on("listening", () => {
       const addr = this.server.address() as net.AddressInfo;
-      Console.green(
+      logger.info(
         `DNS DoT server running at tls://${addr.address}:${addr.port} with Worker: ${process.pid}`
       );
     });
@@ -131,7 +131,7 @@ export default class DNS_DoT {
       mongoConnManager.connect(),
       mongoCollManager.initialize(),
     ]).catch((error) => {
-      Console.red("DNS_DoT: Failed to connect to MongoDB:", error);
+      logger.error("DNS_DoT: Failed to connect to MongoDB:", error as any);
     });
 
     this.server.listen(853, getLocalIP("any"));
@@ -169,12 +169,12 @@ export default class DNS_DoT {
       });
 
       socket.on("error", (err: Error) => {
-        Console.red(`DNS DoT connection error [${baseRinfo.address}]: ${err.message}`);
+        logger.error(`DNS DoT connection error [${baseRinfo.address}]: ${err.message}`);
         socket.destroy();
       });
 
       socket.on("timeout", () => {
-        Console.red(`DNS DoT connection timeout [${baseRinfo.address}]`);
+        logger.error(`DNS DoT connection timeout [${baseRinfo.address}]`);
         socket.destroy();
       });
 
@@ -190,7 +190,7 @@ export default class DNS_DoT {
    */
   public listenError(): this {
     this.server.on("error", (err: Error) => {
-      Console.red(`DNS DoT server error:\n${err.stack}`);
+      logger.error(`DNS DoT server error:\n${err.stack}`);
       this.server.close();
     });
     return this;

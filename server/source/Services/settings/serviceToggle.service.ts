@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
@@ -19,7 +20,7 @@ export default class ServiceToggleService {
 
   // Toggle a service's active status
   public async toggleService(reply: FastifyReply): Promise<void> {
-    console.log("Toggling service status...");
+    logger.info("Toggling service status...");
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Service updated Successful");
     const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
@@ -47,7 +48,7 @@ export default class ServiceToggleService {
     };
     await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.Service_Status, updatedServiceData);
 
-    console.log(`Service status updated to: ${newStatus}`);
+    logger.info(`Service status updated to: ${newStatus}`);
 
     return Responser.send({ serviceStatus: newStatus });
   }

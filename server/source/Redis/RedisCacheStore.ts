@@ -1,5 +1,5 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from 'outers';
 import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class RedisCacheStore {
@@ -16,7 +16,7 @@ export class RedisCacheStore {
         await client.set(key, serializedValue);
       }
     } catch (error) {
-      Console.yellow(`⚠️  Failed to set key ${key}:`, error);
+      logger.warn(`⚠️  Failed to set key ${key}:`, error);
     }
   }
 
@@ -33,7 +33,7 @@ export class RedisCacheStore {
         return cached as T;
       }
     } catch (error) {
-      Console.yellow(`⚠️  Failed to get key ${key}:`, error);
+      logger.warn(`⚠️  Failed to get key ${key}:`, error);
       return null;
     }
   }
@@ -44,7 +44,7 @@ export class RedisCacheStore {
       const result = await client.del(key);
       return result > 0;
     } catch (error) {
-      Console.yellow(`⚠️  Failed to delete key ${key}:`, error);
+      logger.warn(`⚠️  Failed to delete key ${key}:`, error);
       return false;
     }
   }
@@ -55,7 +55,7 @@ export class RedisCacheStore {
       const result = await client.exists(key);
       return result > 0;
     } catch (error) {
-      Console.yellow(`⚠️  Failed to check existence of key ${key}:`, error);
+      logger.warn(`⚠️  Failed to check existence of key ${key}:`, error);
       return false;
     }
   }
@@ -63,17 +63,23 @@ export class RedisCacheStore {
   async invalidate(pattern: string): Promise<number> {
     try {
       const client = await this.connectionManager.getClient();
-      const keys = await client.keys(pattern);
+      const keys: string[] = [];
+      let cursor = '0';
+      do {
+        const reply = await client.scan(cursor, { MATCH: pattern, COUNT: 100 });
+        cursor = reply.cursor;
+        keys.push(...reply.keys);
+      } while (cursor !== '0');
 
       if (keys.length > 0) {
         await client.del(keys);
-        Console.bright(`🗑️  Invalidated ${keys.length} cache entries matching pattern: ${pattern}`);
+        logger.info(`Invalidated ${keys.length} cache entries matching pattern: ${pattern}`);
         return keys.length;
       }
 
       return 0;
     } catch (error) {
-      Console.yellow(`⚠️  Failed to invalidate pattern ${pattern}:`, error);
+      logger.warn(`Failed to invalidate pattern ${pattern}:`, error as any);
       return 0;
     }
   }
@@ -83,7 +89,7 @@ export class RedisCacheStore {
       const client = await this.connectionManager.getClient();
       return await client.ttl(key);
     } catch (error) {
-      Console.yellow(`⚠️  Failed to get TTL for key ${key}:`, error);
+      logger.warn(`⚠️  Failed to get TTL for key ${key}:`, error);
       return -1;
     }
   }
@@ -94,7 +100,7 @@ export class RedisCacheStore {
       const result = await client.expire(key, seconds);
       return result;
     } catch (error) {
-      Console.yellow(`⚠️  Failed to set expiration for key ${key}:`, error);
+      logger.warn(`⚠️  Failed to set expiration for key ${key}:`, error);
       return 0;
     }
   }
@@ -103,9 +109,9 @@ export class RedisCacheStore {
     try {
       const client = await this.connectionManager.getClient();
       await client.flushAll();
-      Console.green('✅ All cache cleared!');
+      logger.info('✅ All cache cleared!');
     } catch (error) {
-      Console.red('❌ Failed to clear cache:', error);
+      logger.error('❌ Failed to clear cache:', error);
     }
   }
 
@@ -132,7 +138,7 @@ export class RedisCacheStore {
         hit_rate: this.calculateHitRate(stats.keyspace_hits, stats.keyspace_misses)
       };
     } catch (error) {
-      Console.red('❌ Failed to get cache stats:', error);
+      logger.error('❌ Failed to get cache stats:', error);
       return null;
     }
   }

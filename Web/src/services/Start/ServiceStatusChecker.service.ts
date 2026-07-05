@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from "outers";
+import logger from "../../utilities/logger";
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
@@ -38,7 +38,7 @@ export default class ServiceStatusChecker {
     // If cache exists, use it
     if (serviceStatusCache !== null) {
       if (serviceStatusCache.Service_Status !== "active") {
-        Console.red("Service is inactive (from cache). DNS query processing is halted.");
+        logger.error("Service is inactive (from cache). DNS query processing is halted.");
         IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10); // Respond with NXDOMAIN
         return {
           serviceStatus: false,
@@ -55,7 +55,7 @@ export default class ServiceStatusChecker {
 
     const serviceCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE)
     if (!serviceCollection) {
-      Console.red("Service collection not found in the database.");
+      logger.error("Service collection not found in the database.");
       return {
         serviceStatus: false,
         serviceConfig: null
@@ -66,7 +66,7 @@ export default class ServiceStatusChecker {
 
 
     if (!serviceConfig) {
-      Console.red("Service configuration not found in the database.");
+      logger.error("Service configuration not found in the database.");
       return {
         serviceStatus: false,
         serviceConfig: null
@@ -75,7 +75,7 @@ export default class ServiceStatusChecker {
 
     await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.Service_Status, serviceConfig);
     if (serviceConfig.Service_Status !== "active") {
-      Console.red("Service is inactive. DNS query processing is halted.");
+      logger.error("Service is inactive. DNS query processing is halted.");
       IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceConfig.DefaultTTL !== undefined ? serviceConfig.DefaultTTL : 0); // Respond with NXDOMAIN
       return {
         serviceStatus: false,

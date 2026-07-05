@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -49,10 +50,10 @@ export default class AccessControlController {
         }
       },
       (key) => {
-        console.log(`[DEDUP] Duplicate create policy request detected for ${key}, waiting for existing request...`);
+        logger.info(`[DEDUP] Duplicate create policy request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        console.log(`[CLEANUP] Removed in-flight create policy request for ${key}`);
+        logger.info(`[CLEANUP] Removed in-flight create policy request for ${key}`);
       }
     );
   }
@@ -114,10 +115,10 @@ export default class AccessControlController {
         }
       },
       (key) => {
-        console.log(`[DEDUP] Duplicate update policy request detected for ${key}, waiting for existing request...`);
+        logger.info(`[DEDUP] Duplicate update policy request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        console.log(`[CLEANUP] Removed in-flight update policy request for ${key}`);
+        logger.info(`[CLEANUP] Removed in-flight update policy request for ${key}`);
       }
     );
   }
@@ -144,10 +145,10 @@ export default class AccessControlController {
         }
       },
       (key) => {
-        console.log(`[DEDUP] Duplicate toggle policy request detected for ${key}, waiting for existing request...`);
+        logger.info(`[DEDUP] Duplicate toggle policy request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        console.log(`[CLEANUP] Removed in-flight toggle policy request for ${key}`);
+        logger.info(`[CLEANUP] Removed in-flight toggle policy request for ${key}`);
       }
     );
   }
@@ -174,10 +175,10 @@ export default class AccessControlController {
         }
       },
       (key) => {
-        console.log(`[DEDUP] Duplicate delete policy request detected for ${key}, waiting for existing request...`);
+        logger.info(`[DEDUP] Duplicate delete policy request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        console.log(`[CLEANUP] Removed in-flight delete policy request for ${key}`);
+        logger.info(`[CLEANUP] Removed in-flight delete policy request for ${key}`);
       }
     );
   }

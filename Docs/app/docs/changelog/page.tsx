@@ -4,7 +4,22 @@ import type { Block } from '@/components/DocPage';
 const blocks: Block[] = [
   { type: 'timeline', versions: [
     {
-      ver: 'v6.11.53-stable', date: 'July 6, 2026', tag: 'LATEST',
+      ver: 'v6.12.53-stable', date: 'July 6, 2026', tag: 'LATEST',
+      changes: [
+        ['Improved', 'All console.log/console.error replaced with pino async structured logging — synchronous I/O eliminated from every hot path, event loop no longer blocked by logging'],
+        ['Improved', 'MongoDB timeouts configured (connectTimeoutMS: 5s, serverSelectionTimeoutMS: 5s, socketTimeoutMS: 30s) — stuck connections no longer accumulate under load'],
+        ['Improved', 'Fastify requestTimeout set to 30s — slow clients can no longer exhaust the worker pool'],
+        ['Improved', 'Redis KEYS command replaced with SCAN cursor iteration — O(N) blocking Redis operation eliminated from cache invalidation'],
+        ['Improved', 'DNS query processing now has a 5-second timeout guard — hanging DB/RabbitMQ calls no longer leave clients waiting indefinitely; SERVFAIL returned on timeout'],
+        ['New',      'Pre-allocated dgram socket pool (256 sockets) for upstream DNS forwarding — eliminates create/destroy syscall overhead per query'],
+        ['Fixed',    'Socket listener collision in forwarder pool — per-query socket.on("message") listeners could cross-wire responses when multiple queries shared a socket; replaced with single permanent listener dispatching by DNS TXID'],
+        ['Improved', 'Upstream DNS analytics publish moved off the response path — fire-and-forget, no longer awaits RabbitMQ before sending answer to client'],
+        ['New',      'Circuit breaker for each upstream DNS server — 5 failures in 30s opens the breaker; dead servers skipped in ~0ms instead of waiting 2s per attempt; auto-recovery probe after 30s cooldown'],
+        ['Improved', 'Upstream DNS server status (breaker state + failure count) exposed in forwarder status endpoint'],
+      ],
+    },
+    {
+      ver: 'v6.11.53-stable', date: 'July 6, 2026',
       changes: [
         ['Fixed',    'A malformed or truncated DNS packet — e.g. a self-referential compression pointer — could spin a worker’s event loop forever, so a single crafted UDP datagram from any LAN client could take down DNS for everyone pinned to that worker; the parser now bounds every label walk and caps compression-pointer jumps'],
         ['Fixed',    'API error responses were being sent with HTTP 200 (the real code appeared only in the JSON body) — failed logins, not-found, and conflicts now return their correct HTTP status, so browsers, proxies and the dashboard interpret them properly'],

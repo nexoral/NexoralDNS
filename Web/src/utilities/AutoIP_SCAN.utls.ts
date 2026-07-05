@@ -1,6 +1,7 @@
 import { Socket, createSocket } from "node:dgram";
 import os from "os";
 import { Retry } from "outers";
+import logger from './logger';
 
 export default class IP_SCAN {
   private CURRENT_IP: string = "";
@@ -20,11 +21,11 @@ export default class IP_SCAN {
       const currentIP = await this.getCurrentIP();
       this.CURRENT_IP = currentIP;
       if (this.CURRENT_IP !== this.PREVIOUS_IP) {
-        console.log(`IP Change Detected: ${this.PREVIOUS_IP} -> ${this.CURRENT_IP}`);
+        logger.info(`IP Change Detected: ${this.PREVIOUS_IP} -> ${this.CURRENT_IP}`);
         this.PREVIOUS_IP = this.CURRENT_IP;
 
         this.socket.close(() => {
-          console.log(`Rebinding DNS server to new IP: ${this.CURRENT_IP}`);
+          logger.info(`Rebinding DNS server to new IP: ${this.CURRENT_IP}`);
 
           // Create new socket since closed sockets cannot be reused
           const newSocket = createSocket('udp4');
@@ -33,14 +34,14 @@ export default class IP_SCAN {
           // letting the socket 'error' tear down the UDP service permanently.
           // Reset PREVIOUS_IP so the next scan tick retries the rebind.
           newSocket.once('error', (err) => {
-            console.error(`Failed to rebind DNS server to ${this.CURRENT_IP}:`, err);
+            logger.error(`Failed to rebind DNS server to ${this.CURRENT_IP}:`, err as any);
             this.PREVIOUS_IP = "";
             try { newSocket.close(); } catch { /* already closing */ }
           });
 
           // Only notify the parent once the new socket is actually listening.
           newSocket.once('listening', () => {
-            console.log(`Rebound DNS server to new IP: ${this.CURRENT_IP}`);
+            logger.info(`Rebound DNS server to new IP: ${this.CURRENT_IP}`);
             if (this.onRebind) {
               this.onRebind(newSocket);
             }

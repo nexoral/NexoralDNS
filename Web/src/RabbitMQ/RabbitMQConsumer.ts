@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Channel, ConsumeMessage } from 'amqplib';
-import { Console } from 'outers';
+import logger from '../utilities/logger';
 import { RabbitMQConnectionManager } from './RabbitMQConnectionManager';
 import { RabbitMQQueueManager } from './RabbitMQQueueManager';
 
@@ -24,7 +24,7 @@ export class RabbitMQConsumer {
 
       await channel.prefetch(options?.prefetch ?? 1);
 
-      Console.green(`🔵 Started consuming from queue: ${queue}`);
+      logger.info(`🔵 Started consuming from queue: ${queue}`);
 
       await channel.consume(
         queue,
@@ -38,14 +38,14 @@ export class RabbitMQConsumer {
 
             if (success) {
               channel.ack(msg);
-              Console.bright(`✅ Message processed and acknowledged from queue: ${queue}`);
+              logger.info(`✅ Message processed and acknowledged from queue: ${queue}`);
             } else {
               channel.nack(msg, false, true);
-              Console.yellow(`⚠️  Message processing failed, requeued: ${queue}`);
+              logger.warn(`⚠️  Message processing failed, requeued: ${queue}`);
             }
 
           } catch (error) {
-            Console.red(`❌ Error processing message from queue ${queue}:`, error);
+            logger.error(`❌ Error processing message from queue ${queue}:`, error as any);
             channel.nack(msg, false, true);
           }
         },
@@ -55,7 +55,7 @@ export class RabbitMQConsumer {
       );
 
     } catch (error) {
-      Console.red(`❌ Failed to start consumer for queue ${queue}:`, error);
+      logger.error(`❌ Failed to start consumer for queue ${queue}:`, error as any);
       throw error;
     }
   }
@@ -85,7 +85,7 @@ export class RabbitMQConsumer {
       messageBatch = [];
 
       try {
-        Console.bright(`📦 Processing batch of ${currentBatch.length} messages from queue: ${queue}`);
+        logger.info(`📦 Processing batch of ${currentBatch.length} messages from queue: ${queue}`);
 
         const messages = currentBatch.map((item) => item.data);
 
@@ -93,14 +93,14 @@ export class RabbitMQConsumer {
 
         if (success) {
           currentBatch.forEach((item) => channel.ack(item.msg));
-          Console.green(`✅ Batch of ${currentBatch.length} messages processed successfully`);
+          logger.info(`✅ Batch of ${currentBatch.length} messages processed successfully`);
         } else {
           currentBatch.forEach((item) => channel.nack(item.msg, false, true));
-          Console.yellow(`⚠️  Batch processing failed, messages requeued`);
+          logger.warn(`⚠️  Batch processing failed, messages requeued`);
         }
 
       } catch (error) {
-        Console.red(`❌ Error processing batch from queue ${queue}:`, error);
+        logger.error(`❌ Error processing batch from queue ${queue}:`, error as any);
         currentBatch.forEach((item) => channel.nack(item.msg, false, true));
       }
     };
@@ -111,7 +111,7 @@ export class RabbitMQConsumer {
 
       await channel.prefetch(batchSize);
 
-      Console.green(`🔵 Started batch consumer for queue: ${queue} (batch size: ${batchSize})`);
+      logger.info(`🔵 Started batch consumer for queue: ${queue} (batch size: ${batchSize})`);
 
       await channel.consume(
         queue,
@@ -136,7 +136,7 @@ export class RabbitMQConsumer {
             }
 
           } catch (error) {
-            Console.red(`❌ Error adding message to batch from queue ${queue}:`, error);
+            logger.error(`❌ Error adding message to batch from queue ${queue}:`, error as any);
             channel.nack(msg, false, true);
           }
         },
@@ -146,7 +146,7 @@ export class RabbitMQConsumer {
       );
 
     } catch (error) {
-      Console.red(`❌ Failed to start batch consumer for queue ${queue}:`, error);
+      logger.error(`❌ Failed to start batch consumer for queue ${queue}:`, error as any);
       throw error;
     }
   }

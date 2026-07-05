@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import container from '../../container/appContainer';
 import { RedisCacheService } from '../../Redis/Redis.cache';
 
@@ -24,7 +25,7 @@ export default class BlockList {
   public static clearAllCaches(): void {
     BlockList.globalCache.clear();
     BlockList.instance?.localCache.clear();
-    console.log('[BlockList] Cleared all in-memory caches');
+    logger.info('[BlockList] Cleared all in-memory caches');
   }
 
   /**
@@ -78,7 +79,7 @@ export default class BlockList {
       return isBlocked;
 
     } catch (error) {
-      console.error(`[ACL] Error checking domain ${normalizedDomain} for IP ${clientIP}:`, error);
+      logger.error(`[ACL] Error checking domain ${normalizedDomain} for IP ${clientIP}:`, error as any);
       // Fail open (allow on error) to prevent blocking all traffic
       return false;
     }
@@ -120,7 +121,7 @@ export default class BlockList {
 
       return [...new Set([...ipBlocks, ...globalBlocks])]; // Remove duplicates
     } catch (error) {
-      console.error(`[ACL] Error getting blocked domains for IP ${clientIP}:`, error);
+      logger.error(`[ACL] Error getting blocked domains for IP ${clientIP}:`, error as any);
       return [];
     }
   }
@@ -141,7 +142,7 @@ export default class BlockList {
       const metadata = await container.get<RedisCacheService>('RedisCacheService').getACLMetadata();
       return metadata;
     } catch (error) {
-      console.error('[ACL] Error getting ACL stats:', error);
+      logger.error('[ACL] Error getting ACL stats:', error as any);
       return null;
     }
   }

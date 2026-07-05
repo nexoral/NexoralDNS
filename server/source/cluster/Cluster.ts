@@ -1,7 +1,7 @@
+import logger from '../utilities/logger';
 import cluster from "cluster";
 import os from "os";
 import FastifyServer from "../core/fastify";
-import { Console } from "outers";
 import startCronJob from "../CronJob/CronJob";
 import container from "../container/appContainer";
 import { MongoConnectionManager } from "../Database/MongoConnectionManager";
@@ -10,12 +10,12 @@ import { getJWTSecret } from "../helper/jwt.helper";
 
 const numCPUs: number = os.cpus().length;
 const totalUsableCpus: number = Math.max(1, Math.floor(numCPUs * 0.75)); // Use at least 1 CPU, up to 75% of total CPUs
-Console.green(`Starting server in cluster mode with ${totalUsableCpus} workers...`);
+logger.info(`Starting server in cluster mode with ${totalUsableCpus} workers...`);
 
 cluster.schedulingPolicy = cluster.SCHED_RR; // Round-robin
 
 if (cluster.isPrimary) {
-  Console.yellow(`Master process ${process.pid} is running`);
+  logger.warn(`Master process ${process.pid} is running`);
 
   // Resolve/generate the JWT secret ONCE in the primary before forking, so every
   // worker reads the same persisted secret (avoids each worker minting its own
@@ -40,14 +40,14 @@ if (cluster.isPrimary) {
       }
     })
     .catch((error) => {
-      Console.red("Master process failed to initialize database:", error);
+      logger.error("Master process failed to initialize database:", error);
       process.exit(1);
     });
 
   // Restart workers if they die, with a short backoff so a worker that crashes
   // on startup can't spin-restart in a tight CPU-burning loop.
   cluster.on("exit", (worker) => {
-    console.log(`Worker ${worker.process.pid} died. Restarting in 1s...`);
+    logger.info(`Worker ${worker.process.pid} died. Restarting in 1s...`);
     setTimeout(() => cluster.fork(), 1000);
   });
 } else {

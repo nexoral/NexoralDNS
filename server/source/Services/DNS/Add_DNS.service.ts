@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
@@ -20,7 +21,7 @@ export default class DnsAddService {
   // Add a new DNS record
   public async addDnsRecord(domain: string, name: string, type: string, value: string, ttl: number, user: any, reply: FastifyReply): Promise<void> {
 
-    console.log(`[SERVICE] addDnsRecord called for domain: ${domain}, name: ${name}, value: ${value}, user: ${user._id}`);
+    logger.info(`[SERVICE] addDnsRecord called for domain: ${domain}, name: ${name}, value: ${value}, user: ${user._id}`);
 
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record added successfully");
@@ -37,7 +38,7 @@ export default class DnsAddService {
     const existingDomain = await DomainCollectionClient.findOne({ domain: domain, userId: new ObjectId(user._id) });
     const existingValue = await DNSCollectionClient.find({ value: value }).toArray();
 
-    console.log(`[SERVICE] Existing domain check: ${existingDomain ? 1 : 0}, Existing value check: ${existingValue.length}`);
+    logger.info(`[SERVICE] Existing domain check: ${existingDomain ? 1 : 0}, Existing value check: ${existingValue.length}`);
 
     if (existingValue.length > 0) {
       Responser.setStatusCode(StatusCodes.CONFLICT);
@@ -49,7 +50,7 @@ export default class DnsAddService {
       return Responser.send("Domain not found");
     }
     else {
-      console.log(`[SERVICE] Inserting new DNS record: ${name} for domain ${domain} type ${type}`);
+      logger.info(`[SERVICE] Inserting new DNS record: ${name} for domain ${domain} type ${type}`);
 
       const dnsRecords = [];
       if (type == "CNAME") {
@@ -78,7 +79,7 @@ export default class DnsAddService {
 
       const dnsInsertResult = await DNSCollectionClient.insertMany(dnsRecords);
 
-      console.log(`[SERVICE] DNS record insert result: ${dnsInsertResult.acknowledged}, IDs: ${JSON.stringify(dnsInsertResult.insertedIds)}`);
+      logger.info(`[SERVICE] DNS record insert result: ${dnsInsertResult.acknowledged}, IDs: ${JSON.stringify(dnsInsertResult.insertedIds)}`);
 
       if (dnsInsertResult.insertedCount == 0) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);

@@ -1,3 +1,4 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
@@ -22,6 +23,7 @@ export default function FastifyServer() {
     logger: false, // Disable default logging
     trustProxy: true, // Trust the reverse proxy headers
     bodyLimit: 52428800, // Set body limit to 50MB
+    requestTimeout: 30000, // Abort slow requests after 30s
   });
 
   // Attach Middlewares
@@ -113,7 +115,7 @@ export default function FastifyServer() {
           port: Number(ServerKeys.PORT),
           host: String(ServerKeys.HOST),
         });
-        console.log(
+        logger.info(
           `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
         );
       } catch (err) {
@@ -122,7 +124,7 @@ export default function FastifyServer() {
       }
     })
     .catch((err) => {
-      console.error(err);
+      logger.error(err);
       process.exit(1);
     });
 }
