@@ -21,12 +21,16 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
 
 const ioHandler = new InputOutputHandler(null as any);
 
-/** Pre-allocated pool of reusable dgram sockets to avoid create/destroy per query. */
+/** Pre-allocated pool of reusable dgram sockets to avoid create/destroy per query.
+ *  Uses DNS transaction ID (TXID) from the response to dispatch to the correct
+ *  pending query, avoiding listener collision when multiple queries share a socket. */
 class DgramSocketPool {
   private readonly poolSize: number;
   private sockets: dgram.Socket[] = [];
   private inUse: boolean[] = [];
   private waitQueue: Array<(socket: dgram.Socket, index: number) => void> = [];
+  /** Per-socket map of TXID → response resolver */
+  private pending: Map<number, Map<number, (msg: Buffer) => void>> = new Map();
 
   constructor(poolSize: number) {
     this.poolSize = poolSize;
@@ -39,7 +43,31 @@ class DgramSocketPool {
       socket.unref();
       this.sockets.push(socket);
       this.inUse.push(false);
+      this.pending.set(i, new Map());
+      // One permanent listener per socket — dispatches by DNS TXID
+      socket.on('message', (respMsg: Buffer) => {
+        const txid = respMsg.readUInt16BE(0);
+        const perSocket = this.pending.get(i);
+        if (!perSocket) return;
+        const resolver = perSocket.get(txid);
+        if (resolver) {
+          perSocket.delete(txid);
+          resolver(respMsg);
+        }
+      });
     }
+  }
+
+  /** Register a resolver for a given socket + TXID */
+  registerPending(socketIndex: number, txid: number, resolver: (msg: Buffer) => void): void {
+    const perSocket = this.pending.get(socketIndex);
+    if (perSocket) perSocket.set(txid, resolver);
+  }
+
+  /** Unregister (on timeout or error) */
+  unregisterPending(socketIndex: number, txid: number): void {
+    const perSocket = this.pending.get(socketIndex);
+    if (perSocket) perSocket.delete(txid);
   }
 
   async acquire(): Promise<{ socket: dgram.Socket; index: number }> {
@@ -65,10 +93,11 @@ class DgramSocketPool {
 
   async close(): Promise<void> {
     for (const socket of this.sockets) {
-      try { socket.close(); } catch { }
+      try { socket.close(); } catch { /* empty */ }
     }
     this.sockets = [];
     this.inUse = [];
+    this.pending.clear();
   }
 }
 
@@ -118,6 +147,66 @@ function shuffleArray(array: any[]) {
   return array;
 }
 
+/** Circuit breaker state machine for a single upstream DNS server. */
+enum BreakerState { CLOSED, OPEN, HALF_OPEN }
+
+class CircuitBreaker {
+  private state: BreakerState = BreakerState.CLOSED;
+  private failureCount = 0;
+  private lastFailureTime = 0;
+  private readonly threshold: number;
+  private readonly windowMs: number;
+  private readonly cooldownMs: number;
+
+  constructor(
+    public readonly ip: string,
+    public readonly name: string,
+    threshold = 5,
+    windowMs = 30_000,
+    cooldownMs = 30_000,
+  ) {
+    this.ip = ip;
+    this.name = name;
+    this.threshold = threshold;
+    this.windowMs = windowMs;
+    this.cooldownMs = cooldownMs;
+  }
+
+  /** Returns true if this server should be attempted. */
+  allowRequest(): boolean {
+    const now = Date.now();
+    if (this.state === BreakerState.CLOSED) return true;
+
+    if (this.state === BreakerState.OPEN) {
+      if (now - this.lastFailureTime >= this.cooldownMs) {
+        this.state = BreakerState.HALF_OPEN;
+        return true; // probe request
+      }
+      return false;
+    }
+
+    // HALF_OPEN — allow exactly one probe
+    this.state = BreakerState.OPEN; // will flip to CLOSED on success
+    return true;
+  }
+
+  recordFailure(): void {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+    if (this.failureCount >= this.threshold) {
+      this.state = BreakerState.OPEN;
+    }
+  }
+
+  recordSuccess(): void {
+    this.failureCount = 0;
+    this.state = BreakerState.CLOSED;
+  }
+
+  getState(): BreakerState { return this.state; }
+  getFailureCount(): number { return this.failureCount; }
+}
+
 /**
  * GlobalDNSforwarder service — singleton that manages upstream DNS forwarding
  * with a pre-allocated socket pool to eliminate create/destroy overhead per query.
@@ -130,12 +219,17 @@ export class GlobalDNSforwarderService {
   private totalForwardsAttempted = 0;
   private totalForwardsSucceeded = 0;
   private socketPool: DgramSocketPool;
+  /** Per-upstream circuit breakers keyed by IP */
+  private breakers: Map<string, CircuitBreaker>;
 
   constructor() {
     this.socketPool = new DgramSocketPool(this.POOL_SIZE);
     this.socketPool.initialize().catch((err) => {
       logger.error('Failed to initialize dgram socket pool:', err as any);
     });
+    this.breakers = new Map(
+      GlobalDNS.map(srv => [srv.ip, new CircuitBreaker(srv.ip, srv.name)])
+    );
   }
 
   private async acquireForwardSlot(): Promise<void> {
@@ -157,6 +251,7 @@ export class GlobalDNSforwarderService {
 
   /**
    * Forwards one query using a pooled socket, trying each upstream server in turn.
+   * Uses DNS TXID dispatch to avoid listener collision on shared sockets.
    */
   private async resolveOnPooledSocket(
     msg: Buffer,
@@ -170,6 +265,7 @@ export class GlobalDNSforwarderService {
     await this.acquireForwardSlot();
     const { socket, index } = await this.socketPool.acquire();
     const availableDNS = shuffleArray([...GlobalDNS]);
+    const txid = msg.readUInt16BE(0);
 
     try {
       const tryNext = async (idx: number): Promise<Buffer | null> => {
@@ -179,20 +275,28 @@ export class GlobalDNSforwarderService {
         }
 
         const dnsIP = availableDNS[idx];
+        const breaker = this.breakers.get(dnsIP.ip)!;
+
+        // Circuit breaker: skip if OPEN (fast-fail in ~0ms vs waiting 2s)
+        if (!breaker.allowRequest()) {
+          return tryNext(idx + 1);
+        }
 
         const response = await new Promise<Buffer | null>((resolve) => {
           const cleanup = () => {
             clearTimeout(timeout);
-            socket.removeListener('message', onMessage);
+            this.socketPool.unregisterPending(index, txid);
           };
-          const onMessage = (respMsg: Buffer, respRinfo: dgram.RemoteInfo) => {
-            if (respRinfo.address !== dnsIP.ip) return;
+          const timeout = setTimeout(() => {
+            cleanup();
+            breaker.recordFailure();
+            resolve(null);
+          }, 2000);
+
+          this.socketPool.registerPending(index, txid, (respMsg: Buffer) => {
             cleanup();
             resolve(respMsg);
-          };
-          const timeout = setTimeout(() => { cleanup(); resolve(null); }, 2000);
-
-          socket.on('message', onMessage);
+          });
 
           try {
             socket.send(msg, 53, dnsIP.ip);
@@ -201,14 +305,17 @@ export class GlobalDNSforwarderService {
             }
           } catch {
             cleanup();
+            breaker.recordFailure();
             resolve(null);
           }
         });
 
         if (!response) return tryNext(idx + 1);
+        breaker.recordSuccess();
 
         const duration = performance.now() - start;
-        await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, {
+        // Fire-and-forget analytics — never block the response path
+        container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, {
           queryName,
           queryType,
           timestamp: Date.now(),
@@ -216,7 +323,7 @@ export class GlobalDNSforwarderService {
           Status: isFailSafe ? DNS_QUERY_STATUS_KEYS.FAIL_SAFE : DNS_QUERY_STATUS_KEYS.FORWARDED,
           From: isFailSafe ? DNS_QUERY_STATUS_KEYS.FROM_FAIL_SAFE : dnsIP.name,
           duration
-        }, { persistent: false, priority: 5 });
+        }, { persistent: false, priority: 5 }).catch(() => {});
 
         const parsedRecord = ioHandler.parseDNSResponse(response, queryType);
         if (parsedRecord) {
@@ -274,9 +381,11 @@ export class GlobalDNSforwarderService {
     totalAttempted: number;
     totalSucceeded: number;
     successRate: number;
+    breakers: Array<{ ip: string; name: string; state: string; failures: number }>;
   } {
     const succeeded = this.totalForwardsSucceeded;
     const attempted = this.totalForwardsAttempted;
+    const states = ['CLOSED', 'OPEN', 'HALF_OPEN'];
     return {
       activeForwards: this.activeForwardCount,
       queueDepth: this.forwardWaitQueue.length,
@@ -284,6 +393,10 @@ export class GlobalDNSforwarderService {
       totalAttempted: attempted,
       totalSucceeded: succeeded,
       successRate: attempted > 0 ? (succeeded / attempted) * 100 : 0,
+      breakers: GlobalDNS.map(srv => {
+        const b = this.breakers.get(srv.ip)!;
+        return { ip: srv.ip, name: srv.name, state: states[b.getState()], failures: b.getFailureCount() };
+      }),
     };
   }
 }
