@@ -1,8 +1,9 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
 
@@ -178,7 +179,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -302,7 +303,7 @@ export default class AccessControlPolicyService {
   public async getPolicies(filter: string = "all", skip: number = 0, limit: number = 50): Promise<void> {
     console.log(`Fetching access control policies with filter: ${filter}, skip: ${skip}, limit: ${limit}`);
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -365,7 +366,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -415,7 +416,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -499,7 +500,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -563,7 +564,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }

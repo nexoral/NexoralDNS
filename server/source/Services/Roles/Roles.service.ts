@@ -1,9 +1,10 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 export interface RoleData {
   name: string;
@@ -22,7 +23,7 @@ export default class RolesService {
    * when building/editing a role.
    */
   public async getPermissions(): Promise<void> {
-    const permissionsCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS);
+    const permissionsCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS);
     if (!permissionsCol) {
       throw new Error("Database connection error.");
     }
@@ -45,8 +46,8 @@ export default class RolesService {
       return ErrorResponse.send({ error: "At least one permission is required" });
     }
 
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
-    const permissionsCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const permissionsCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS);
     if (!rolesCol || !permissionsCol) {
       throw new Error("Database connection error.");
     }
@@ -88,7 +89,7 @@ export default class RolesService {
   }
 
   public async getRoles(skip: number = 0, limit: number = 50): Promise<void> {
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
     if (!rolesCol) {
       throw new Error("Database connection error.");
     }
@@ -118,7 +119,7 @@ export default class RolesService {
       return ErrorResponse.send({ error: "The provided role ID is not valid" });
     }
 
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
     if (!rolesCol) {
       throw new Error("Database connection error.");
     }
@@ -150,8 +151,8 @@ export default class RolesService {
       return ErrorResponse.send({ error: "The provided role ID is not valid" });
     }
 
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
-    const permissionsCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const permissionsCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.PERMISSIONS);
     if (!rolesCol || !permissionsCol) {
       throw new Error("Database connection error.");
     }
@@ -220,8 +221,8 @@ export default class RolesService {
       return ErrorResponse.send({ error: "The provided role ID is not valid" });
     }
 
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     if (!rolesCol || !usersCol) {
       throw new Error("Database connection error.");
     }

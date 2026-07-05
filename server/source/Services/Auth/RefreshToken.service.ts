@@ -4,8 +4,8 @@ import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { verifyToken, generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
 
@@ -17,8 +17,8 @@ export default class RefreshTokenService {
 
   public async refresh(refreshToken: string): Promise<void> {
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Token refreshed successfully");
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
 
     if (!sessionCol || !usersCol) {
       return Responser.send("Database connection error", StatusCodes.INTERNAL_SERVER_ERROR, "Database Error");

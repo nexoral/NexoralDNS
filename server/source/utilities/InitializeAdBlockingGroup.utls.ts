@@ -8,9 +8,10 @@
  * @version 3.3.42-stable
  */
 
+import container from '../container/appContainer';
+import { MongoCollectionManager } from '../Database/MongoCollectionManager';
 import { Console } from 'outers';
 import { ObjectId } from 'mongodb';
-import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import {
   AD_BLOCKING_DOMAINS,
@@ -32,7 +33,7 @@ let cachedAdBlockingGroupId: ObjectId | null = null;
  */
 export async function initializeAdBlockingDomainGroup(): Promise<ObjectId | null> {
   try {
-    const domainGroupsCollection = getCollectionClient(
+    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 
@@ -122,7 +123,7 @@ export async function getAdBlockingDomainGroupId(): Promise<ObjectId | null> {
   }
 
   try {
-    const domainGroupsCollection = getCollectionClient(
+    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 

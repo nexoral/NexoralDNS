@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DIContainer } from './DIContainer';
+import { MongoConnectionManager } from '../Database/MongoConnectionManager';
+import { MongoCollectionManager } from '../Database/MongoCollectionManager';
 import { RabbitMQConnectionManager } from '../RabbitMQ/RabbitMQConnectionManager';
 import { RabbitMQQueueManager } from '../RabbitMQ/RabbitMQQueueManager';
 import { RabbitMQPublisher } from '../RabbitMQ/RabbitMQPublisher';
@@ -12,6 +14,23 @@ import { AclBlockingService } from '../Redis/AclBlockingService';
 import { RedisCacheService } from '../Redis/Redis.cache';
 
 const container = new DIContainer();
+
+// ============================================
+// MONGODB SERVICES
+// ============================================
+container.register(
+  'MongoConnectionManager',
+  () => new MongoConnectionManager(),
+  true
+);
+
+container.register(
+  'MongoCollectionManager',
+  () => new MongoCollectionManager(
+    container.get<MongoConnectionManager>('MongoConnectionManager')
+  ),
+  true
+);
 
 // ============================================
 // RABBITMQ SERVICES

@@ -1,3 +1,5 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -6,7 +8,6 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { fetchConnectedIP } from "../../CronJob/Jobs/Connected_IP_fetcher.cron";
 
 export default class RouterService {
@@ -20,7 +21,7 @@ export default class RouterService {
   public async fetchConnectedIPs(): Promise<void> {
     // construct Response
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Record fetch Successful");
-    const collectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const collectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
 
     if (!collectionClient) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);

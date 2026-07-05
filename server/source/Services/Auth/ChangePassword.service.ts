@@ -4,9 +4,9 @@ import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { validatePasswordStrength } from "../../helper/passwordPolicy.helper";
 
@@ -18,8 +18,8 @@ export default class ChangePasswordService {
 
   public async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Password changed successfully");
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
 
     if (!usersCol || !sessionCol) {
       return Responser.send("Database connection error", StatusCodes.INTERNAL_SERVER_ERROR, "Database Error");

@@ -1,9 +1,10 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 export interface SessionUserPayload {
   _id: string;
@@ -36,7 +37,7 @@ export default class VerifySessionService {
       });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     if (!usersCol) {
       throw new Error("Database connection error.");
     }

@@ -1,6 +1,7 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { ObjectId } from 'mongodb';
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
@@ -16,7 +17,7 @@ export class LogsService {
   }
 
   public async getAnalyticalLogs (limit?: number, cursor?: string, query?: any) {
-    const Analytics = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+    const Analytics = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
     if (!limit) limit = 25
 
     if (!Analytics) {

@@ -6,8 +6,8 @@ import CacheKeys from "../../Redis/CacheKeys.cache";
 import { getDashboardDataStats } from "../../CronJob/Jobs/DashboardAnalytics.cron";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 
 export default class DashboardService {
@@ -41,9 +41,9 @@ export default class DashboardService {
 
   // Calculate delta stats for data since last base computation
   private async getDeltaStats(since: number): Promise<any> {
-    const Analytics = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
-    const Domains = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-    const DNSRecords = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+    const Analytics = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+    const Domains = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    const DNSRecords = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
     if (!Analytics) {
       return { count: 0, success: 0, failed: 0, forwarded: 0, latestLogs: [], newDomains: 0, newActiveDomains: 0, newRecords: 0 };

@@ -1,15 +1,15 @@
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
 
 // mongoDB
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { Console } from "outers";
 
 export default async function BatchProcessAnalytics() {
-  const AnalyticsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+  const AnalyticsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
 
   // Handle the Initilization Error
   if (!AnalyticsCollection) {

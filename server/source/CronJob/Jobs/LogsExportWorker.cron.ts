@@ -4,10 +4,10 @@ import { ObjectId } from "mongodb";
 import { Console } from "outers";
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { buildLogsQuery } from "../../helper/buildLogsQuery.helper";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { LogExportJobMessage, LogExportMetadata } from "../../Services/Logs/LogsExport.service";
 
@@ -25,7 +25,7 @@ function ensureExportsDir(): void {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function* scrollAnalytics(query: Record<string, any>): AsyncGenerator<any[]> {
-  const analyticsCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+  const analyticsCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
   if (!analyticsCol) throw new Error("Analytics collection not initialized");
 
   let cursorId: ObjectId | undefined;

@@ -6,9 +6,9 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
@@ -33,7 +33,7 @@ export default class DefaultTTLService {
       "Default TTL fetched successfully"
     );
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -94,7 +94,7 @@ export default class DefaultTTLService {
       "Default TTL updated successfully"
     );
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }

@@ -9,7 +9,9 @@ import IP_SCAN from "../../utilities/AutoIP_SCAN.utls";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../../utilities/IO.utls";
-import MongoConnector from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
+import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 
 
 /**
@@ -65,7 +67,13 @@ export default class DNS {
       this.tuneSocketBuffers(this.server);
     });
 
-    MongoConnector().catch((error) => {
+    // Initialize MongoDB via DI container
+    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
+    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
+    Promise.all([
+      mongoConnManager.connect(),
+      mongoCollManager.initialize(),
+    ]).catch((error) => {
       Console.red("Failed to connect to MongoDB:", error);
     });
 

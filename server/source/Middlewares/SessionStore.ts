@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import container from '../container/appContainer';
+import { MongoCollectionManager } from '../Database/MongoCollectionManager';
 import { RedisCacheService } from '../Redis/Redis.cache';
 
 export interface ISessionStore {
@@ -16,7 +16,7 @@ export class CachedSessionStore implements ISessionStore {
       return redisTokenData;
     }
 
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
     if (!sessionCol) {
       return null;
     }

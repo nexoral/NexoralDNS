@@ -1,8 +1,9 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 
 export interface IPGroupData {
@@ -52,7 +53,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -101,7 +102,7 @@ export default class IPGroupService {
   public async getIPGroups(skip: number = 0, limit: number = 50): Promise<void> {
     console.log(`Fetching IP groups with skip: ${skip}, limit: ${limit}`);
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -148,7 +149,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -198,7 +199,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -274,7 +275,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -292,7 +293,7 @@ export default class IPGroupService {
     }
 
     // Check if this IP group is being used in any access control policies
-    const policyClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const policyClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!policyClient) {
       throw new Error("Database connection error.");
     }

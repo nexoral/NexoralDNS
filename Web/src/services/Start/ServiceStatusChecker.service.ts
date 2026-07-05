@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Console } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 
 // Cache Settings
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
@@ -53,7 +53,7 @@ export default class ServiceStatusChecker {
       }
     }
 
-    const serviceCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE)
+    const serviceCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE)
     if (!serviceCollection) {
       Console.red("Service collection not found in the database.");
       return {

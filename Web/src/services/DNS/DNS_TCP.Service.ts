@@ -3,7 +3,9 @@ import dgram from "node:dgram";
 import { Console } from "outers";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
-import MongoConnector from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
+import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 import getLocalIP from "../../utilities/GetWLANIP.utls";
 
 /**
@@ -36,7 +38,13 @@ export default class DNS_TCP {
       );
     });
 
-    MongoConnector().catch((error) => {
+    // Initialize MongoDB via DI container
+    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
+    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
+    Promise.all([
+      mongoConnManager.connect(),
+      mongoCollManager.initialize(),
+    ]).catch((error) => {
       Console.red("DNS_TCP: Failed to connect to MongoDB:", error);
     });
 

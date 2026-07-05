@@ -7,9 +7,9 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
@@ -25,7 +25,7 @@ export default class ServiceToggleService {
     console.log("Toggling service status...");
     // construct Response
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Service updated Successful");
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }

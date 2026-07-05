@@ -4,8 +4,8 @@ import { StatusCodes } from "outers";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 export default class LogoutService {
   private readonly fastifyReply: FastifyReply;
@@ -15,7 +15,7 @@ export default class LogoutService {
 
   public async logout(accessToken: string): Promise<void> {
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Logged out successfully");
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
 
     if (!sessionCol) {
       return Responser.send("Database connection error", StatusCodes.INTERNAL_SERVER_ERROR, "Database Error");

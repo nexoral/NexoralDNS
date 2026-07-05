@@ -1,11 +1,12 @@
 // Service to manage database connections and collections
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 
 // Service to handle domain-related database operations
 export class DomainDBPoolService {
-  private DNSRecordsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+  private DNSRecordsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
   constructor() { }
 

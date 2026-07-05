@@ -1,8 +1,8 @@
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 /**
  * Redis Data Structure for Access Control Policies:
@@ -38,9 +38,9 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   const startTime = Date.now();
 
   // Get MongoDB collections
-  const policiesCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
-  const ipGroupsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
-  const domainGroupsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+  const policiesCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+  const ipGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+  const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
 
   if (!policiesCollection || !ipGroupsCollection || !domainGroupsCollection) {
     throw new Error("Database collections not initialized");

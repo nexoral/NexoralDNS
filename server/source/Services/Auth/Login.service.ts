@@ -1,10 +1,11 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
 import { generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
 
@@ -16,8 +17,8 @@ export default class LoginService {
 
   public async login(username: string, password: string): Promise<void> {
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Login successful");
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
 
     if (!usersCol || !sessionCol) {
       return Responser.send("Database connection error", StatusCodes.INTERNAL_SERVER_ERROR, "Database Error");

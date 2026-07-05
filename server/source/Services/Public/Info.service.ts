@@ -1,3 +1,5 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { readFile } from "fs/promises";
 import { AuthorInfo } from "../../core/key";
 import getLocalIPRange from "../../utilities/GetWLANIP.utls";
@@ -12,7 +14,6 @@ type PackageInterface = {
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 
 /**
@@ -70,7 +71,7 @@ export default class InfoService {
    */
   static async getServiceInfo(): Promise<object> {
     const serverIP = getLocalIPRange("any");
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }

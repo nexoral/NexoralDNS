@@ -1,16 +1,16 @@
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 // ainn Function to Load the Dashboard Data
 export async function getDashboardDataStats(): Promise<object> {
-  const Analytics = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
-  const Domains = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-  const DNSRecords = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+  const Analytics = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+  const Domains = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+  const DNSRecords = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
   const last24 = Date.now() - 24 * 60 * 60 * 1000;
 
   if (!Analytics || !Domains || !DNSRecords) {

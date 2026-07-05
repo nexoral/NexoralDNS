@@ -3,9 +3,9 @@ import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
 import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { validatePasswordStrength } from "../../helper/passwordPolicy.helper";
 
@@ -49,8 +49,8 @@ export default class UsersService {
       return ErrorResponse.send({ error: strength.message });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
     if (!usersCol || !rolesCol) {
       throw new Error("Database connection error.");
     }
@@ -91,7 +91,7 @@ export default class UsersService {
   }
 
   public async getUsers(skip: number = 0, limit: number = 50): Promise<void> {
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     if (!usersCol) {
       throw new Error("Database connection error.");
     }
@@ -123,7 +123,7 @@ export default class UsersService {
       return ErrorResponse.send({ error: "The provided user ID is not valid" });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     if (!usersCol) {
       throw new Error("Database connection error.");
     }
@@ -157,8 +157,8 @@ export default class UsersService {
       return ErrorResponse.send({ error: "The provided user ID is not valid" });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
     if (!usersCol || !rolesCol) {
       throw new Error("Database connection error.");
     }
@@ -229,8 +229,8 @@ export default class UsersService {
       return ErrorResponse.send({ error: strength.message });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
     if (!usersCol || !sessionCol) {
       throw new Error("Database connection error.");
     }
@@ -275,8 +275,8 @@ export default class UsersService {
       return ErrorResponse.send({ error: "You cannot delete your own account" });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
     if (!usersCol || !sessionCol) {
       throw new Error("Database connection error.");
     }
