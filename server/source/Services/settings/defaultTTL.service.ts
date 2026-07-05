@@ -8,7 +8,8 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 export default class DefaultTTLService {
@@ -108,8 +109,8 @@ export default class DefaultTTLService {
 
     // Delete the Cache After Updating Default TTL
     // This ensures the DNS server picks up the new TTL value
-    await RedisCache.delete(CacheKeys.Service_Status);
-    await RedisCache.delete("service:config");
+    await container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
+    await container.get<RedisCacheService>('RedisCacheService').delete("service:config");
 
     // Update the Default TTL in the database
     await dbClient.updateOne(

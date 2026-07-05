@@ -1,4 +1,5 @@
-import RedisCache from "../../Redis/Redis.cache";
+import container from '../../container/appContainer';
+import { RedisCacheService } from '../../Redis/Redis.cache';
 
 /**
  * BlockList Service
@@ -57,7 +58,7 @@ export default class BlockList {
 
     // Layer 3: Check Redis (ACL policies loaded by cron)
     try {
-      const isBlocked = await RedisCache.isDomainBlocked(clientIP, normalizedDomain);
+      const isBlocked = await container.get<RedisCacheService>('RedisCacheService').isDomainBlocked(clientIP, normalizedDomain);
 
       // Update both caches
       const cacheEntry = {
@@ -115,8 +116,8 @@ export default class BlockList {
   public async getBlockedDomainsForClient(clientIP: string): Promise<string[]> {
     try {
       const [ipBlocks, globalBlocks] = await Promise.all([
-        RedisCache.getBlockedDomainsForIP(clientIP),
-        RedisCache.getGloballyBlockedDomains()
+        container.get<RedisCacheService>('RedisCacheService').getBlockedDomainsForIP(clientIP),
+        container.get<RedisCacheService>('RedisCacheService').getGloballyBlockedDomains()
       ]);
 
       return [...new Set([...ipBlocks, ...globalBlocks])]; // Remove duplicates
@@ -139,7 +140,7 @@ export default class BlockList {
     loadDuration: number;
   } | null> {
     try {
-      const metadata = await RedisCache.getACLMetadata();
+      const metadata = await container.get<RedisCacheService>('RedisCacheService').getACLMetadata();
       return metadata;
     } catch (error) {
       console.error('[ACL] Error getting ACL stats:', error);

@@ -1,11 +1,12 @@
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 import CacheKeys from "../../Redis/CacheKeys.cache";
 import { getDashboardDataStats } from "../../CronJob/Jobs/DashboardAnalytics.cron";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import { getCollectionClient } from "../../Database/mongodb.db";
 
 
@@ -21,7 +22,7 @@ export default class DashboardService {
     const Res = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Dashboard Data retrieved successfully");
 
     // Get base stats from cache (computed by cron every ~5 min)
-    const baseStats: any = await RedisCache.get(CacheKeys.DashboardAnaliticalData);
+    const baseStats: any = await container.get<RedisCacheService>('RedisCacheService').get(CacheKeys.DashboardAnaliticalData);
 
     // If no base stats, compute full stats (first run or cache expired)
     if (!baseStats || !baseStats.computedAt) {

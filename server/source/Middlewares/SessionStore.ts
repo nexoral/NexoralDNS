@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import RedisCache from '../Redis/Redis.cache';
 import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
+import container from '../container/appContainer';
+import { RedisCacheService } from '../Redis/Redis.cache';
 
 export interface ISessionStore {
   getSession(token: string): Promise<any>;
@@ -9,7 +10,8 @@ export interface ISessionStore {
 
 export class CachedSessionStore implements ISessionStore {
   async getSession(token: string): Promise<any> {
-    const redisTokenData = await RedisCache.get(`session:${token}`);
+    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
+    const redisTokenData = await redisCacheService.get(`session:${token}`);
     if (redisTokenData) {
       return redisTokenData;
     }
@@ -22,7 +24,7 @@ export class CachedSessionStore implements ISessionStore {
     const session = await sessionCol.findOne({ accessToken: token });
 
     if (session) {
-      await RedisCache.set(`session:${token}`, session, 1800);
+      await redisCacheService.set(`session:${token}`, session, 1800);
     }
 
     return session;

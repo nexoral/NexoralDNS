@@ -6,7 +6,8 @@ import { ObjectId } from "mongodb";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import { validatePasswordStrength } from "../../helper/passwordPolicy.helper";
 
 export default class ChangePasswordService {
@@ -55,7 +56,7 @@ export default class ChangePasswordService {
     // Evict session from Redis and invalidate in DB — forces re-login on all devices
     const session = await sessionCol.findOne({ userId: new ObjectId(userId) });
     if (session?.accessToken) {
-      await RedisCache.delete(`session:${session.accessToken}`);
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${session.accessToken}`);
     }
     await sessionCol.updateOne(
       { userId: new ObjectId(userId) },

@@ -5,7 +5,7 @@ import { FastifyInstance, FastifyPluginOptions } from "fastify";
 import DnsController from "../../Controller/DNS/DNS.controller";
 
 // middleware
-import authGuard from "../../Middlewares/authGuard.middleware";
+import { authGuard } from "../../Middlewares/authGuard.middleware";
 import PermissionGuard from "../../Middlewares/permissionGuard.middleware";
 
 export interface DnsOptions extends FastifyPluginOptions { }

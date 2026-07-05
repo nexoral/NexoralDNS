@@ -8,8 +8,9 @@ import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware"
 // services
 import ServiceToggleService from "../../Services/settings/serviceToggle.service";
 import DefaultTTLService from "../../Services/settings/defaultTTL.service";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheService from "../../Services/settings/Cache.service";
-import RedisCache from "../../Redis/Redis.cache";
 
 /**
  * SettingsController handles settings-related requests.
@@ -33,7 +34,7 @@ export default class SettingsController {
     try {
       const result = await serviceToggler.toggleService();
       // Publish Cache Invalidation Event
-      await RedisCache.publish('cache:invalidate', 'service_status');
+      await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'service_status');
       return result;
     } catch (error) {
       return Responser.send(error);
@@ -61,7 +62,7 @@ export default class SettingsController {
       const { defaultTTL } = request.body as { defaultTTL: number };
       const result = await ttlService.updateDefaultTTL(defaultTTL);
       // Publish Cache Invalidation Event
-      await RedisCache.publish('cache:invalidate', 'service_status');
+      await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'service_status');
       return result;
     } catch (error) {
       return Responser.send(error);

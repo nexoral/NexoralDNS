@@ -4,8 +4,9 @@ import { Console } from "outers"
 
 // RabbitMQ
 import CacheKeys, { DNS_QUERY_STATUS_KEYS, QueueKeys } from "../../Redis/CacheKeys.cache";
-import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
+import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import InputOutputHandler from "../../utilities/IO.utls";
 
 // Worst case per query: servers.length x 2s timeout, so keep this list short.
@@ -143,7 +144,7 @@ async function resolveOnDedicatedSocket(
       if (!response) return tryNext(index + 1);
 
       const duration = performance.now() - start;
-      RabbitMQService.publish(QueueKeys.DNS_Analytics, {
+      await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, JSON.stringify({
         queryName,
         queryType,
         timestamp: Date.now(),
@@ -151,11 +152,11 @@ async function resolveOnDedicatedSocket(
         Status: isFailSafe ? DNS_QUERY_STATUS_KEYS.FAIL_SAFE : DNS_QUERY_STATUS_KEYS.FORWARDED,
         From: isFailSafe ? DNS_QUERY_STATUS_KEYS.FROM_FAIL_SAFE : dnsIP.name,
         duration
-      }, { persistent: false, priority: 5 });
+      }), { persistent: false, priority: 5 });
 
       const parsedRecord = ioHandler.parseDNSResponse(response, queryType);
       if (parsedRecord) {
-        RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, parsedRecord, customTTL ?? parsedRecord.ttl);
+        container.get<RedisCacheService>('RedisCacheService').set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, parsedRecord, customTTL ?? parsedRecord.ttl);
       }
 
       return customTTL !== null ? modifyResponseTTL(response, customTTL) : response;

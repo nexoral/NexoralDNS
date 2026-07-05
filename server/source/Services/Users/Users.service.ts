@@ -5,8 +5,9 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import { validatePasswordStrength } from "../../helper/passwordPolicy.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 export interface CreateUserData {
   username: string;
@@ -252,7 +253,7 @@ export default class UsersService {
     // just without touching the requesting admin's own cookies
     const session = await sessionCol.findOne({ userId: new ObjectId(userId) });
     if (session?.accessToken) {
-      await RedisCache.delete(`session:${session.accessToken}`);
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${session.accessToken}`);
     }
     await sessionCol.updateOne(
       { userId: new ObjectId(userId) },
@@ -288,7 +289,7 @@ export default class UsersService {
 
     const session = await sessionCol.findOne({ userId: new ObjectId(userId) });
     if (session?.accessToken) {
-      await RedisCache.delete(`session:${session.accessToken}`);
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${session.accessToken}`);
     }
 
     await usersCol.deleteOne({ _id: new ObjectId(userId) });

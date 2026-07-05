@@ -1,8 +1,9 @@
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
-import RedisCache from "../../Redis/Redis.cache";
 
 
 // ainn Function to Load the Dashboard Data
@@ -133,7 +134,7 @@ export async function getDashboardDataStats(): Promise<object> {
   };
 
   // Set in Cache (10 min TTL to ensure overlap with cron)
-  await RedisCache.set(CacheKeys.DashboardAnaliticalData, response, 1800);
+  await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.DashboardAnaliticalData, response, 1800);
 
   return response;
 }

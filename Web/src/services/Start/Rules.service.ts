@@ -8,12 +8,13 @@ import GlobalDNSforwarder from "../Forwarder/GlobalDNSforwarder.service";
 
 // Rules Services
 import ServiceStatusChecker, { ServiceStatusResult } from "./ServiceStatusChecker.service";
-import RedisCache from "../../Redis/Redis.cache";
 import CacheKeys, { QueueKeys } from "../../Redis/CacheKeys.cache";
 
 // RabbitMQ
 import { DNS_QUERY_STATUS_KEYS } from "../../Redis/CacheKeys.cache";
-import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
+import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import BlockList from "../Rules/BlockList.service";
 
 export default class StartRulesService {
@@ -38,7 +39,7 @@ export default class StartRulesService {
     // is registered per process regardless of how many service instances are created
     if (!StartRulesService.#subscribed) {
       StartRulesService.#subscribed = true;
-      RedisCache.subscribe('cache:invalidate', async (message) => {
+      container.get<RedisCacheService>('RedisCacheService').subscribe('cache:invalidate', async (message) => {
       // Log only on invalidation event (rare)
       Console.yellow(`🔔 Received Cache Invalidation Request: ${message}`);
 
@@ -46,7 +47,7 @@ export default class StartRulesService {
       BlockList.clearAllCaches();
 
       // Clear Service Status Cache
-      await RedisCache.delete(CacheKeys.Service_Status);
+      await container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
 
       // Clear blocked domains local cache if specific IP mentioned (optional optimization)
       if (message.includes('ip:')) {
@@ -107,7 +108,7 @@ export default class StartRulesService {
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
         AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
         AnalyticsMSgPayload.duration = performance.now() - start;
-        this.publishAnalytics(AnalyticsMSgPayload);
+        await this.publishAnalytics(AnalyticsMSgPayload);
         return;
       }
     } catch (error) {
@@ -143,7 +144,7 @@ export default class StartRulesService {
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_BLOCKED;
       AnalyticsMSgPayload.duration = performance.now() - start;
 
-      this.publishAnalytics(AnalyticsMSgPayload);
+      await this.publishAnalytics(AnalyticsMSgPayload);
       io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
       return;
     }
@@ -152,7 +153,7 @@ export default class StartRulesService {
     let record;
     if (!databaseOffline) {
       try {
-        const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`);
+        const RecordFromCache = await container.get<RedisCacheService>('RedisCacheService').get(`${CacheKeys.Domain_DNS_Record}:${queryName}`);
         if (RecordFromCache !== null) {
           record = RecordFromCache;
           AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_CACHE;
@@ -187,7 +188,7 @@ export default class StartRulesService {
             AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_DB;
 
             // Add the new Document to the Cache with Domain's Default TTL
-            RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl);
+            container.get<RedisCacheService>('RedisCacheService').set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl);
           }
         }
       } catch (err) {
@@ -201,7 +202,7 @@ export default class StartRulesService {
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.RESOLVED;
       AnalyticsMSgPayload.duration = performance.now() - start;
 
-      this.publishAnalytics(AnalyticsMSgPayload);
+      await this.publishAnalytics(AnalyticsMSgPayload);
 
       // Use buildSendAnswer method from utilities
       const response = io.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
@@ -211,7 +212,7 @@ export default class StartRulesService {
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
         AnalyticsMSgPayload.duration = performance.now() - start;
 
-        this.publishAnalytics(AnalyticsMSgPayload);
+        await this.publishAnalytics(AnalyticsMSgPayload);
         Console.red(`Failed to respond to ${queryName}`);
       }
     } else {
@@ -237,7 +238,7 @@ export default class StartRulesService {
             if (!databaseOffline) {
               AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
               AnalyticsMSgPayload.duration = performance.now() - start;
-              this.publishAnalytics(AnalyticsMSgPayload);
+              await this.publishAnalytics(AnalyticsMSgPayload);
             }
             Console.red(`Failed to forward ${queryName} to Global DNS`);
           }
@@ -248,7 +249,7 @@ export default class StartRulesService {
           if (!databaseOffline) {
             AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
             AnalyticsMSgPayload.duration = performance.now() - start;
-            this.publishAnalytics(AnalyticsMSgPayload);
+            await this.publishAnalytics(AnalyticsMSgPayload);
           }
 
           Console.red(`No response received from Global DNS for ${queryName}`);
@@ -259,7 +260,7 @@ export default class StartRulesService {
         if (!databaseOffline) {
           AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
           AnalyticsMSgPayload.duration = performance.now() - start;
-          this.publishAnalytics(AnalyticsMSgPayload);
+          await this.publishAnalytics(AnalyticsMSgPayload);
         }
         Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
       }
@@ -267,7 +268,7 @@ export default class StartRulesService {
   }
 
   // Helper to publish analytics with optimized settings
-  private publishAnalytics(payload: any) {
-    RabbitMQService.publish(QueueKeys.DNS_Analytics, payload, { persistent: false, priority: 5 });
+  private async publishAnalytics(payload: any) {
+    await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, JSON.stringify(payload), { persistent: false, priority: 5 });
   }
 }

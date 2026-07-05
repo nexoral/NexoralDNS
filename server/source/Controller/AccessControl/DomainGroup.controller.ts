@@ -3,8 +3,9 @@ import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import DomainGroupService, { DomainGroupData } from "../../Services/AccessControl/DomainGroup.service";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
@@ -25,7 +26,7 @@ export default class DomainGroupController {
         try {
           await groupService.createDomainGroup(groupData);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -75,7 +76,7 @@ export default class DomainGroupController {
         try {
           await groupService.updateDomainGroup(groupId, updateData);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -98,7 +99,7 @@ export default class DomainGroupController {
         try {
           await groupService.deleteDomainGroup(groupId);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }

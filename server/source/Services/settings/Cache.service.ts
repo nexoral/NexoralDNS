@@ -1,28 +1,26 @@
-import RedisCache from "../../Redis/Redis.cache";
-
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import CacheKeys from "../../Redis/CacheKeys.cache";
-
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export default class CacheService {
-  private readonly RedisCache: typeof RedisCache
   private readonly fastifyReply: FastifyReply
   private Responser: BuildResponse
 
   constructor(reply: FastifyReply) {
-    this.RedisCache = RedisCache;
     this.fastifyReply = reply
     this.Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Redis Cache Starts fetched")
   }
 
   // get Cache Stats
   public async getStats(limit: number, skip: number) {
+    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     // Pull Stats
-    const stats = await this.RedisCache.getStats();
+    const stats = await redisCacheService.getStats();
     // Pull Records
-    const records = await this.RedisCache.getAllRecords(`${CacheKeys.Domain_DNS_Record}*`, limit, skip)
+    const records = await redisCacheService.getAllRecords(`${CacheKeys.Domain_DNS_Record}*`, limit, skip)
 
     if (records && stats) {
       // Add Records into response
@@ -39,7 +37,8 @@ export default class CacheService {
 
   // delete all DNS Cache Records Patterns
   public async deleteAllDNSCahce() {
-    const deletedStat = await this.RedisCache.invalidate(`${CacheKeys.Domain_DNS_Record}*`)
+    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
+    const deletedStat = await redisCacheService.invalidate(`${CacheKeys.Domain_DNS_Record}*`)
 
     if (deletedStat) {
       return this.Responser.send(deletedStat, StatusCodes.ACCEPTED, "Deleted All Matching Keys");
@@ -51,9 +50,10 @@ export default class CacheService {
 
   // Delete specific Key Records
   public async deleteSpecificDNSCache (MatchedKey: string) {
+    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     // check if exist or not
-    if (await this.RedisCache.exists(MatchedKey)){
-      if (await this.RedisCache.delete(MatchedKey)){
+    if (await redisCacheService.exists(MatchedKey)){
+      if (await redisCacheService.delete(MatchedKey)){
         return this.Responser.send(true, StatusCodes.ACCEPTED, "Deleted the key from Cache")
       }
       else {

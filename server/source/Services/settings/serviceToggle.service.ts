@@ -9,7 +9,8 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
@@ -37,7 +38,7 @@ export default class ServiceToggleService {
     const newStatus = serviceData.Service_Status === "active" ? "inactive" : "active";
 
     // Delete the Cache After Update Service Status
-    RedisCache.delete(CacheKeys.Service_Status);
+    container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
 
     await dbClient.updateOne(
       { _id: new ObjectId(serviceData._id) },

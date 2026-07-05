@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FastifyInstance, FastifyPluginOptions } from "fastify";
 import AuthController from "../../Controller/Auth/auth.controller";
-import authGuard from "../../Middlewares/authGuard.middleware";
+import { authGuard } from "../../Middlewares/authGuard.middleware";
 
 export interface AuthOptions extends FastifyPluginOptions {}
 

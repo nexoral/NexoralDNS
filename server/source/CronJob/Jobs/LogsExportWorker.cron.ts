@@ -2,12 +2,13 @@ import fs from "fs";
 import path from "path";
 import { ObjectId } from "mongodb";
 import { Console } from "outers";
-import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
-import RedisCacheService from "../../Redis/Redis.cache";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { buildLogsQuery } from "../../helper/buildLogsQuery.helper";
+import container from "../../container/appContainer";
+import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { LogExportJobMessage, LogExportMetadata } from "../../Services/Logs/LogsExport.service";
 
 const EXPORTS_DIR = path.join(__dirname, "..", "..", "..", "exports");
@@ -87,15 +88,17 @@ async function writeTxt(filePath: string, query: Record<string, unknown>): Promi
  */
 export default async function LogsExportWorker() {
   ensureExportsDir();
+  const rabbitMQService = container.get<RabbitMQService>('RabbitMQService');
+  const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
 
-  await RabbitMQService.consume(QueueKeys.LOGS_EXPORT, async (job: LogExportJobMessage): Promise<boolean> => {
+  await rabbitMQService.consume(QueueKeys.LOGS_EXPORT, async (job: LogExportJobMessage): Promise<boolean> => {
     const redisKey = `log-export:${job.userId}`;
 
     try {
-      const existing = await RedisCacheService.get<LogExportMetadata>(redisKey);
+      const existing = await redisCacheService.get<LogExportMetadata>(redisKey);
       if (existing) {
         existing.status = "processing";
-        await RedisCacheService.set(redisKey, existing, 24 * 60 * 60);
+        await redisCacheService.set(redisKey, existing, 24 * 60 * 60);
       }
 
       const query = buildLogsQuery(job.filters);
@@ -109,7 +112,7 @@ export default async function LogsExportWorker() {
         existing.readyAt = Date.now();
         existing.filePath = filePath;
         existing.fileName = fileName;
-        await RedisCacheService.set(redisKey, existing, 24 * 60 * 60);
+        await redisCacheService.set(redisKey, existing, 24 * 60 * 60);
       }
 
       Console.green(`[LogsExport] Export ${job.jobId} ready for user ${job.userId}`);
@@ -117,11 +120,11 @@ export default async function LogsExportWorker() {
     } catch (error) {
       Console.red(`[LogsExport] Failed to process export ${job.jobId}:`, error);
       try {
-        const existing = await RedisCacheService.get<LogExportMetadata>(redisKey);
+        const existing = await redisCacheService.get<LogExportMetadata>(redisKey);
         if (existing) {
           existing.status = "failed";
           existing.error = error instanceof Error ? error.message : "Unknown error";
-          await RedisCacheService.set(redisKey, existing, 24 * 60 * 60);
+          await redisCacheService.set(redisKey, existing, 24 * 60 * 60);
         }
       } catch {
         // best effort

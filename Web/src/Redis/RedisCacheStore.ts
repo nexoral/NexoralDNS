@@ -1,18 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RedisClientType } from 'redis';
 import { Console } from 'outers';
+import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class RedisCacheStore {
-  constructor(private client: RedisClientType) {}
+  constructor(private connectionManager: RedisConnectionManager) {}
 
   async set(key: string, value: any, ttl = 60): Promise<void> {
     try {
+      const client = await this.connectionManager.getClient();
       const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
 
       if (ttl) {
-        await this.client.setEx(key, ttl, serializedValue);
+        await client.setEx(key, ttl, serializedValue);
       } else {
-        await this.client.set(key, serializedValue);
+        await client.set(key, serializedValue);
       }
     } catch (error) {
       Console.yellow(`⚠️  Failed to set key ${key}:`, error);
@@ -21,7 +22,8 @@ export class RedisCacheStore {
 
   async get<T = any>(key: string): Promise<T | null> {
     try {
-      const cached = await this.client.get(key);
+      const client = await this.connectionManager.getClient();
+      const cached = await client.get(key);
 
       if (!cached) return null;
 
@@ -38,7 +40,8 @@ export class RedisCacheStore {
 
   async delete(key: string): Promise<boolean> {
     try {
-      const result = await this.client.del(key);
+      const client = await this.connectionManager.getClient();
+      const result = await client.del(key);
       return result > 0;
     } catch (error) {
       Console.yellow(`⚠️  Failed to delete key ${key}:`, error);
@@ -48,7 +51,8 @@ export class RedisCacheStore {
 
   async exists(key: string): Promise<boolean> {
     try {
-      const result = await this.client.exists(key);
+      const client = await this.connectionManager.getClient();
+      const result = await client.exists(key);
       return result > 0;
     } catch (error) {
       Console.yellow(`⚠️  Failed to check existence of key ${key}:`, error);
@@ -58,10 +62,11 @@ export class RedisCacheStore {
 
   async invalidate(pattern: string): Promise<number> {
     try {
-      const keys = await this.client.keys(pattern);
+      const client = await this.connectionManager.getClient();
+      const keys = await client.keys(pattern);
 
       if (keys.length > 0) {
-        await this.client.del(keys);
+        await client.del(keys);
         Console.bright(`🗑️  Invalidated ${keys.length} cache entries matching pattern: ${pattern}`);
         return keys.length;
       }
@@ -75,7 +80,8 @@ export class RedisCacheStore {
 
   async getTTL(key: string): Promise<number> {
     try {
-      return await this.client.ttl(key);
+      const client = await this.connectionManager.getClient();
+      return await client.ttl(key);
     } catch (error) {
       Console.yellow(`⚠️  Failed to get TTL for key ${key}:`, error);
       return -1;
@@ -84,7 +90,8 @@ export class RedisCacheStore {
 
   async expire(key: string, seconds: number): Promise<number> {
     try {
-      const result = await this.client.expire(key, seconds);
+      const client = await this.connectionManager.getClient();
+      const result = await client.expire(key, seconds);
       return result;
     } catch (error) {
       Console.yellow(`⚠️  Failed to set expiration for key ${key}:`, error);
@@ -94,7 +101,8 @@ export class RedisCacheStore {
 
   async flushAll(): Promise<void> {
     try {
-      await this.client.flushAll();
+      const client = await this.connectionManager.getClient();
+      await client.flushAll();
       Console.green('✅ All cache cleared!');
     } catch (error) {
       Console.red('❌ Failed to clear cache:', error);
@@ -103,7 +111,8 @@ export class RedisCacheStore {
 
   async getStats(): Promise<any> {
     try {
-      const info = await this.client.info();
+      const client = await this.connectionManager.getClient();
+      const info = await client.info();
 
       const stats: any = {};
       info.split('\r\n').forEach(line => {

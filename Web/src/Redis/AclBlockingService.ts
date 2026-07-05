@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RedisClientType } from 'redis';
 import { Console } from 'outers';
+import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class AclBlockingService {
-  constructor(private client: RedisClientType) {}
+  constructor(private connectionManager: RedisConnectionManager) {}
 
   async getBlockedDomainsForIP(ip: string): Promise<string[]> {
     try {
+      const client = await this.connectionManager.getClient();
       const key = `acl:ip:${ip}`;
-      const domains = await this.client.sMembers(key);
+      const domains = await client.sMembers(key);
       return domains || [];
     } catch (error) {
       Console.yellow(`⚠️  Failed to get blocked domains for IP ${ip}:`, error);
@@ -18,7 +19,8 @@ export class AclBlockingService {
 
   async getGloballyBlockedDomains(): Promise<string[]> {
     try {
-      const domains = await this.client.sMembers('acl:all_users');
+      const client = await this.connectionManager.getClient();
+      const domains = await client.sMembers('acl:all_users');
       return domains || [];
     } catch (error) {
       Console.yellow(`⚠️  Failed to get globally blocked domains:`, error);
@@ -28,7 +30,8 @@ export class AclBlockingService {
 
   async getACLMetadata(): Promise<any> {
     try {
-      const metadata = await this.client.get('acl:metadata');
+      const client = await this.connectionManager.getClient();
+      const metadata = await client.get('acl:metadata');
       return metadata ? JSON.parse(metadata) : null;
     } catch (error) {
       Console.yellow(`⚠️  Failed to get ACL metadata:`, error);

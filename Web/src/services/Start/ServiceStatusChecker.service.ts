@@ -6,7 +6,8 @@ import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 
 // Cache Settings
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 export type ServiceStatusResult = {
@@ -32,7 +33,7 @@ export default class ServiceStatusChecker {
     rinfo: dgram.RemoteInfo
   ): Promise<ServiceStatusResult> {
     // Check Redis Cache first
-    const serviceStatusCache = await RedisCache.get(CacheKeys.Service_Status);
+    const serviceStatusCache = await container.get<RedisCacheService>('RedisCacheService').get(CacheKeys.Service_Status);
 
     // If cache exists, use it
     if (serviceStatusCache !== null) {
@@ -72,7 +73,7 @@ export default class ServiceStatusChecker {
       };
     }
 
-    await RedisCache.set(CacheKeys.Service_Status, serviceConfig);
+    await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.Service_Status, serviceConfig);
     if (serviceConfig.Service_Status !== "active") {
       Console.red("Service is inactive. DNS query processing is halted.");
       IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceConfig.DefaultTTL ? serviceConfig.DefaultTTL : 10); // Respond with NXDOMAIN

@@ -5,8 +5,9 @@ import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import { verifyToken, generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 export default class RefreshTokenService {
   private readonly fastifyReply: FastifyReply;
@@ -81,7 +82,7 @@ export default class RefreshTokenService {
 
     // Evict old access token from Redis before replacing it
     if (session.accessToken) {
-      await RedisCache.delete(`session:${session.accessToken}`);
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${session.accessToken}`);
     }
 
     // Replace both tokens in the session document

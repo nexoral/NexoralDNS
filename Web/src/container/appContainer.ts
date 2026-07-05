@@ -24,14 +24,14 @@ container.register(
 
 container.register(
   'RabbitMQQueueManager',
-  () => new RabbitMQQueueManager(container.get<any>('RabbitMQConnectionManager').getChannel()),
+  () => new RabbitMQQueueManager(container.get<any>('RabbitMQConnectionManager')),
   true
 );
 
 container.register(
   'RabbitMQPublisher',
   () => new RabbitMQPublisher(
-    container.get<any>('RabbitMQConnectionManager').getChannel(),
+    container.get<any>('RabbitMQConnectionManager'),
     container.get('RabbitMQQueueManager')
   ),
   true
@@ -40,7 +40,7 @@ container.register(
 container.register(
   'RabbitMQConsumer',
   () => new RabbitMQConsumer(
-    container.get<any>('RabbitMQConnectionManager').getChannel(),
+    container.get<any>('RabbitMQConnectionManager'),
     container.get('RabbitMQQueueManager')
   ),
   true
@@ -69,16 +69,16 @@ container.register(
 
 container.register(
   'RedisCacheStore',
-  async () => new RedisCacheStore(
-    await container.get<RedisConnectionManager>('RedisConnectionManager').connect()
+  () => new RedisCacheStore(
+    container.get<RedisConnectionManager>('RedisConnectionManager')
   ),
   true
 );
 
 container.register(
   'RedisPubSub',
-  async () => new RedisPubSub(
-    await container.get<RedisConnectionManager>('RedisConnectionManager').connect(),
+  () => new RedisPubSub(
+    container.get<RedisConnectionManager>('RedisConnectionManager'),
     () => ({ mode: 'standalone', options: {} })
   ),
   true
@@ -86,8 +86,8 @@ container.register(
 
 container.register(
   'AclBlockingService',
-  async () => new AclBlockingService(
-    await container.get<RedisConnectionManager>('RedisConnectionManager').connect()
+  () => new AclBlockingService(
+    container.get<RedisConnectionManager>('RedisConnectionManager')
   ),
   true
 );

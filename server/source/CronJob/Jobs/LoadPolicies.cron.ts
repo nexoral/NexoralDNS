@@ -1,7 +1,8 @@
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import { getCollectionClient } from "../../Database/mongodb.db";
-import RedisCache from "../../Redis/Redis.cache";
 
 /**
  * Redis Data Structure for Access Control Policies:
@@ -196,7 +197,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 
   // Clear old ACL data in Redis (delete all acl:* keys)
   // Note: This is a simplified approach. In production, consider using Redis pipeline for atomic updates
-  const redisClient = await RedisCache.getClient();
+  const redisClient = await container.get<RedisCacheService>('RedisCacheService').getClient();
 
   // Delete old ACL keys (scan for acl:* pattern)
   const aclKeys = await redisClient.keys('acl:*');

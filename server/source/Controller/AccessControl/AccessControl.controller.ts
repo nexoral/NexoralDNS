@@ -3,8 +3,9 @@ import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import AccessControlPolicyService, { AccessControlPolicyData } from "../../Services/AccessControl/AccessControlPolicy.service";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
@@ -42,7 +43,7 @@ export default class AccessControlController {
         try {
           await policyService.createPolicy(policyData);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -107,7 +108,7 @@ export default class AccessControlController {
         try {
           await policyService.updatePolicy(policyId, updateData);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -137,7 +138,7 @@ export default class AccessControlController {
         try {
           await policyService.togglePolicyStatus(policyId);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -167,7 +168,7 @@ export default class AccessControlController {
         try {
           await policyService.deletePolicy(policyId);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }

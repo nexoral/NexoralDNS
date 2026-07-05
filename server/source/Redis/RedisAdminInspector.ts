@@ -1,36 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RedisClientType } from 'redis';
 import { Console } from 'outers';
+import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class RedisAdminInspector {
-  constructor(private client: RedisClientType) {}
+  constructor(private connectionManager: RedisConnectionManager) {}
 
   async getAllRecords(pattern = '*', limit = 1000, skip = 0): Promise<any[]> {
     try {
-      const keys = await this.client.keys(pattern);
+      const client = await this.connectionManager.getClient();
+      const keys = await client.keys(pattern);
       const paginatedKeys = keys.slice(skip, skip + limit);
 
       const records: any[] = [];
 
       for (const key of paginatedKeys) {
-        const type = await this.client.type(key);
-        const ttl = await this.client.ttl(key);
+        const type = await client.type(key);
+        const ttl = await client.ttl(key);
 
         let value: any;
         let size = 0;
 
         try {
           if (type === 'string') {
-            value = await this.client.get(key);
+            value = await client.get(key);
             size = value?.length || 0;
           } else if (type === 'list') {
-            value = await this.client.lRange(key, 0, -1);
+            value = await client.lRange(key, 0, -1);
             size = value?.length || 0;
           } else if (type === 'set') {
-            value = await this.client.sMembers(key);
+            value = await client.sMembers(key);
             size = value?.length || 0;
           } else if (type === 'hash') {
-            value = await this.client.hGetAll(key);
+            value = await client.hGetAll(key);
             size = Object.keys(value).length;
           } else {
             value = null;
@@ -57,7 +58,8 @@ export class RedisAdminInspector {
 
   async deleteCacheEntry(key: string): Promise<boolean> {
     try {
-      const result = await this.client.del(key);
+      const client = await this.connectionManager.getClient();
+      const result = await client.del(key);
       if (result > 0) {
         Console.bright(`🗑️  Deleted cache entry: ${key}`);
         return true;

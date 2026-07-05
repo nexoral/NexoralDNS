@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Channel, ConsumeMessage } from 'amqplib';
 import { Console } from 'outers';
+import { RabbitMQConnectionManager } from './RabbitMQConnectionManager';
 import { RabbitMQQueueManager } from './RabbitMQQueueManager';
 
 export class RabbitMQConsumer {
   constructor(
-    private channel: Channel,
+    private connectionManager: RabbitMQConnectionManager,
     private queueManager: RabbitMQQueueManager
   ) {}
 
@@ -18,13 +19,14 @@ export class RabbitMQConsumer {
     }
   ): Promise<void> {
     try {
+      const channel = await this.connectionManager.connect();
       await this.queueManager.ensureQueue(queue);
 
-      await this.channel.prefetch(options?.prefetch ?? 1);
+      await channel.prefetch(options?.prefetch ?? 1);
 
       Console.green(`🔵 Started consuming from queue: ${queue}`);
 
-      await this.channel.consume(
+      await channel.consume(
         queue,
         async (msg: ConsumeMessage | null) => {
           if (!msg) return;
@@ -35,16 +37,16 @@ export class RabbitMQConsumer {
             const success = await callback(messageData);
 
             if (success) {
-              this.channel.ack(msg);
+              channel.ack(msg);
               Console.bright(`✅ Message processed and acknowledged from queue: ${queue}`);
             } else {
-              this.channel.nack(msg, false, true);
+              channel.nack(msg, false, true);
               Console.yellow(`⚠️  Message processing failed, requeued: ${queue}`);
             }
 
           } catch (error) {
             Console.red(`❌ Error processing message from queue ${queue}:`, error);
-            this.channel.nack(msg, false, true);
+            channel.nack(msg, false, true);
           }
         },
         {
@@ -72,7 +74,7 @@ export class RabbitMQConsumer {
     let messageBatch: { msg: ConsumeMessage; data: any }[] = [];
     let batchTimer: NodeJS.Timeout | null = null;
 
-    const processBatch = async () => {
+    const processBatch = async (channel: Channel) => {
       if (messageBatch.length === 0) return;
 
       const currentBatch = [...messageBatch];
@@ -86,27 +88,28 @@ export class RabbitMQConsumer {
         const success = await batchCallback(messages);
 
         if (success) {
-          currentBatch.forEach((item) => this.channel.ack(item.msg));
+          currentBatch.forEach((item) => channel.ack(item.msg));
           Console.green(`✅ Batch of ${currentBatch.length} messages processed successfully`);
         } else {
-          currentBatch.forEach((item) => this.channel.nack(item.msg, false, true));
+          currentBatch.forEach((item) => channel.nack(item.msg, false, true));
           Console.yellow(`⚠️  Batch processing failed, messages requeued`);
         }
 
       } catch (error) {
         Console.red(`❌ Error processing batch from queue ${queue}:`, error);
-        currentBatch.forEach((item) => this.channel.nack(item.msg, false, true));
+        currentBatch.forEach((item) => channel.nack(item.msg, false, true));
       }
     };
 
     try {
+      const channel = await this.connectionManager.connect();
       await this.queueManager.ensureQueue(queue);
 
-      await this.channel.prefetch(batchSize);
+      await channel.prefetch(batchSize);
 
       Console.green(`🔵 Started batch consumer for queue: ${queue} (batch size: ${batchSize})`);
 
-      await this.channel.consume(
+      await channel.consume(
         queue,
         async (msg: ConsumeMessage | null) => {
           if (!msg) return;
@@ -118,16 +121,16 @@ export class RabbitMQConsumer {
             if (batchTimer) clearTimeout(batchTimer);
 
             if (messageBatch.length >= batchSize) {
-              await processBatch();
+              await processBatch(channel);
             } else {
               batchTimer = setTimeout(async () => {
-                await processBatch();
+                await processBatch(channel);
               }, batchTimeout);
             }
 
           } catch (error) {
             Console.red(`❌ Error adding message to batch from queue ${queue}:`, error);
-            this.channel.nack(msg, false, true);
+            channel.nack(msg, false, true);
           }
         },
         {

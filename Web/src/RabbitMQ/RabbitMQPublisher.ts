@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Channel } from 'amqplib';
 import { Console } from 'outers';
+import { RabbitMQConnectionManager } from './RabbitMQConnectionManager';
 import { RabbitMQQueueManager } from './RabbitMQQueueManager';
 
 export class RabbitMQPublisher {
   constructor(
-    private channel: Channel,
+    private connectionManager: RabbitMQConnectionManager,
     private queueManager: RabbitMQQueueManager
   ) {}
 
@@ -19,11 +19,12 @@ export class RabbitMQPublisher {
     }
   ): Promise<boolean> {
     try {
+      const channel = await this.connectionManager.connect();
       await this.queueManager.ensureQueue(queue);
 
       const messageBuffer = Buffer.from(JSON.stringify(message));
 
-      const sent = this.channel.sendToQueue(queue, messageBuffer, {
+      const sent = channel.sendToQueue(queue, messageBuffer, {
         persistent: options?.persistent ?? true,
         priority: options?.priority ?? 5,
         expiration: options?.expiration,
@@ -47,11 +48,12 @@ export class RabbitMQPublisher {
     let successCount = 0;
 
     try {
+      const channel = await this.connectionManager.connect();
       await this.queueManager.ensureQueue(queue);
 
       for (const message of messages) {
         const messageBuffer = Buffer.from(JSON.stringify(message));
-        const sent = this.channel.sendToQueue(queue, messageBuffer, { persistent: true });
+        const sent = channel.sendToQueue(queue, messageBuffer, { persistent: true });
         if (sent) successCount++;
       }
 

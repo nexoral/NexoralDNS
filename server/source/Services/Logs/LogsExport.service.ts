@@ -3,9 +3,10 @@ import { StatusCodes } from "outers";
 import fs from "fs";
 import crypto from "crypto";
 import BuildResponse from "../../helper/responseBuilder.helper";
-import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
-import RedisCacheService from "../../Redis/Redis.cache";
+import { RedisCacheService } from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { LogsQueryFilters } from "../../helper/buildLogsQuery.helper";
 
 export type LogExportFormat = "txt";
@@ -42,8 +43,9 @@ export default class LogsExportService {
   }
 
   public async requestExport(userId: string, format: LogExportFormat, filters: LogsQueryFilters): Promise<void> {
+    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     const redisKey = `log-export:${userId}`;
-    const existingExport = await RedisCacheService.get<LogExportMetadata>(redisKey);
+    const existingExport = await redisCacheService.get<LogExportMetadata>(redisKey);
 
     if (existingExport && existingExport.status !== "failed") {
       const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.CONFLICT, "Export already in progress");
@@ -65,17 +67,17 @@ export default class LogsExportService {
     };
 
     // Save metadata in Redis with a 24-hour expiration
-    await RedisCacheService.set(redisKey, metadata, 24 * 60 * 60);
+    await redisCacheService.set(redisKey, metadata, 24 * 60 * 60);
 
-    const published = await RabbitMQService.publish(QueueKeys.LOGS_EXPORT, {
+    const published = await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.LOGS_EXPORT, JSON.stringify({
       userId,
       jobId,
       format,
       filters,
-    } as LogExportJobMessage);
+    } as LogExportJobMessage));
 
     if (!published) {
-      await RedisCacheService.delete(redisKey);
+      await redisCacheService.delete(redisKey);
       const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to queue export");
       return ErrorResponse.send({ error: "Failed to queue the export job, please try again" });
     }
@@ -85,15 +87,17 @@ export default class LogsExportService {
   }
 
   public async getExportStatus(userId: string): Promise<void> {
+    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     const redisKey = `log-export:${userId}`;
-    const exportMeta = await RedisCacheService.get<LogExportMetadata>(redisKey);
+    const exportMeta = await redisCacheService.get<LogExportMetadata>(redisKey);
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Export status fetched");
     return Responser.send({ export: exportMeta });
   }
 
   public async downloadExport(userId: string): Promise<unknown> {
+    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     const redisKey = `log-export:${userId}`;
-    const exportMeta = await RedisCacheService.get<LogExportMetadata>(redisKey);
+    const exportMeta = await redisCacheService.get<LogExportMetadata>(redisKey);
 
     if (!exportMeta || exportMeta.status !== "ready" || !exportMeta.filePath) {
       const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "No export ready");
@@ -102,7 +106,7 @@ export default class LogsExportService {
 
     if (!fs.existsSync(exportMeta.filePath)) {
       // File vanished (e.g. cleaned up by the sweep) — clear the stale reference
-      await RedisCacheService.delete(redisKey);
+      await redisCacheService.delete(redisKey);
       const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "Export file missing");
       return ErrorResponse.send({ error: "The export file is no longer available, please request a new export" });
     }
@@ -125,7 +129,7 @@ export default class LogsExportService {
         // Already removed — nothing to do
       }
       try {
-        await RedisCacheService.delete(redisKey);
+        await redisCacheService.delete(redisKey);
       } catch {
         // best effort
       }
