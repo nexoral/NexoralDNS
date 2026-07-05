@@ -63,7 +63,13 @@ export class RedisCacheStore {
   async invalidate(pattern: string): Promise<number> {
     try {
       const client = await this.connectionManager.getClient();
-      const keys = await client.keys(pattern);
+      const keys: string[] = [];
+      let cursor = '0';
+      do {
+        const reply = await client.scan(cursor, { MATCH: pattern, COUNT: 100 });
+        cursor = reply.cursor;
+        keys.push(...reply.keys);
+      } while (cursor !== '0');
 
       if (keys.length > 0) {
         await client.del(keys);

@@ -200,7 +200,13 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   const redisClient = await container.get<RedisCacheService>('RedisCacheService').getClient();
 
   // Delete old ACL keys (scan for acl:* pattern)
-  const aclKeys = await redisClient.keys('acl:*');
+  const aclKeys: string[] = [];
+  let cursor = '0';
+  do {
+    const reply = await redisClient.scan(cursor, { MATCH: 'acl:*', COUNT: 100 });
+    cursor = reply.cursor;
+    aclKeys.push(...reply.keys);
+  } while (cursor !== '0');
   if (aclKeys.length > 0) {
     await redisClient.del(aclKeys);
     console.log(`[ACL] Cleared ${aclKeys.length} old ACL keys`);

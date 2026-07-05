@@ -54,7 +54,6 @@ export class RabbitMQConnectionManager {
 
     this.connection.on('error', async (err: any) => {
       Console.red('❌ RabbitMQ connection error:', err);
-      this.reconnectAttempts++;
       await this.handleReconnection();
     });
 
@@ -67,7 +66,8 @@ export class RabbitMQConnectionManager {
   }
 
   private async handleReconnection(): Promise<void> {
-    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+    this.reconnectAttempts++;
+    if (this.reconnectAttempts > this.MAX_RECONNECT_ATTEMPTS) {
       Console.red(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
       return;
     }

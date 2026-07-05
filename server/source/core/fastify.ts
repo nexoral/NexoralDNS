@@ -98,7 +98,7 @@ export default function FastifyServer() {
     .then(async () => {
       try {
         // Start Cron Jobs
-        startCronJob();
+        if (process.argv[1] === __filename) startCronJob();
 
         // Initialize adult content domain group (anti-porn mode)
         await initializeAdultContentDomainGroup();
