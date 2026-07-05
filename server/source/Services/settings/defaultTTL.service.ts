@@ -55,7 +55,8 @@ export default class DefaultTTLService {
 
   /**
    * Update the Default TTL value
-   * @param {number} newTTL - New TTL value in seconds (min: 10, max: 86400)
+   * @param {number} newTTL - New TTL value in seconds (min: 0, max: 86400).
+   *   0 is valid and means "do not cache" — used for instant block/unblock toggling.
    * @returns {Promise<void>}
    */
   public async updateDefaultTTL(newTTL: number, reply: FastifyReply): Promise<void> {

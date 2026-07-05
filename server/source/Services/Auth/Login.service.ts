@@ -8,6 +8,7 @@ import { ObjectId } from "mongodb";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import Bcrypt from "../../helper/bcrypt.helper";
 import { generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export default class LoginService {
   constructor() { }
@@ -87,6 +88,11 @@ export default class LoginService {
       return Responser.send("Failed to generate tokens", StatusCodes.INTERNAL_SERVER_ERROR, "Token Generation Failed");
     }
 
+    // Capture the previous session token (if any) so its cached copy can be
+    // evicted below — the Mongo upsert replaces the doc but the Redis
+    // session:<oldToken> entry would otherwise stay valid until its TTL.
+    const previousSession = await sessionCol.findOne({ userId: new ObjectId(String(user._id)) });
+
     // One document per user — upsert replaces the previous session on re-login,
     // invalidating the old tokens immediately
     await sessionCol.updateOne(
@@ -103,6 +109,11 @@ export default class LoginService {
       },
       { upsert: true }
     );
+
+    // Evict the old access token's Redis session cache so it can't be reused.
+    if (previousSession?.accessToken && previousSession.accessToken !== accessToken) {
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${previousSession.accessToken}`);
+    }
 
     // Set httpOnly cookies
     (reply as unknown as {

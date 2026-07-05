@@ -18,17 +18,15 @@ export default class CacheService {
     // Pull Records
     const records = await redisCacheService.getAllRecords(`${CacheKeys.Domain_DNS_Record}*`, limit, skip)
 
-    if (records && stats) {
-      // Add Records into response
-      stats.records = records;
-      return Responser.send(stats)
+    if (records || stats) {
+      // Attach records to whatever stats we have (stats may be null if Redis
+      // INFO failed but keys were still enumerable — return records regardless).
+      const payload = stats || {};
+      if (records) payload.records = records;
+      return Responser.send(payload)
     }
-    else if (records) {
-      return Responser.send(stats)
-    }
-    else {
-      return Responser.send({}, StatusCodes.BAD_REQUEST, "Failed to get Cache Stats")
-    }
+
+    return Responser.send({}, StatusCodes.BAD_REQUEST, "Failed to get Cache Stats")
   }
 
   // delete all DNS Cache Records Patterns
@@ -37,11 +35,8 @@ export default class CacheService {
     const Responser = new BuildResponse(reply, StatusCodes.ACCEPTED, "Deleted All Matching Keys");
     const deletedStat = await redisCacheService.invalidate(`${CacheKeys.Domain_DNS_Record}*`)
 
-    if (deletedStat) {
-      return Responser.send(deletedStat, StatusCodes.ACCEPTED, "Deleted All Matching Keys");
-    }
-
-    return Responser.send(0, StatusCodes.BAD_REQUEST, "Failed to Delete")
+    // 0 matched keys is a legitimate success (nothing to delete), not a failure.
+    return Responser.send(deletedStat, StatusCodes.ACCEPTED, "Deleted All Matching Keys");
   }
 
 
@@ -55,13 +50,11 @@ export default class CacheService {
         return Responser.send(true, StatusCodes.ACCEPTED, "Deleted the key from Cache")
       }
       else {
-        return Responser.send(false, StatusCodes.NOT_ACCEPTABLE, "Faled to Delete the Cache")
+        return Responser.send(false, StatusCodes.NOT_ACCEPTABLE, "Failed to Delete the Cache")
       }
     }
     else {
       return Responser.send(false, StatusCodes.NOT_FOUND, "No Key Matched with this key")
     }
-
-    return Responser.send(false, StatusCodes.NOT_FOUND, "Failed to Delete the Cache")
   }
 }

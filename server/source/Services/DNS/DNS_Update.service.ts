@@ -101,7 +101,8 @@ export default class DnsUpdateService {
       if (name && name !== DnsDetails.name) {
         await cache.delete(`${CacheKeys.Domain_DNS_Record}:${name}`);
       }
-      return Responser.send({ dnsRecordIds: dnsUpdateResult.upsertedId });
+      // Return the id that was updated (upsertedId is always null for a non-upsert update).
+      return Responser.send({ dnsRecordId: id });
     }
 
   }

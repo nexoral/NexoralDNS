@@ -1,14 +1,14 @@
 import { createClient, RedisClientType } from 'redis';
 import IP_SCAN from '../service/AutoScanIPchange.service';
+import { REDIS_URI } from './key';
 
-const REDIS_URL = process.env.REDIS_URI || 'redis://localhost:6379';
 const BROKER_CHANNEL = 'broker:ip_change';
 
 let redisClient: RedisClientType | null = null;
 
 async function connectRedis(): Promise<RedisClientType> {
   const client = createClient({
-    url: REDIS_URL,
+    url: REDIS_URI,
     socket: {
       // Never permanently give up: returning an Error here tells node-redis to
       // stop reconnecting for good, which would silently drop ALL future

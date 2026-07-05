@@ -59,6 +59,7 @@ export default class DnsAddService {
           name: `${name}.${value}`,
           value: value,
           ttl: ttl,
+          createdAt: Date.now()
         })
       }
       else {

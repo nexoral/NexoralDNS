@@ -44,10 +44,11 @@ if (cluster.isPrimary) {
       process.exit(1);
     });
 
-  // Restart workers if they die
-  cluster.on("exit", (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died. Restarting...`);
-    cluster.fork();
+  // Restart workers if they die, with a short backoff so a worker that crashes
+  // on startup can't spin-restart in a tight CPU-burning loop.
+  cluster.on("exit", (worker) => {
+    console.log(`Worker ${worker.process.pid} died. Restarting in 1s...`);
+    setTimeout(() => cluster.fork(), 1000);
   });
 } else {
   // Workers can share any TCP connection

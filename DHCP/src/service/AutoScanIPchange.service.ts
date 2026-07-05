@@ -4,12 +4,12 @@ import UpdateResolveConfigFileService from "./UpdateResolveConfigFile.service";
 
 export default class IP_SCAN {
   private CURRENT_IP: string = "";
+  // Empty sentinel: never equals a real IP, so the first valid reading is always
+  // treated as a change and propagated once on startup.
   private PREVIOUS_IP: string = "";
   private readonly publishFn: () => Promise<void>;
 
   constructor(publishFn: () => Promise<void>) {
-    this.CURRENT_IP = "<current_ip>";
-    this.PREVIOUS_IP = "<previous_ip>";
     this.publishFn = publishFn;
   }
 
