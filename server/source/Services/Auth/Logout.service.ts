@@ -8,13 +8,10 @@ import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export default class LogoutService {
-  private readonly fastifyReply: FastifyReply;
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
-  public async logout(accessToken: string): Promise<void> {
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Logged out successfully");
+  public async logout(accessToken: string, reply: FastifyReply): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Logged out successfully");
     const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
 
     if (!sessionCol) {
@@ -36,11 +33,12 @@ export default class LogoutService {
     // Evict from Redis immediately so the old token is rejected on next request
     await container.get<RedisCacheService>('RedisCacheService').delete(`session:${accessToken}`);
 
-    const reply = this.fastifyReply as unknown as {
+    (reply as unknown as {
       clearCookie(name: string, options: Record<string, unknown>): void;
-    };
-    reply.clearCookie('access_token', { path: '/' });
-    reply.clearCookie('refresh_token', { path: '/' });
+    }).clearCookie('access_token', { path: '/' });
+    (reply as unknown as {
+      clearCookie(name: string, options: Record<string, unknown>): void;
+    }).clearCookie('refresh_token', { path: '/' });
 
     return Responser.send("Logged out successfully");
   }

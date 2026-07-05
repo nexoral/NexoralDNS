@@ -4,6 +4,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import LogsExportService, { LogExportFormat } from "../../Services/Logs/LogsExport.service";
 import { LogsQueryFilters } from "../../helper/buildLogsQuery.helper";
+import container from '../../container/appContainer';
 
 interface ExportRequestBody extends LogsQueryFilters {
   format: LogExportFormat;
@@ -21,7 +22,7 @@ export default class LogsExportController {
     }
 
     try {
-      await new LogsExportService(reply).requestExport(request.user._id, format, filters);
+      await container.get<LogsExportService>('LogsExportService').requestExport(request.user._id, format, filters, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -30,7 +31,7 @@ export default class LogsExportController {
   public static async getExportStatus(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const Responser = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to fetch export status");
     try {
-      await new LogsExportService(reply).getExportStatus(request.user._id);
+      await container.get<LogsExportService>('LogsExportService').getExportStatus(request.user._id, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -39,7 +40,7 @@ export default class LogsExportController {
   public static async downloadExport(request: authGuardFastifyRequest, reply: FastifyReply): Promise<unknown> {
     const Responser = new BuildResponse(reply, StatusCodes.NOT_FOUND, "Failed to download export");
     try {
-      return await new LogsExportService(reply).downloadExport(request.user._id);
+      return await container.get<LogsExportService>('LogsExportService').downloadExport(request.user._id, reply);
     } catch (error) {
       Responser.send(error);
       return reply;

@@ -2,16 +2,16 @@
 
 export class DIContainer {
   private singletons: Map<string, any> = new Map();
-  private factories: Map<string, () => any> = new Map();
+  private factories: Map<string, ((...args: any[]) => any) | (() => any)> = new Map();
 
-  register(key: string, factory: () => any, singleton: boolean = false): void {
+  register(key: string, factory: ((...args: any[]) => any) | (() => any), singleton: boolean = false): void {
     if (singleton) {
       this.singletons.set(key, null);
     }
     this.factories.set(key, factory);
   }
 
-  get<T = any>(key: string): T {
+  get<T = any>(key: string, ...args: any[]): T {
     // Check if singleton already exists
     if (this.singletons.has(key)) {
       let instance = this.singletons.get(key);
@@ -20,7 +20,7 @@ export class DIContainer {
         if (!factory) {
           throw new Error(`Service '${key}' not registered in DI container`);
         }
-        instance = factory();
+        instance = factory(...args);
         this.singletons.set(key, instance);
       }
       return instance;
@@ -31,7 +31,7 @@ export class DIContainer {
     if (!factory) {
       throw new Error(`Service '${key}' not registered in DI container`);
     }
-    return factory();
+    return factory(...args);
   }
 
   has(key: string): boolean {

@@ -7,6 +7,7 @@ import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware"
 
 // services
 import RouterService from "../../Services/DHCP/Router_connection.service";
+import container from '../../container/appContainer';
 
 /**
  * DhcpController handles DHCP-related requests.
@@ -29,10 +30,10 @@ export default class DhcpController {
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Record fetch failed");
 
     // Initialize LoginService
-    const loginService = new RouterService(reply);
+    const loginService = container.get<RouterService>('RouterService');
 
     try {
-      return loginService.fetchConnectedIPs();
+      return loginService.fetchConnectedIPs(reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -47,10 +48,10 @@ export default class DhcpController {
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Record update failed");
 
     // Initialize LoginService
-    const loginService = new RouterService(reply);
+    const loginService = container.get<RouterService>('RouterService');
 
     try {
-      return loginService.refreshConnectedIPs();
+      return loginService.refreshConnectedIPs(reply);
     } catch (error) {
       return Responser.send(error);
     }

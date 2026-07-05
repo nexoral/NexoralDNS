@@ -11,15 +11,12 @@ import { RedisCacheService } from "../../Redis/Redis.cache";
 
 
 export default class DashboardService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
 
   // This methood is for fetch dashboard data
-  public async getDashboardData(): Promise<void> {
-    const Res = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Dashboard Data retrieved successfully");
+  public async getDashboardData(reply: FastifyReply): Promise<void> {
+    const Res = new BuildResponse(reply, StatusCodes.OK, "Dashboard Data retrieved successfully");
 
     // Get base stats from cache (computed by cron every ~5 min)
     const baseStats: any = await container.get<RedisCacheService>('RedisCacheService').get(CacheKeys.DashboardAnaliticalData);

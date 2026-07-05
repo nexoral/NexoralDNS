@@ -13,18 +13,15 @@ import { ObjectId } from "mongodb";
 
 
 export default class DnsAddService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Add a new DNS record
-  public async addDnsRecord(domain: string, name: string, type: string, value: string, ttl: number, user: any): Promise<void> {
+  public async addDnsRecord(domain: string, name: string, type: string, value: string, ttl: number, user: any, reply: FastifyReply): Promise<void> {
 
     console.log(`[SERVICE] addDnsRecord called for domain: ${domain}, name: ${name}, value: ${value}, user: ${user._id}`);
 
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "DNS record added successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record added successfully");
     const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
     const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 

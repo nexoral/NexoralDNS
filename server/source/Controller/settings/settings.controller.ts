@@ -30,11 +30,11 @@ export default class SettingsController {
   public static async toggleService(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Service update failed");
-    const serviceToggler = new ServiceToggleService(reply)
+    const serviceToggler = container.get<ServiceToggleService>('ServiceToggleService')
     try {
-      const result = await serviceToggler.toggleService();
+      const result = await serviceToggler.toggleService(reply);
       // Publish Cache Invalidation Event
-      await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'service_status');
+      await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'service_status');
       return result;
     } catch (error) {
       return Responser.send(error);
@@ -45,9 +45,9 @@ export default class SettingsController {
   public static getDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to fetch Default TTL");
-    const ttlService = new DefaultTTLService(reply);
+    const ttlService = container.get<DefaultTTLService>('DefaultTTLService');
     try {
-      return ttlService.getDefaultTTL();
+      return ttlService.getDefaultTTL(reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -57,12 +57,12 @@ export default class SettingsController {
   public static async updateDefaultTTL(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to update Default TTL");
-    const ttlService = new DefaultTTLService(reply);
+    const ttlService = container.get<DefaultTTLService>('DefaultTTLService');
     try {
       const { defaultTTL } = request.body as { defaultTTL: number };
-      const result = await ttlService.updateDefaultTTL(defaultTTL);
+      const result = await ttlService.updateDefaultTTL(defaultTTL, reply);
       // Publish Cache Invalidation Event
-      await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'service_status');
+      await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'service_status');
       return result;
     } catch (error) {
       return Responser.send(error);
@@ -73,13 +73,13 @@ export default class SettingsController {
   public static getCacheStat(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to fetch Cache Data");
-    const cacheService = new CacheService(reply);
+    const cacheService = container.get<CacheService>('CacheService');
     try {
       // extract skip limit from query
       const requestQuery = request.query as { skip: string, limit: string }
       const skip = parseFloat(requestQuery.skip) || 0;
       const limit = parseFloat(requestQuery.limit) || 50;
-      return cacheService.getStats(limit, skip);
+      return cacheService.getStats(limit, skip, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -89,10 +89,10 @@ export default class SettingsController {
   public static deleteAllDNSCache(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to Delete Cache Keys");
-    const cacheService = new CacheService(reply);
+    const cacheService = container.get<CacheService>('CacheService');
 
     try {
-      return cacheService.deleteAllDNSCahce()
+      return cacheService.deleteAllDNSCahce(reply)
     } catch (error) {
       return Responser.send(error);
     }
@@ -103,13 +103,13 @@ export default class SettingsController {
   public static deleteSpecificDnsKey(request: authGuardFastifyRequest, reply: FastifyReply) {
     // construct Response
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Failed to Delete Cache Key");
-    const cacheService = new CacheService(reply);
+    const cacheService = container.get<CacheService>('CacheService');
 
     try {
       // extract skip limit from query
       const requestQuery = request.query as { keyName: string }
 
-      return cacheService.deleteSpecificDNSCache(requestQuery.keyName)
+      return cacheService.deleteSpecificDNSCache(requestQuery.keyName, reply)
     } catch (error) {
       return Responser.send(error);
     }

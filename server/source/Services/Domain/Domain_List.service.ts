@@ -12,16 +12,13 @@ import { ObjectId } from "mongodb";
 
 
 export default class DomainListService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Add a new domain record
-  public async getAllDomains(user: any): Promise<void> {
+  public async getAllDomains(user: any, reply: FastifyReply): Promise<void> {
 
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Domain retrieved successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain retrieved successfully");
     const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
     const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 

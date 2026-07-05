@@ -15,16 +15,13 @@ import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class ServiceToggleService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Toggle a service's active status
-  public async toggleService(): Promise<void> {
+  public async toggleService(reply: FastifyReply): Promise<void> {
     console.log("Toggling service status...");
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Service updated Successful");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Service updated Successful");
     const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");

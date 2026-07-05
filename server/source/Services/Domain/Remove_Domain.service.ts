@@ -14,15 +14,12 @@ import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class DomainRemoveService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Remove a domain record
-  public async removeDomain(domain: string, user: any): Promise<void> {
+  public async removeDomain(domain: string, user: any, reply: FastifyReply): Promise<void> {
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Domain removed successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain removed successfully");
     const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
     const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 

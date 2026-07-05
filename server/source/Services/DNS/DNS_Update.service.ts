@@ -15,16 +15,13 @@ import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class DnsUpdateService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Update a DNS record
-  public async updateDnsRecord(id: string, name: string, type: string, value: string, ttl: number, user: any): Promise<void> {
+  public async updateDnsRecord(id: string, name: string, type: string, value: string, ttl: number, user: any, reply: FastifyReply): Promise<void> {
 
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "DNS record updated successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record updated successfully");
     const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
     const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 

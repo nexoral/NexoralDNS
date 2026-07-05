@@ -11,16 +11,13 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { fetchConnectedIP } from "../../CronJob/Jobs/Connected_IP_fetcher.cron";
 
 export default class RouterService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
 
   // Fetch all connected IPs from the database
-  public async fetchConnectedIPs(): Promise<void> {
+  public async fetchConnectedIPs(reply: FastifyReply): Promise<void> {
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Record fetch Successful");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Record fetch Successful");
     const collectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
 
     if (!collectionClient) {
@@ -63,9 +60,9 @@ export default class RouterService {
   }
 
   // refresh the connected IPs by calling the cron job function
-  public async refreshConnectedIPs(): Promise<void> {
+  public async refreshConnectedIPs(reply: FastifyReply): Promise<void> {
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Record updated Successful");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Record updated Successful");
 
     // run the cron job function
     const status = await fetchConnectedIP();

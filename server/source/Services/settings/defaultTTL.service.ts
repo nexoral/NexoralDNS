@@ -13,22 +13,19 @@ import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 export default class DefaultTTLService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   /**
    * Get the current Default TTL value
    * @returns {Promise<void>}
    */
-  public async getDefaultTTL(): Promise<void> {
+  public async getDefaultTTL(reply: FastifyReply): Promise<void> {
     console.log("Fetching Default TTL...");
 
     // construct Response
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Default TTL fetched successfully"
     );
@@ -61,13 +58,13 @@ export default class DefaultTTLService {
    * @param {number} newTTL - New TTL value in seconds (min: 10, max: 86400)
    * @returns {Promise<void>}
    */
-  public async updateDefaultTTL(newTTL: number): Promise<void> {
+  public async updateDefaultTTL(newTTL: number, reply: FastifyReply): Promise<void> {
     console.log(`Updating Default TTL to: ${newTTL} seconds`);
 
     // Validate TTL value
     if (!newTTL || typeof newTTL !== "number") {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid TTL value"
       );
@@ -78,7 +75,7 @@ export default class DefaultTTLService {
 
     if (newTTL < 10 || newTTL > 86400) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "TTL value out of range"
       );
@@ -89,7 +86,7 @@ export default class DefaultTTLService {
 
     // construct Response
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Default TTL updated successfully"
     );

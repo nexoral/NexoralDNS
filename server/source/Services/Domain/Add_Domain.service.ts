@@ -12,18 +12,15 @@ import { ObjectId } from "mongodb";
 
 
 export default class DomainAddService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Add a new domain record
-  public async addDomain(domain: string, type: string, IpAddress: string, user: any): Promise<void> {
+  public async addDomain(domain: string, type: string, IpAddress: string, user: any, reply: FastifyReply): Promise<void> {
 
     console.log(`[SERVICE] addDomain called for domain: ${domain}, IP: ${IpAddress}, user: ${user._id}`);
 
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Domain added successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain added successfully");
     const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
     const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 

@@ -7,16 +7,10 @@ import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 
-export class LogsService {
-  private readonly fastifyReply: FastifyReply
-  private readonly Responser: BuildResponse
+export default class LogsService {
+  constructor() { }
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-    this.Responser = new BuildResponse(this.fastifyReply)
-  }
-
-  public async getAnalyticalLogs (limit?: number, cursor?: string, query?: any) {
+  public async getAnalyticalLogs (limit?: number, cursor?: string, query?: any, reply?: FastifyReply) {
     const Analytics = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
     if (!limit) limit = 25
 
@@ -46,6 +40,7 @@ export class LogsService {
 
     const AllFilteredData = result || [];
 
-    return this.Responser.send(AllFilteredData, AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
+    const Responser = new BuildResponse(reply!, AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
+    return Responser.send(AllFilteredData)
   }
 }

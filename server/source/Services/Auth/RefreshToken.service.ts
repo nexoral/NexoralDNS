@@ -10,13 +10,10 @@ import { RedisCacheService } from "../../Redis/Redis.cache";
 import { verifyToken, generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
 
 export default class RefreshTokenService {
-  private readonly fastifyReply: FastifyReply;
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
-  public async refresh(refreshToken: string): Promise<void> {
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Token refreshed successfully");
+  public async refresh(refreshToken: string, reply: FastifyReply): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Token refreshed successfully");
     const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
     const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
 
@@ -91,17 +88,18 @@ export default class RefreshTokenService {
       { $set: { accessToken: newAccessToken, refreshToken: newRefreshToken, updatedAt: new Date() } }
     );
 
-    const reply = this.fastifyReply as unknown as {
+    (reply as unknown as {
       setCookie(name: string, value: string, options: Record<string, unknown>): void;
-    };
-    reply.setCookie('access_token', newAccessToken, {
+    }).setCookie('access_token', newAccessToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 30 * 60,
     });
-    reply.setCookie('refresh_token', newRefreshToken, {
+    (reply as unknown as {
+      setCookie(name: string, value: string, options: Record<string, unknown>): void;
+    }).setCookie('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',

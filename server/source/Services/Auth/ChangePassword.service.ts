@@ -11,13 +11,10 @@ import { RedisCacheService } from "../../Redis/Redis.cache";
 import { validatePasswordStrength } from "../../helper/passwordPolicy.helper";
 
 export default class ChangePasswordService {
-  private readonly fastifyReply: FastifyReply;
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
-  public async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Password changed successfully");
+  public async changePassword(userId: string, currentPassword: string, newPassword: string, reply: FastifyReply): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Password changed successfully");
     const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
 
@@ -64,11 +61,12 @@ export default class ChangePasswordService {
     );
 
     // Clear cookies on this device
-    const reply = this.fastifyReply as unknown as {
+    (reply as unknown as {
       clearCookie(name: string, options: Record<string, unknown>): void;
-    };
-    reply.clearCookie('access_token', { path: '/' });
-    reply.clearCookie('refresh_token', { path: '/' });
+    }).clearCookie('access_token', { path: '/' });
+    (reply as unknown as {
+      clearCookie(name: string, options: Record<string, unknown>): void;
+    }).clearCookie('refresh_token', { path: '/' });
 
     return Responser.send({ passwordUpdatedAt });
   }

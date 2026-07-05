@@ -36,19 +36,16 @@ const CONTENT_TYPES: Record<LogExportFormat, string> = {
 };
 
 export default class LogsExportService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
-  public async requestExport(userId: string, format: LogExportFormat, filters: LogsQueryFilters): Promise<void> {
+  public async requestExport(userId: string, format: LogExportFormat, filters: LogsQueryFilters, reply: FastifyReply): Promise<void> {
     const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     const redisKey = `log-export:${userId}`;
     const existingExport = await redisCacheService.get<LogExportMetadata>(redisKey);
 
     if (existingExport && existingExport.status !== "failed") {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.CONFLICT, "Export already in progress");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.CONFLICT, "Export already in progress");
       return ErrorResponse.send({
         error: existingExport.status === "ready"
           ? "You have a ready export waiting — download or discard it before requesting a new one"
@@ -78,36 +75,36 @@ export default class LogsExportService {
 
     if (!published) {
       await redisCacheService.delete(redisKey);
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to queue export");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to queue export");
       return ErrorResponse.send({ error: "Failed to queue the export job, please try again" });
     }
 
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.ACCEPTED, "Export queued");
+    const Responser = new BuildResponse(reply, StatusCodes.ACCEPTED, "Export queued");
     return Responser.send({ jobId, status: "queued" });
   }
 
-  public async getExportStatus(userId: string): Promise<void> {
+  public async getExportStatus(userId: string, reply: FastifyReply): Promise<void> {
     const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     const redisKey = `log-export:${userId}`;
     const exportMeta = await redisCacheService.get<LogExportMetadata>(redisKey);
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Export status fetched");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Export status fetched");
     return Responser.send({ export: exportMeta });
   }
 
-  public async downloadExport(userId: string): Promise<unknown> {
+  public async downloadExport(userId: string, reply: FastifyReply): Promise<unknown> {
     const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
     const redisKey = `log-export:${userId}`;
     const exportMeta = await redisCacheService.get<LogExportMetadata>(redisKey);
 
     if (!exportMeta || exportMeta.status !== "ready" || !exportMeta.filePath) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "No export ready");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "No export ready");
       return ErrorResponse.send({ error: "No export is ready to download" });
     }
 
     if (!fs.existsSync(exportMeta.filePath)) {
       // File vanished (e.g. cleaned up by the sweep) — clear the stale reference
       await redisCacheService.delete(redisKey);
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "Export file missing");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "Export file missing");
       return ErrorResponse.send({ error: "The export file is no longer available, please request a new export" });
     }
 
@@ -153,7 +150,7 @@ export default class LogsExportService {
       }, 2000);
     });
 
-    return this.fastifyReply
+    return reply
       .header("Content-Type", contentType)
       .header("Content-Disposition", `attachment; filename="${fileName}"`)
       .send(stream);

@@ -14,11 +14,8 @@ export interface SessionUserPayload {
 }
 
 export default class VerifySessionService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   /**
    * Re-populates role name, permission objects, and profile fields (createdAt,
@@ -27,8 +24,8 @@ export default class VerifySessionService {
    * `{ user: {id, username, passwordUpdatedAt, createdAt, isActive}, role: {id, name, permissions} }`)
    * stays correctly hydrated on every dashboard page load, not just a fresh login.
    */
-  public async verify(userPayload: SessionUserPayload): Promise<void> {
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Session valid");
+  public async verify(userPayload: SessionUserPayload, reply: FastifyReply): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Session valid");
 
     if (!userPayload?._id) {
       return Responser.send({
