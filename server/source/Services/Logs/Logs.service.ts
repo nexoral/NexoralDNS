@@ -10,12 +10,13 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 export default class LogsService {
   constructor() { }
 
-  public async getAnalyticalLogs (limit?: number, cursor?: string, query?: any, reply?: FastifyReply) {
+  public async getAnalyticalLogs (limit: number | undefined, cursor: string | undefined, query: any, reply: FastifyReply) {
     const Analytics = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
     if (!limit) limit = 25
 
     if (!Analytics) {
-      return { count: 0, success: 0, failed: 0, forwarded: 0, latestLogs: [], newDomains: 0, newActiveDomains: 0, newRecords: 0 };
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Database connection error");
+      return ErrorResponse.send({ error: "Analytics collection is unavailable" });
     }
 
     // Build match query with cursor filtering
@@ -40,7 +41,7 @@ export default class LogsService {
 
     const AllFilteredData = result || [];
 
-    const Responser = new BuildResponse(reply!, AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
+    const Responser = new BuildResponse(reply, AllFilteredData.length !== 0 ? StatusCodes.OK : StatusCodes.NOT_FOUND, "Fetched All Filtered Logs")
     return Responser.send(AllFilteredData)
   }
 }

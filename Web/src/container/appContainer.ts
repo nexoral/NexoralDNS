@@ -106,7 +106,7 @@ container.register(
   'RedisPubSub',
   () => new RedisPubSub(
     container.get<RedisConnectionManager>('RedisConnectionManager'),
-    () => ({ mode: 'standalone', options: {} })
+    () => container.get<RedisConnectionManager>('RedisConnectionManager').getRedisConfig()
   ),
   true
 );
@@ -190,5 +190,18 @@ container.register(
   () => new DomainDBPoolService(),
   true
 );
+
+// Graceful shutdown - close RabbitMQ connection so buffered messages are flushed
+const gracefulShutdown = async (): Promise<void> => {
+  try {
+    await container.get<RabbitMQService>('RabbitMQService').close();
+  } catch {
+    // Connection may never have been opened
+  }
+  process.exit(0);
+};
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
 
 export default container;

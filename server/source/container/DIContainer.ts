@@ -14,13 +14,18 @@ export class DIContainer {
   get<T = any>(key: string, ...args: any[]): T {
     // Check if singleton already exists
     if (this.singletons.has(key)) {
+      // Singletons are shared across all callers, so per-call arguments would be
+      // silently ignored after first creation - reject them to prevent subtle bugs
+      if (args.length > 0) {
+        throw new Error(`Service '${key}' is a singleton - per-call arguments are not supported. Pass request data to the service's methods instead.`);
+      }
       let instance = this.singletons.get(key);
       if (!instance) {
         const factory = this.factories.get(key);
         if (!factory) {
           throw new Error(`Service '${key}' not registered in DI container`);
         }
-        instance = factory(...args);
+        instance = factory();
         this.singletons.set(key, instance);
       }
       return instance;

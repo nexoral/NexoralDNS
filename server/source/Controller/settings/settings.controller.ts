@@ -34,7 +34,7 @@ export default class SettingsController {
     try {
       const result = await serviceToggler.toggleService(reply);
       // Publish Cache Invalidation Event
-      await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'service_status');
+      await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'service_status');
       return result;
     } catch (error) {
       return Responser.send(error);
@@ -62,7 +62,7 @@ export default class SettingsController {
       const { defaultTTL } = request.body as { defaultTTL: number };
       const result = await ttlService.updateDefaultTTL(defaultTTL, reply);
       // Publish Cache Invalidation Event
-      await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'service_status');
+      await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'service_status');
       return result;
     } catch (error) {
       return Responser.send(error);

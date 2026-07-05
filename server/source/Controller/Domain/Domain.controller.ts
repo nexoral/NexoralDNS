@@ -25,7 +25,7 @@ export default class DomainController {
     const requestKey = `${request.user._id}:${DomainName}:${IpAddress}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "Domain created successfully");
-    const domainAddService = container.get<DomainAddService>('DomainAddService');
+    const domainAddService = container.get<DomainAddService>('AddDomainService');
 
     // Execute with deduplication logic
     await requestHelper.executeWithDeduplication(
@@ -67,7 +67,7 @@ export default class DomainController {
   public static async remove(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const { domainName } = request.body as { domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain removed successfully");
-    const domainRemoveService = container.get<DomainRemoveService>('DomainRemoveService');
+    const domainRemoveService = container.get<DomainRemoveService>('RemoveDomainService');
     try {
       await domainRemoveService.removeDomain(domainName, request.user, reply);
     } catch (error) {

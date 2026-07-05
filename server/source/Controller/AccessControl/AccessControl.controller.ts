@@ -43,7 +43,7 @@ export default class AccessControlController {
         try {
           await policyService.createPolicy(policyData, reply);
           // Publish Cache Invalidation Event
-          await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -108,7 +108,7 @@ export default class AccessControlController {
         try {
           await policyService.updatePolicy(policyId, updateData, reply);
           // Publish Cache Invalidation Event
-          await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -138,7 +138,7 @@ export default class AccessControlController {
         try {
           await policyService.togglePolicyStatus(policyId, reply);
           // Publish Cache Invalidation Event
-          await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -168,7 +168,7 @@ export default class AccessControlController {
         try {
           await policyService.deletePolicy(policyId, reply);
           // Publish Cache Invalidation Event
-          await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }

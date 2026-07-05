@@ -55,6 +55,10 @@ export default class StartRulesService {
       }
 
       Console.green('✅ Local Caches Cleared');
+      }).catch((error) => {
+        // Allow a retry on the next instance construction instead of staying dead
+        StartRulesService.#subscribed = false;
+        Console.red('❌ Failed to subscribe to cache:invalidate channel:', error);
       });
     }
   }

@@ -47,7 +47,7 @@ export class RedisConnectionManager {
     }
   }
 
-  private getRedisConfig(): { mode: string; options: any } {
+  getRedisConfig(): { mode: string; options: any } {
     const redisUrl = process.env.REDIS_URI || 'redis://localhost:6379';
 
     return {

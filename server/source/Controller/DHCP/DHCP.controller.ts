@@ -30,7 +30,7 @@ export default class DhcpController {
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Record fetch failed");
 
     // Initialize LoginService
-    const loginService = container.get<RouterService>('RouterService');
+    const loginService = container.get<RouterService>('RouterConnectionService');
 
     try {
       return loginService.fetchConnectedIPs(reply);
@@ -48,7 +48,7 @@ export default class DhcpController {
     const Responser = new BuildResponse(reply, StatusCodes.UNAUTHORIZED, "Record update failed");
 
     // Initialize LoginService
-    const loginService = container.get<RouterService>('RouterService');
+    const loginService = container.get<RouterService>('RouterConnectionService');
 
     try {
       return loginService.refreshConnectedIPs(reply);

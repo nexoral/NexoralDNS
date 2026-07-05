@@ -126,7 +126,7 @@ container.register(
   'RedisPubSub',
   () => new RedisPubSub(
     container.get<RedisConnectionManager>('RedisConnectionManager'),
-    () => ({ mode: 'standalone', options: {} })
+    () => container.get<RedisConnectionManager>('RedisConnectionManager').getRedisConfig()
   ),
   true
 );
@@ -214,5 +214,18 @@ container.register('ServiceToggleService', () => new ServiceToggleService(), tru
 
 // DHCP
 container.register('RouterConnectionService', () => new RouterConnectionService(), true);
+
+// Graceful shutdown - close RabbitMQ connection so buffered messages are flushed
+const gracefulShutdown = async (): Promise<void> => {
+  try {
+    await container.get<RabbitMQService>('RabbitMQService').close();
+  } catch {
+    // Connection may never have been opened
+  }
+  process.exit(0);
+};
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
 
 export default container;

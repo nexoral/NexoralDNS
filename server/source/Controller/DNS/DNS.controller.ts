@@ -25,7 +25,7 @@ export default class DnsController {
     const requestKey = `${request.user._id}:${DomainName}:${name}:${value}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "DNS record created successfully");
-    const dnsAddService = container.get<DnsAddService>('DnsAddService');
+    const dnsAddService = container.get<DnsAddService>('AddDNSService');
 
     // Execute with deduplication logic
     await requestHelper.executeWithDeduplication(
@@ -54,7 +54,7 @@ export default class DnsController {
   public static async list(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const { domain } = request.params as { domain: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS records retrieved successfully");
-    const dnsListService = container.get<DnsListService>('DnsListService');
+    const dnsListService = container.get<DnsListService>('DNSListService');
 
     try {
       await dnsListService.getAllDns(domain, request.user, reply);
@@ -70,7 +70,7 @@ export default class DnsController {
     const { id } = request.params as { id: string };
     const { name, type, value, ttl } = request.body;
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record updated successfully");
-    const dnsUpdateService = container.get<DnsUpdateService>('DnsUpdateService');
+    const dnsUpdateService = container.get<DnsUpdateService>('DNSUpdateService');
     try {
       await dnsUpdateService.updateDnsRecord(id, name, type, value, ttl, request.user, reply);
     } catch (error) {
@@ -85,7 +85,7 @@ export default class DnsController {
     console.log(`[DELETE] Processing DNS record deletion request by user ${request.user._id}`);
     const { id, domainName } = request.body as { id: string, domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record deleted successfully");
-    const dnsDeleteService = container.get<DnsDeleteService>('DnsDeleteService');
+    const dnsDeleteService = container.get<DnsDeleteService>('DNSDeleteService');
 
     try {
       await dnsDeleteService.deleteDnsRecord(id, domainName, request.user, reply);

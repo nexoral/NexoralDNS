@@ -26,7 +26,7 @@ export default class DomainGroupController {
         try {
           await groupService.createDomainGroup(groupData, reply);
           // Publish Cache Invalidation Event
-          await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -76,7 +76,7 @@ export default class DomainGroupController {
         try {
           await groupService.updateDomainGroup(groupId, updateData, reply);
           // Publish Cache Invalidation Event
-          await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -99,7 +99,7 @@ export default class DomainGroupController {
         try {
           await groupService.deleteDomainGroup(groupId, reply);
           // Publish Cache Invalidation Event
-          await container.get<RedisCacheService>('RedisCacheService', reply).publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
