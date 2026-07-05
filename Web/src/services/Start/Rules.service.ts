@@ -4,7 +4,7 @@ import { Console } from "outers";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 import { DomainDBPoolService } from "../DB/DB_Pool.service";
-import GlobalDNSforwarder from "../Forwarder/GlobalDNSforwarder.service";
+import { GlobalDNSforwarderService } from "../Forwarder/GlobalDNSforwarder.service";
 
 // Rules Services
 import ServiceStatusChecker, { ServiceStatusResult } from "./ServiceStatusChecker.service";
@@ -30,10 +30,10 @@ export default class StartRulesService {
   private dbPoolService: DomainDBPoolService;
 
   constructor() {
-    // Initialize services once
-    this.blockList = new BlockList();
-    this.serviceStatusChecker = new ServiceStatusChecker();
-    this.dbPoolService = new DomainDBPoolService();
+    // Get services from DI container
+    this.blockList = container.get<BlockList>('BlockList');
+    this.serviceStatusChecker = container.get<ServiceStatusChecker>('ServiceStatusChecker');
+    this.dbPoolService = container.get<DomainDBPoolService>('DomainDBPoolService');
 
     // Subscribe to Cache Invalidation Channel — guarded so only one subscription
     // is registered per process regardless of how many service instances are created
@@ -222,7 +222,8 @@ export default class StartRulesService {
       }
 
       try {
-        const forwardedResponse = await GlobalDNSforwarder(
+        const forwarder = container.get<GlobalDNSforwarderService>('GlobalDNSforwarder');
+        const forwardedResponse = await forwarder.forward(
           msg,
           queryName,
           queryType,

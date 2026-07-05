@@ -12,6 +12,14 @@ import { RedisCacheStore } from '../Redis/RedisCacheStore';
 import { RedisPubSub } from '../Redis/RedisPubSub';
 import { AclBlockingService } from '../Redis/AclBlockingService';
 import { RedisCacheService } from '../Redis/Redis.cache';
+import { GlobalDNSforwarderService } from '../services/Forwarder/GlobalDNSforwarder.service';
+import DNS from '../services/DNS/DNS.Service';
+import DNS_TCP from '../services/DNS/DNS_TCP.Service';
+import DNS_DoT from '../services/DNS/DNS_DoT.Service';
+import StartRulesService from '../services/Start/Rules.service';
+import BlockList from '../services/Rules/BlockList.service';
+import ServiceStatusChecker from '../services/Start/ServiceStatusChecker.service';
+import { DomainDBPoolService } from '../services/DB/DB_Pool.service';
 
 const container = new DIContainer();
 
@@ -121,6 +129,66 @@ container.register(
     container.get('AclBlockingService')
   ),
   true  // singleton
+);
+
+// ============================================
+// DNS FORWARDER SERVICE
+// ============================================
+container.register(
+  'GlobalDNSforwarder',
+  () => new GlobalDNSforwarderService(),
+  true  // singleton
+);
+
+// ============================================
+// DNS SERVICES
+// ============================================
+container.register(
+  'DNS',
+  () => new DNS(),
+  true
+);
+
+container.register(
+  'DNS_TCP',
+  () => new DNS_TCP(),
+  true
+);
+
+container.register(
+  'DNS_DoT',
+  () => new DNS_DoT(),
+  true
+);
+
+// ============================================
+// RULES & QUERY PROCESSING SERVICES
+// ============================================
+container.register(
+  'StartRulesService',
+  () => new StartRulesService(),
+  true
+);
+
+container.register(
+  'BlockList',
+  () => new BlockList(),
+  true
+);
+
+container.register(
+  'ServiceStatusChecker',
+  () => new ServiceStatusChecker(),
+  true
+);
+
+// ============================================
+// DATABASE SERVICES
+// ============================================
+container.register(
+  'DomainDBPoolService',
+  () => new DomainDBPoolService(),
+  true
 );
 
 export default container;

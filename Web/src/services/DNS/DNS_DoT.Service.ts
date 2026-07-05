@@ -96,7 +96,7 @@ export default class DNS_DoT {
       minVersion: "TLSv1.2",
     });
 
-    this.rulesService = new StartRulesService();
+    this.rulesService = container.get<StartRulesService>('StartRulesService');
   }
 
   /**

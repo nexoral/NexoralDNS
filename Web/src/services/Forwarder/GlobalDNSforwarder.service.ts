@@ -69,114 +69,188 @@ function shuffleArray(array: any[]) {
   return array;
 }
 
-// Bounds concurrent forwarder sockets so a large burst can't exhaust the
-// process's file descriptor limit. Requests beyond the cap queue for a slot.
-const MAX_CONCURRENT_FORWARDS = 256;
-let activeForwardCount = 0;
-const forwardWaitQueue: Array<() => void> = [];
+/**
+ * GlobalDNSforwarder service — singleton that manages upstream DNS forwarding
+ * with concurrent socket pooling (max 256 active forwards to prevent FD exhaustion)
+ */
+export class GlobalDNSforwarderService {
+  private readonly MAX_CONCURRENT_FORWARDS = 256;
+  private activeForwardCount = 0;
+  private forwardWaitQueue: Array<() => void> = [];
+  private totalForwardsAttempted = 0;
+  private totalForwardsSucceeded = 0;
 
-function acquireForwardSlot(): Promise<void> {
-  if (activeForwardCount < MAX_CONCURRENT_FORWARDS) {
-    activeForwardCount++;
-    return Promise.resolve();
+  private async acquireForwardSlot(): Promise<void> {
+    if (this.activeForwardCount < this.MAX_CONCURRENT_FORWARDS) {
+      this.activeForwardCount++;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => this.forwardWaitQueue.push(resolve));
   }
-  return new Promise((resolve) => forwardWaitQueue.push(resolve));
-}
 
-function releaseForwardSlot(): void {
-  const next = forwardWaitQueue.shift();
-  if (next) next();
-  else activeForwardCount--;
-}
+  private releaseForwardSlot(): void {
+    const next = this.forwardWaitQueue.shift();
+    if (next) {
+      next();
+    } else {
+      this.activeForwardCount--;
+    }
+  }
 
-/** Forwards one query on its own short-lived socket, trying each upstream server in turn. */
-async function resolveOnDedicatedSocket(
-  msg: Buffer,
-  queryName: string,
-  queryType: string,
-  customTTL: number | null,
-  rinfo: dgram.RemoteInfo,
-  start: number,
-  isFailSafe: boolean
-): Promise<Buffer | null> {
-  await acquireForwardSlot();
-  const availableDNS = shuffleArray([...GlobalDNS]);
-  const socket = dgram.createSocket({ type: 'udp4' });
-  socket.on('error', () => { /* surfaced via the per-attempt timeout below */ });
+  /**
+   * Forwards one query on its own short-lived socket, trying each upstream server in turn.
+   */
+  private async resolveOnDedicatedSocket(
+    msg: Buffer,
+    queryName: string,
+    queryType: string,
+    customTTL: number | null,
+    rinfo: dgram.RemoteInfo,
+    start: number,
+    isFailSafe: boolean
+  ): Promise<Buffer | null> {
+    await this.acquireForwardSlot();
+    const availableDNS = shuffleArray([...GlobalDNS]);
+    const socket = dgram.createSocket({ type: 'udp4' });
+    socket.on('error', () => { /* surfaced via the per-attempt timeout below */ });
 
-  try {
-    const tryNext = async (index: number): Promise<Buffer | null> => {
-      if (index >= availableDNS.length) {
-        Console.red(`No response from any DNS server for ${queryName}`);
-        return null;
-      }
-
-      const dnsIP = availableDNS[index];
-
-      const response = await new Promise<Buffer | null>((resolve) => {
-        const cleanup = () => {
-          clearTimeout(timeout);
-          socket.removeListener('message', onMessage);
-        };
-        // Filter by sender address: this socket is reused across sequential
-        // attempts to different servers, so a late reply from a prior attempt
-        // must not be mistaken for the current one's answer.
-        const onMessage = (respMsg: Buffer, respRinfo: dgram.RemoteInfo) => {
-          if (respRinfo.address !== dnsIP.ip) return;
-          cleanup();
-          resolve(respMsg);
-        };
-        const timeout = setTimeout(() => { cleanup(); resolve(null); }, 2000);
-
-        socket.on('message', onMessage);
-
-        try {
-          socket.send(msg, 53, dnsIP.ip);
-          if (process.env.DEBUG_DNS) {
-            Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
-          }
-        } catch {
-          cleanup();
-          resolve(null);
+    try {
+      const tryNext = async (index: number): Promise<Buffer | null> => {
+        if (index >= availableDNS.length) {
+          Console.red(`No response from any DNS server for ${queryName}`);
+          return null;
         }
-      });
 
-      if (!response) return tryNext(index + 1);
+        const dnsIP = availableDNS[index];
 
-      const duration = performance.now() - start;
-      await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, JSON.stringify({
-        queryName,
-        queryType,
-        timestamp: Date.now(),
-        SourceIP: rinfo.address,
-        Status: isFailSafe ? DNS_QUERY_STATUS_KEYS.FAIL_SAFE : DNS_QUERY_STATUS_KEYS.FORWARDED,
-        From: isFailSafe ? DNS_QUERY_STATUS_KEYS.FROM_FAIL_SAFE : dnsIP.name,
-        duration
-      }), { persistent: false, priority: 5 });
+        const response = await new Promise<Buffer | null>((resolve) => {
+          const cleanup = () => {
+            clearTimeout(timeout);
+            socket.removeListener('message', onMessage);
+          };
+          // Filter by sender address: this socket is reused across sequential
+          // attempts to different servers, so a late reply from a prior attempt
+          // must not be mistaken for the current one's answer.
+          const onMessage = (respMsg: Buffer, respRinfo: dgram.RemoteInfo) => {
+            if (respRinfo.address !== dnsIP.ip) return;
+            cleanup();
+            resolve(respMsg);
+          };
+          const timeout = setTimeout(() => { cleanup(); resolve(null); }, 2000);
 
-      const parsedRecord = ioHandler.parseDNSResponse(response, queryType);
-      if (parsedRecord) {
-        container.get<RedisCacheService>('RedisCacheService').set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, parsedRecord, customTTL ?? parsedRecord.ttl);
-      }
+          socket.on('message', onMessage);
 
-      return customTTL !== null ? modifyResponseTTL(response, customTTL) : response;
-    };
+          try {
+            socket.send(msg, 53, dnsIP.ip);
+            if (process.env.DEBUG_DNS) {
+              Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
+            }
+          } catch {
+            cleanup();
+            resolve(null);
+          }
+        });
 
-    return await tryNext(0);
-  } finally {
-    socket.close();
-    releaseForwardSlot();
+        if (!response) return tryNext(index + 1);
+
+        const duration = performance.now() - start;
+        await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, JSON.stringify({
+          queryName,
+          queryType,
+          timestamp: Date.now(),
+          SourceIP: rinfo.address,
+          Status: isFailSafe ? DNS_QUERY_STATUS_KEYS.FAIL_SAFE : DNS_QUERY_STATUS_KEYS.FORWARDED,
+          From: isFailSafe ? DNS_QUERY_STATUS_KEYS.FROM_FAIL_SAFE : dnsIP.name,
+          duration
+        }), { persistent: false, priority: 5 });
+
+        const parsedRecord = ioHandler.parseDNSResponse(response, queryType);
+        if (parsedRecord) {
+          container.get<RedisCacheService>('RedisCacheService').set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, parsedRecord, customTTL ?? parsedRecord.ttl);
+        }
+
+        this.totalForwardsSucceeded++;
+        return customTTL !== null ? modifyResponseTTL(response, customTTL) : response;
+      };
+
+      return await tryNext(0);
+    } finally {
+      socket.close();
+      this.releaseForwardSlot();
+    }
   }
-}
 
-export default function GlobalDNSforwarder(
-  msg: Buffer,
-  queryName: string,
-  queryType: string,
-  customTTL: number | null = null,
-  rinfo: dgram.RemoteInfo,
-  start: number,
-  isFailSafe = false
-): Promise<Buffer | null> {
-  return resolveOnDedicatedSocket(msg, queryName, queryType, customTTL, rinfo, start, isFailSafe);
+  /**
+   * Main forward method — called by DNS query processors
+   */
+  async forward(
+    msg: Buffer,
+    queryName: string,
+    queryType: string,
+    customTTL: number | null = null,
+    rinfo: dgram.RemoteInfo,
+    start: number,
+    isFailSafe = false
+  ): Promise<Buffer | null> {
+    this.totalForwardsAttempted++;
+    return this.resolveOnDedicatedSocket(msg, queryName, queryType, customTTL, rinfo, start, isFailSafe);
+  }
+
+  /**
+   * Get current queue depth (queries waiting for a forward slot)
+   */
+  getQueueDepth(): number {
+    return this.forwardWaitQueue.length;
+  }
+
+  /**
+   * Get currently active forward sockets
+   */
+  getActiveForwards(): number {
+    return this.activeForwardCount;
+  }
+
+  /**
+   * Get total forwards attempted since startup
+   */
+  getTotalForwardsAttempted(): number {
+    return this.totalForwardsAttempted;
+  }
+
+  /**
+   * Get total forwards that succeeded (got response)
+   */
+  getTotalForwardsSucceeded(): number {
+    return this.totalForwardsSucceeded;
+  }
+
+  /**
+   * Get concurrency limit
+   */
+  getConcurrencyLimit(): number {
+    return this.MAX_CONCURRENT_FORWARDS;
+  }
+
+  /**
+   * Get detailed status
+   */
+  getStatus(): {
+    activeForwards: number;
+    queueDepth: number;
+    concurrencyLimit: number;
+    totalAttempted: number;
+    totalSucceeded: number;
+    successRate: number;
+  } {
+    const succeeded = this.totalForwardsSucceeded;
+    const attempted = this.totalForwardsAttempted;
+    return {
+      activeForwards: this.activeForwardCount,
+      queueDepth: this.forwardWaitQueue.length,
+      concurrencyLimit: this.MAX_CONCURRENT_FORWARDS,
+      totalAttempted: attempted,
+      totalSucceeded: succeeded,
+      successRate: attempted > 0 ? (succeeded / attempted) * 100 : 0,
+    };
+  }
 }

@@ -24,7 +24,7 @@ export default class DNS_TCP {
 
   constructor() {
     this.server = net.createServer({ allowHalfOpen: false });
-    this.rulesService = new StartRulesService();
+    this.rulesService = container.get<StartRulesService>('StartRulesService');
   }
 
   /**
