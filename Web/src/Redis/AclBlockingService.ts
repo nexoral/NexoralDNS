@@ -5,12 +5,22 @@ import { RedisConnectionManager } from './RedisConnectionManager';
 export class AclBlockingService {
   constructor(private connectionManager: RedisConnectionManager) {}
 
+  // ACL storage is split into two sets per scope so exact matches are O(1):
+  //   acl:ip:{ip}:exact / acl:all_users:exact   -> plain domain strings (SISMEMBER)
+  //   acl:ip:{ip}:wild  / acl:all_users:wild    -> JSON wildcard entries (scanned)
+  private exactIpKey(ip: string): string { return `acl:ip:${ip}:exact`; }
+  private wildIpKey(ip: string): string { return `acl:ip:${ip}:wild`; }
+  private readonly EXACT_GLOBAL_KEY = 'acl:all_users:exact';
+  private readonly WILD_GLOBAL_KEY = 'acl:all_users:wild';
+
   async getBlockedDomainsForIP(ip: string): Promise<string[]> {
     try {
       const client = await this.connectionManager.getClient();
-      const key = `acl:ip:${ip}`;
-      const domains = await client.sMembers(key);
-      return domains || [];
+      const [exact, wild] = await Promise.all([
+        client.sMembers(this.exactIpKey(ip)),
+        client.sMembers(this.wildIpKey(ip)),
+      ]);
+      return [...(exact || []), ...(wild || [])];
     } catch (error) {
       Console.yellow(`⚠️  Failed to get blocked domains for IP ${ip}:`, error);
       return [];
@@ -20,8 +30,11 @@ export class AclBlockingService {
   async getGloballyBlockedDomains(): Promise<string[]> {
     try {
       const client = await this.connectionManager.getClient();
-      const domains = await client.sMembers('acl:all_users');
-      return domains || [];
+      const [exact, wild] = await Promise.all([
+        client.sMembers(this.EXACT_GLOBAL_KEY),
+        client.sMembers(this.WILD_GLOBAL_KEY),
+      ]);
+      return [...(exact || []), ...(wild || [])];
     } catch (error) {
       Console.yellow(`⚠️  Failed to get globally blocked domains:`, error);
       return [];
@@ -41,55 +54,23 @@ export class AclBlockingService {
 
   async isDomainBlocked(ip: string, domain: string): Promise<boolean> {
     try {
-      const [ipBlocks, globalBlocks] = await Promise.all([
-        this.getBlockedDomainsForIP(ip),
-        this.getGloballyBlockedDomains()
+      const client = await this.connectionManager.getClient();
+
+      // Fast path: O(1) exact-match membership tests (no full-set fetch/scan).
+      const [ipExact, globalExact] = await Promise.all([
+        client.sIsMember(this.exactIpKey(ip), domain),
+        client.sIsMember(this.EXACT_GLOBAL_KEY, domain),
+      ]);
+      if (ipExact || globalExact) return true;
+
+      // Slow path: only the (typically small) wildcard sets are scanned.
+      const [ipWild, globalWild] = await Promise.all([
+        client.sMembers(this.wildIpKey(ip)),
+        client.sMembers(this.WILD_GLOBAL_KEY),
       ]);
 
-      const allBlocks = [...ipBlocks, ...globalBlocks];
-
-      for (const blockEntry of allBlocks) {
-        let domainEntry: { domain: string; isWildcard: boolean };
-
-        try {
-          domainEntry = JSON.parse(blockEntry);
-        } catch {
-          domainEntry = {
-            domain: blockEntry,
-            isWildcard: blockEntry.startsWith('*.') || blockEntry.endsWith('.*') || blockEntry === '*'
-          };
-        }
-
-        const blockedDomain = domainEntry.domain;
-        const isWildcard = domainEntry.isWildcard;
-
-        if (blockedDomain === '*') {
-          return true;
-        }
-
-        if (isWildcard) {
-          if (blockedDomain.startsWith('*.')) {
-            const baseDomain = blockedDomain.substring(2);
-            if (domain.endsWith(baseDomain) || domain === baseDomain) {
-              return true;
-            }
-          }
-          else if (blockedDomain.endsWith('.*')) {
-            const basePrefix = blockedDomain.slice(0, -2);
-            if (domain.startsWith(basePrefix)) {
-              return true;
-            }
-          }
-          else {
-            if (domain.endsWith('.' + blockedDomain) || domain === blockedDomain) {
-              return true;
-            }
-          }
-        } else {
-          if (domain === blockedDomain) {
-            return true;
-          }
-        }
+      for (const entry of [...(ipWild || []), ...(globalWild || [])]) {
+        if (this.matchesWildcard(entry, domain)) return true;
       }
 
       return false;
@@ -98,5 +79,35 @@ export class AclBlockingService {
       Console.yellow(`⚠️  Failed to check if domain ${domain} is blocked for IP ${ip}:`, error);
       return false;
     }
+  }
+
+  /**
+   * Boundary-aware wildcard matching for a single stored wildcard entry.
+   * Blocks a domain and its subdomains only — never look-alike domains.
+   */
+  private matchesWildcard(rawEntry: string, domain: string): boolean {
+    let blockedDomain: string;
+    try {
+      blockedDomain = (JSON.parse(rawEntry) as { domain: string }).domain;
+    } catch {
+      blockedDomain = rawEntry;
+    }
+
+    if (blockedDomain === '*') return true; // full-internet block
+
+    if (blockedDomain.startsWith('*.')) {
+      const baseDomain = blockedDomain.substring(2);
+      // `*.example.com` blocks example.com + subdomains, NOT notexample.com.
+      return domain === baseDomain || domain.endsWith('.' + baseDomain);
+    }
+
+    if (blockedDomain.endsWith('.*')) {
+      const basePrefix = blockedDomain.slice(0, -2);
+      // `google.*` blocks google.com / google.co.uk, NOT googlexyz.com.
+      return domain === basePrefix || domain.startsWith(basePrefix + '.');
+    }
+
+    // Bare domain stored as wildcard: treat as domain + subdomains.
+    return domain === blockedDomain || domain.endsWith('.' + blockedDomain);
   }
 }

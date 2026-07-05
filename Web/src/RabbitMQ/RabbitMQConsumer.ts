@@ -75,6 +75,10 @@ export class RabbitMQConsumer {
     let batchTimer: NodeJS.Timeout | null = null;
 
     const processBatch = async (channel: Channel) => {
+      if (batchTimer) {
+        clearTimeout(batchTimer);
+        batchTimer = null;
+      }
       if (messageBatch.length === 0) return;
 
       const currentBatch = [...messageBatch];
@@ -118,14 +122,17 @@ export class RabbitMQConsumer {
             const messageData = JSON.parse(msg.content.toString());
             messageBatch.push({ msg, data: messageData });
 
-            if (batchTimer) clearTimeout(batchTimer);
+            // Throttle, not debounce: arm the flush timer when the FIRST message
+            // of a batch arrives and never reset it on later messages, so a steady
+            // stream that never fills the batch still flushes within batchTimeout.
+            if (messageBatch.length === 1 && !batchTimer) {
+              batchTimer = setTimeout(() => {
+                void processBatch(channel);
+              }, batchTimeout);
+            }
 
             if (messageBatch.length >= batchSize) {
               await processBatch(channel);
-            } else {
-              batchTimer = setTimeout(async () => {
-                await processBatch(channel);
-              }, batchTimeout);
             }
 
           } catch (error) {

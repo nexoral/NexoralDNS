@@ -55,7 +55,8 @@ export default class DefaultTTLService {
 
   /**
    * Update the Default TTL value
-   * @param {number} newTTL - New TTL value in seconds (min: 10, max: 86400)
+   * @param {number} newTTL - New TTL value in seconds (min: 0, max: 86400).
+   *   0 is valid and means "do not cache" — used for instant block/unblock toggling.
    * @returns {Promise<void>}
    */
   public async updateDefaultTTL(newTTL: number, reply: FastifyReply): Promise<void> {
@@ -104,16 +105,16 @@ export default class DefaultTTLService {
       throw new Error("Service configuration not found.");
     }
 
-    // Delete the Cache After Updating Default TTL
-    // This ensures the DNS server picks up the new TTL value
-    await container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
-    await container.get<RedisCacheService>('RedisCacheService').delete("service:config");
-
     // Update the Default TTL in the database
     await dbClient.updateOne(
       { _id: new ObjectId(serviceData._id) },
       { $set: { DefaultTTL: newTTL } }
     );
+
+    // Proactively set Redis caches to the new TTL so the DNS engine picks it up instantly
+    const updatedServiceData = { ...serviceData, DefaultTTL: newTTL };
+    await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.Service_Status, updatedServiceData);
+    await container.get<RedisCacheService>('RedisCacheService').set("service:config", updatedServiceData);
 
     console.log(`Default TTL successfully updated to: ${newTTL} seconds`);
 

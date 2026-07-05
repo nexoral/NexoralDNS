@@ -209,11 +209,14 @@ export class MongoCollectionManager {
    * Get a collection by name
    */
   getCollection(collectionName: string): Collection<Document> | undefined {
-    const collection = this.collectionCache.get(collectionName);
-    if (!collection) {
-      Console.yellow(`⚠️ Collection not found: ${collectionName}`);
+    try {
+      // Resolve fresh from the current client each call so a reconnect (new
+      // MongoClient) never leaves callers holding a handle bound to a dead client.
+      return this.connectionManager.getDatabase().collection(collectionName);
+    } catch (error) {
+      Console.yellow(`⚠️ Collection not available: ${collectionName}`, error);
+      return undefined;
     }
-    return collection;
   }
 
   /**

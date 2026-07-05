@@ -191,13 +191,15 @@ container.register(
   true
 );
 
-// Graceful shutdown - close RabbitMQ connection so buffered messages are flushed
+// Graceful shutdown - close all infra connections (RabbitMQ, Redis, Mongo) so
+// buffered messages are flushed and in-flight work is drained. Each close is
+// settled independently since a given connection may never have been opened.
 const gracefulShutdown = async (): Promise<void> => {
-  try {
-    await container.get<RabbitMQService>('RabbitMQService').close();
-  } catch {
-    // Connection may never have been opened
-  }
+  await Promise.allSettled([
+    container.get<RabbitMQService>('RabbitMQService').close(),
+    container.get<RedisConnectionManager>('RedisConnectionManager').close(),
+    container.get<MongoConnectionManager>('MongoConnectionManager').close(),
+  ]);
   process.exit(0);
 };
 

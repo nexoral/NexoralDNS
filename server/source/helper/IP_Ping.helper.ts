@@ -1,13 +1,11 @@
-import {exec} from "child_process";
+import { execFile } from "child_process";
 
 export function pingIP(ip: string): Promise<boolean> {
+    // execFile with an argument array avoids shell interpolation, so an untrusted
+    // IP value can never be used for command injection.
     return new Promise((resolve) => {
-        exec(`ping -c 1 -W 1 ${ip}`, (error, stdout, stderr) => {
-            if (error) {
-                resolve(false);
-            } else {
-                resolve(true);
-            }
+        execFile("ping", ["-c", "1", "-W", "1", ip], (error) => {
+            resolve(!error);
         });
     });
 }

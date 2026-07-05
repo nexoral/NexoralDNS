@@ -28,8 +28,10 @@ export default function CreatePolicyModal({ onClose, onSave }) {
   const [ipGroups, setIpGroups] = useState([]);
   const [domainGroups, setDomainGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
+  const [activeIPs, setActiveIPs] = useState([]);
+  const [loadingIPs, setLoadingIPs] = useState(false);
 
-  // Fetch IP Groups and Domain Groups on mount
+  // Fetch IP Groups, Domain Groups, and currently active devices on mount
   useEffect(() => {
     const fetchGroups = async () => {
       setLoadingGroups(true);
@@ -47,7 +49,21 @@ export default function CreatePolicyModal({ onClose, onSave }) {
       }
     };
 
+    // Fetched separately so a DHCP/device outage doesn't block group loading
+    const fetchActiveIPs = async () => {
+      setLoadingIPs(true);
+      try {
+        const response = await api.getDeviceList();
+        setActiveIPs(response.data?.data?.List_of_Connected_Devices_Info || []);
+      } catch (error) {
+        console.error('Error fetching active devices:', error);
+      } finally {
+        setLoadingIPs(false);
+      }
+    };
+
     fetchGroups();
+    fetchActiveIPs();
   }, []);
 
   const addIP = () => {
@@ -235,13 +251,21 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                     </div>
                   </div>
                   {formData.targetType === 'single_ip' && (
-                    <input
-                      type="text"
-                      placeholder="e.g., 192.168.1.100"
+                    <select
                       value={formData.targetIP}
                       onChange={(e) => setFormData({ ...formData, targetIP: e.target.value })}
                       className="w-full mt-3 px-4 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent"
-                    />
+                      disabled={loadingIPs}
+                    >
+                      <option value="">
+                        {loadingIPs ? 'Loading active devices...' : activeIPs.length === 0 ? 'No active devices found' : 'Select an active IP address'}
+                      </option>
+                      {activeIPs.map((device) => (
+                        <option key={device.ip} value={device.ip}>
+                          {device.ip}{device.hostname ? ` — ${device.hostname}` : ''}{device.status ? ` (${device.status})` : ''}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </label>
 
@@ -266,17 +290,27 @@ export default function CreatePolicyModal({ onClose, onSave }) {
                   {formData.targetType === 'multiple_ips' && (
                     <div className="mt-3 space-y-2">
                       <div className="flex space-x-2">
-                        <input
-                          type="text"
-                          placeholder="e.g., 192.168.1.100"
+                        <select
                           value={newIP}
                           onChange={(e) => setNewIP(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && addIP()}
                           className="flex-1 px-4 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent"
-                        />
+                          disabled={loadingIPs}
+                        >
+                          <option value="">
+                            {loadingIPs ? 'Loading active devices...' : 'Select an active IP address'}
+                          </option>
+                          {activeIPs
+                            .filter((device) => !formData.targetIPs.includes(device.ip))
+                            .map((device) => (
+                              <option key={device.ip} value={device.ip}>
+                                {device.ip}{device.hostname ? ` — ${device.hostname}` : ''}{device.status ? ` (${device.status})` : ''}
+                              </option>
+                            ))}
+                        </select>
                         <button
                           onClick={addIP}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          disabled={!newIP}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Add
                         </button>

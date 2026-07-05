@@ -7,6 +7,12 @@ export interface ITokenExtractor {
 export class CookieHeaderTokenExtractor implements ITokenExtractor {
   extract(request: FastifyRequest): string | null {
     const cookies = (request as any).cookies;
-    return cookies?.access_token || (request.headers['authorization'] as string | undefined) || null;
+    if (cookies?.access_token) return cookies.access_token;
+
+    // Fall back to the Authorization header, stripping a "Bearer " scheme prefix
+    // if present so the raw JWT is returned (a "Bearer <t>" value fails verify).
+    const authHeader = request.headers['authorization'] as string | undefined;
+    if (!authHeader) return null;
+    return authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader;
   }
 }

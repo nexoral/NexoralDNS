@@ -6,6 +6,7 @@ import startCronJob from "../CronJob/CronJob";
 import container from "../container/appContainer";
 import { MongoConnectionManager } from "../Database/MongoConnectionManager";
 import { MongoCollectionManager } from "../Database/MongoCollectionManager";
+import { getJWTSecret } from "../helper/jwt.helper";
 
 const numCPUs: number = os.cpus().length;
 const totalUsableCpus: number = Math.max(1, Math.floor(numCPUs * 0.75)); // Use at least 1 CPU, up to 75% of total CPUs
@@ -15,6 +16,11 @@ cluster.schedulingPolicy = cluster.SCHED_RR; // Round-robin
 
 if (cluster.isPrimary) {
   Console.yellow(`Master process ${process.pid} is running`);
+
+  // Resolve/generate the JWT secret ONCE in the primary before forking, so every
+  // worker reads the same persisted secret (avoids each worker minting its own
+  // random secret when the secret file doesn't exist yet).
+  getJWTSecret();
 
   // Initialize MongoDB via DI container
   const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
@@ -38,10 +44,11 @@ if (cluster.isPrimary) {
       process.exit(1);
     });
 
-  // Restart workers if they die
-  cluster.on("exit", (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died. Restarting...`);
-    cluster.fork();
+  // Restart workers if they die, with a short backoff so a worker that crashes
+  // on startup can't spin-restart in a tight CPU-burning loop.
+  cluster.on("exit", (worker) => {
+    console.log(`Worker ${worker.process.pid} died. Restarting in 1s...`);
+    setTimeout(() => cluster.fork(), 1000);
   });
 } else {
   // Workers can share any TCP connection

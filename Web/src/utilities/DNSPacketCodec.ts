@@ -17,8 +17,10 @@ export class DNSPacketCodec {
 
     let offset = 12;
     const labels: string[] = [];
-    while (msg[offset] !== 0) {
+    // Bounded walk: guard against truncated packets with no null terminator
+    while (offset < msg.length && msg[offset] !== 0) {
       const length = msg[offset];
+      if (offset + 1 + length > msg.length) break; // truncated label
       labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
       offset += length + 1;
     }
@@ -47,9 +49,12 @@ export class DNSPacketCodec {
   static parseQueryName(msg: Buffer, offset = 12): string {
     const labels: string[] = [];
     let jumped = false;
-    let jumpOffset = 0;
+    // Cap compression-pointer jumps to defeat self-referential / cyclic pointers
+    // that would otherwise loop forever (DoS on a single malformed packet).
+    let jumps = 0;
+    const MAX_JUMPS = 8;
 
-    while (true) {
+    while (offset < msg.length) {
       const length = msg[offset];
 
       if (length === 0) {
@@ -58,12 +63,14 @@ export class DNSPacketCodec {
       }
 
       if ((length & 0xC0) === 0xC0) {
-        if (!jumped) jumpOffset = offset + 2;
+        if (offset + 1 >= msg.length) break; // truncated pointer
+        if (++jumps > MAX_JUMPS) break; // pointer loop guard
         offset = ((length & 0x3F) << 8) | msg[offset + 1];
         jumped = true;
         continue;
       }
 
+      if (offset + 1 + length > msg.length) break; // truncated label
       labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
       offset += length + 1;
     }
@@ -73,11 +80,13 @@ export class DNSPacketCodec {
 
   static parseQueryType(msg: Buffer): string {
     let offset = 12;
-    while (msg[offset] !== 0) {
+    // Bounded walk: a truncated question with no null terminator must not spin.
+    while (offset < msg.length && msg[offset] !== 0) {
       const length = msg[offset];
       offset += length + 1;
     }
     offset += 1;
+    if (offset + 2 > msg.length) return "Unknown (malformed)"; // no room for QTYPE
     const qtype = msg.readUInt16BE(offset);
     switch (qtype) {
       case 1:

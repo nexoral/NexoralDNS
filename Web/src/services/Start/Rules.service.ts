@@ -112,7 +112,7 @@ export default class StartRulesService {
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
         AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
         AnalyticsMSgPayload.duration = performance.now() - start;
-        await this.publishAnalytics(AnalyticsMSgPayload);
+        this.publishAnalytics(AnalyticsMSgPayload);
         return;
       }
     } catch (error) {
@@ -148,8 +148,8 @@ export default class StartRulesService {
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_BLOCKED;
       AnalyticsMSgPayload.duration = performance.now() - start;
 
-      await this.publishAnalytics(AnalyticsMSgPayload);
-      io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
+      io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN first
+      this.publishAnalytics(AnalyticsMSgPayload); // best-effort, off the response path
       return;
     }
 
@@ -206,17 +206,16 @@ export default class StartRulesService {
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.RESOLVED;
       AnalyticsMSgPayload.duration = performance.now() - start;
 
-      await this.publishAnalytics(AnalyticsMSgPayload);
-
-      // Use buildSendAnswer method from utilities
+      // Use buildSendAnswer method from utilities — respond first, then publish analytics
       const response = io.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
+      this.publishAnalytics(AnalyticsMSgPayload); // best-effort, off the response path
 
       if (!response) {
         // Add to Analytics
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
         AnalyticsMSgPayload.duration = performance.now() - start;
 
-        await this.publishAnalytics(AnalyticsMSgPayload);
+        this.publishAnalytics(AnalyticsMSgPayload);
         Console.red(`Failed to respond to ${queryName}`);
       }
     } else {
@@ -243,7 +242,7 @@ export default class StartRulesService {
             if (!databaseOffline) {
               AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
               AnalyticsMSgPayload.duration = performance.now() - start;
-              await this.publishAnalytics(AnalyticsMSgPayload);
+              this.publishAnalytics(AnalyticsMSgPayload);
             }
             Console.red(`Failed to forward ${queryName} to Global DNS`);
           }
@@ -254,7 +253,7 @@ export default class StartRulesService {
           if (!databaseOffline) {
             AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
             AnalyticsMSgPayload.duration = performance.now() - start;
-            await this.publishAnalytics(AnalyticsMSgPayload);
+            this.publishAnalytics(AnalyticsMSgPayload);
           }
 
           Console.red(`No response received from Global DNS for ${queryName}`);
@@ -265,15 +264,19 @@ export default class StartRulesService {
         if (!databaseOffline) {
           AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
           AnalyticsMSgPayload.duration = performance.now() - start;
-          await this.publishAnalytics(AnalyticsMSgPayload);
+          this.publishAnalytics(AnalyticsMSgPayload);
         }
         Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
       }
     }
   }
 
-  // Helper to publish analytics with optimized settings
-  private async publishAnalytics(payload: any) {
-    await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, payload, { persistent: false, priority: 5 });
+  // Helper to publish analytics — fire-and-forget. Analytics is a best-effort,
+  // non-critical concern and must NEVER block or delay the DNS answer, even when
+  // the broker is down (a pending/failed publish stays off the response path).
+  private publishAnalytics(payload: any): void {
+    container.get<RabbitMQService>('RabbitMQService')
+      .publish(QueueKeys.DNS_Analytics, payload, { persistent: false, priority: 5 })
+      .catch(() => { /* swallow — never surface broker errors to DNS resolution */ });
   }
 }

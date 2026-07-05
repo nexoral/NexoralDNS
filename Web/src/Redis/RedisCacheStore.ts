@@ -10,10 +10,11 @@ export class RedisCacheStore {
       const client = await this.connectionManager.getClient();
       const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
 
-      if (ttl) {
+      // ttl <= 0 means "do not cache" (e.g. DefaultTTL=0 for instant policy toggle),
+      // NOT "cache forever" — persisting without expiry would serve stale records
+      // indefinitely and defeat invalidation.
+      if (ttl > 0) {
         await client.setEx(key, ttl, serializedValue);
-      } else {
-        await client.set(key, serializedValue);
       }
     } catch (error) {
       Console.yellow(`⚠️  Failed to set key ${key}:`, error);

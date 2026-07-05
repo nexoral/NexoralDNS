@@ -1,19 +1,19 @@
 import { createClient, RedisClientType } from 'redis';
 import IP_SCAN from '../service/AutoScanIPchange.service';
+import { REDIS_URI } from './key';
 
-const REDIS_URL = process.env.REDIS_URI || 'redis://localhost:6379';
 const BROKER_CHANNEL = 'broker:ip_change';
 
 let redisClient: RedisClientType | null = null;
 
 async function connectRedis(): Promise<RedisClientType> {
   const client = createClient({
-    url: REDIS_URL,
+    url: REDIS_URI,
     socket: {
-      reconnectStrategy: (retries) => {
-        if (retries > 10) return new Error('Max reconnection attempts reached');
-        return Math.min(retries * 100, 3000);
-      }
+      // Never permanently give up: returning an Error here tells node-redis to
+      // stop reconnecting for good, which would silently drop ALL future
+      // IP-change events. Keep retrying forever with a capped backoff instead.
+      reconnectStrategy: (retries) => Math.min(retries * 100, 3000)
     }
   }) as RedisClientType;
 
