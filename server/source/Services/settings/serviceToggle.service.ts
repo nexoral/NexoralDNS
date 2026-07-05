@@ -7,24 +7,22 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class ServiceToggleService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Toggle a service's active status
-  public async toggleService(): Promise<void> {
+  public async toggleService(reply: FastifyReply): Promise<void> {
     console.log("Toggling service status...");
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Service updated Successful");
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Service updated Successful");
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -37,7 +35,7 @@ export default class ServiceToggleService {
     const newStatus = serviceData.Service_Status === "active" ? "inactive" : "active";
 
     // Delete the Cache After Update Service Status
-    RedisCache.delete(CacheKeys.Service_Status);
+    container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
 
     await dbClient.updateOne(
       { _id: new ObjectId(serviceData._id) },

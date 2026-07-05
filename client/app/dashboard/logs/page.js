@@ -268,6 +268,7 @@ export default function LogsPage() {
 
   const getStatusBadgeColor = (status) => {
     if (!status) return 'bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-4)]';
+    if (status.includes('BLOCKED')) return 'bg-[rgba(255,96,113,0.15)] text-[var(--red)] border-[rgba(255,96,113,0.30)]';
     if (status.includes('FAIL-SAFE') || status.includes('FAIL_SAFE')) return 'bg-[rgba(246,179,82,0.12)] text-[var(--amber)] border-[rgba(246,179,82,0.25)]';
     if (status.includes('FORWARDED')) return 'bg-[rgba(91,140,255,0.12)] text-[var(--blue)] border-[rgba(91,140,255,0.25)]';
     if (status.includes('RESOLVED')) return 'bg-[rgba(61,220,132,0.12)] text-[var(--green)] border-[rgba(61,220,132,0.25)]';
@@ -340,6 +341,7 @@ export default function LogsPage() {
                   className="w-full px-3 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent bg-[var(--surface-2)] text-[var(--text-1)] placeholder-[var(--text-6)]"
                 >
                   <option value="">All Statuses</option>
+                  <option value="BLOCKED">BLOCKED</option>
                   <option value="DNS REQUEST FORWARDED">DNS REQUEST FORWARDED</option>
                   <option value="RESOLVED">RESOLVED</option>
                   <option value="RESOLVED (FAIL-SAFE)">RESOLVED (FAIL-SAFE)</option>

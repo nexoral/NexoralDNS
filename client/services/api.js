@@ -108,6 +108,10 @@ export const api = {
   deleteSpecificCache: (keyName) =>
     apiClient.delete(getApiUrl('DELETE_SPECIFIC_CACHE'), { params: { keyName } }),
 
+  // Access Control Cache Management
+  invalidateAccessControlCache: () =>
+    apiClient.post(getApiUrl('INVALIDATE_ACCESS_CONTROL_CACHE')),
+
   // Access Control Policy Management
   createAccessControlPolicy: (data) =>
     apiClient.post(getApiUrl('CREATE_ACCESS_CONTROL_POLICY'), data),

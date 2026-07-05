@@ -1,8 +1,9 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 
 export interface IPGroupData {
@@ -14,24 +15,21 @@ export interface IPGroupData {
 }
 
 export default class IPGroupService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   /**
    * Create a new IP group
    * @param {IPGroupData} groupData - The IP group data
    * @returns {Promise<void>}
    */
-  public async createIPGroup(groupData: IPGroupData): Promise<void> {
+  public async createIPGroup(groupData: IPGroupData, reply: FastifyReply): Promise<void> {
     console.log("Creating new IP group:", groupData.name);
 
     // Validate group name
     if (!groupData.name || groupData.name.trim() === "") {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group name"
       );
@@ -43,7 +41,7 @@ export default class IPGroupService {
     // Validate IP addresses
     if (!groupData.ipAddresses || groupData.ipAddresses.length === 0) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "IP addresses are required"
       );
@@ -52,7 +50,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -61,7 +59,7 @@ export default class IPGroupService {
     const existingGroup = await dbClient.findOne({ name: groupData.name });
     if (existingGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.CONFLICT,
         "Group already exists"
       );
@@ -80,7 +78,7 @@ export default class IPGroupService {
     const result = await dbClient.insertOne(newGroup);
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.CREATED,
       "IP group created successfully"
     );
@@ -98,10 +96,10 @@ export default class IPGroupService {
    * @param {number} limit - Maximum number of documents to return
    * @returns {Promise<void>}
    */
-  public async getIPGroups(skip: number = 0, limit: number = 50): Promise<void> {
+  public async getIPGroups(skip: number = 0, limit: number = 50, reply: FastifyReply): Promise<void> {
     console.log(`Fetching IP groups with skip: ${skip}, limit: ${limit}`);
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -115,7 +113,7 @@ export default class IPGroupService {
       .toArray();
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "IP groups fetched successfully"
     );
@@ -134,12 +132,12 @@ export default class IPGroupService {
    * @param {string} groupId - The group ID
    * @returns {Promise<void>}
    */
-  public async getIPGroupById(groupId: string): Promise<void> {
+  public async getIPGroupById(groupId: string, reply: FastifyReply): Promise<void> {
     console.log(`Fetching IP group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group ID"
       );
@@ -148,7 +146,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -157,7 +155,7 @@ export default class IPGroupService {
 
     if (!group) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Group not found"
       );
@@ -167,7 +165,7 @@ export default class IPGroupService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "IP group fetched successfully"
     );
@@ -184,12 +182,12 @@ export default class IPGroupService {
    * @param {Partial<IPGroupData>} updateData - The data to update
    * @returns {Promise<void>}
    */
-  public async updateIPGroup(groupId: string, updateData: Partial<IPGroupData>): Promise<void> {
+  public async updateIPGroup(groupId: string, updateData: Partial<IPGroupData>, reply: FastifyReply): Promise<void> {
     console.log(`Updating IP group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group ID"
       );
@@ -198,7 +196,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -206,7 +204,7 @@ export default class IPGroupService {
     const existingGroup = await dbClient.findOne({ _id: new ObjectId(groupId) });
     if (!existingGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Group not found"
       );
@@ -220,7 +218,7 @@ export default class IPGroupService {
       const duplicateGroup = await dbClient.findOne({ name: updateData.name });
       if (duplicateGroup) {
         const ErrorResponse = new BuildResponse(
-          this.fastifyReply,
+          reply,
           StatusCodes.CONFLICT,
           "Group name already exists"
         );
@@ -244,7 +242,7 @@ export default class IPGroupService {
     const updatedGroup = await dbClient.findOne({ _id: new ObjectId(groupId) });
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "IP group updated successfully"
     );
@@ -260,12 +258,12 @@ export default class IPGroupService {
    * @param {string} groupId - The group ID
    * @returns {Promise<void>}
    */
-  public async deleteIPGroup(groupId: string): Promise<void> {
+  public async deleteIPGroup(groupId: string, reply: FastifyReply): Promise<void> {
     console.log(`Deleting IP group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group ID"
       );
@@ -274,7 +272,7 @@ export default class IPGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -282,7 +280,7 @@ export default class IPGroupService {
     const existingGroup = await dbClient.findOne({ _id: new ObjectId(groupId) });
     if (!existingGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Group not found"
       );
@@ -292,7 +290,7 @@ export default class IPGroupService {
     }
 
     // Check if this IP group is being used in any access control policies
-    const policyClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const policyClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!policyClient) {
       throw new Error("Database connection error.");
     }
@@ -308,7 +306,7 @@ export default class IPGroupService {
     if (policiesUsingGroup.length > 0) {
       const policyNames = policiesUsingGroup.map(p => p.policyName).join(", ");
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.CONFLICT,
         "IP group is in use"
       );
@@ -322,7 +320,7 @@ export default class IPGroupService {
     await dbClient.deleteOne({ _id: new ObjectId(groupId) });
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "IP group deleted successfully"
     );

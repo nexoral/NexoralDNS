@@ -5,7 +5,9 @@ import fastifyCookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import { CORS_CONFIG, ServerKeys } from "./key";
 import mainRouter from "../Router/Router";
-import MongoConnector from "../Database/mongodb.db";
+import container from "../container/appContainer";
+import { MongoConnectionManager } from "../Database/MongoConnectionManager";
+import { MongoCollectionManager } from "../Database/MongoCollectionManager";
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import startCronJob from "../CronJob/CronJob";
@@ -85,36 +87,47 @@ export default function FastifyServer() {
   });
 
 
-  MongoConnector().then(async () => {
-    try {
-      // Initialize adult content domain group (anti-porn mode)
-      await initializeAdultContentDomainGroup();
+  // Initialize MongoDB via DI container
+  const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
+  const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
 
-      // Initialize ad blocking domain group (anti-ads mode)
-      await initializeAdBlockingDomainGroup();
+  Promise.all([
+    mongoConnManager.connect(),
+    mongoCollManager.initialize(),
+  ])
+    .then(async () => {
+      try {
+        // Start Cron Jobs
+        if (process.argv[1] === __filename) startCronJob();
 
-      // Initialize AI content domain group (anti-ai mode)
-      await initializeAIContentDomainGroup();
+        // Initialize adult content domain group (anti-porn mode)
+        await initializeAdultContentDomainGroup();
 
-      NexoralServer.listen({
-        port: Number(ServerKeys.PORT),
-        host: String(ServerKeys.HOST),
-      });
-      console.log(
-        `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
-      );
-    } catch (err) {
-      NexoralServer.log.error(err);
+        // Initialize ad blocking domain group (anti-ads mode)
+        await initializeAdBlockingDomainGroup();
+
+        // Initialize AI content domain group (anti-ai mode)
+        await initializeAIContentDomainGroup();
+
+        NexoralServer.listen({
+          port: Number(ServerKeys.PORT),
+          host: String(ServerKeys.HOST),
+        });
+        console.log(
+          `Nexoral Server is running on http://localhost:${ServerKeys.PORT}`,
+        );
+      } catch (err) {
+        NexoralServer.log.error(err);
+        process.exit(1);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
       process.exit(1);
-    }
-  }).catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+    });
 }
 
 // Run the server if this file is executed directly
 if (process.argv[1] === __filename) {
   FastifyServer();
-  startCronJob();
 };;

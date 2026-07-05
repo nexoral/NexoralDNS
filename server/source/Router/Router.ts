@@ -9,7 +9,7 @@ import authRouter from "./Auth/Auth.route";
 
 // Controllers
 import PublicInfoController from "../Controller/Public/public.controller";
-import authGuard from "../Middlewares/authGuard.middleware";
+import { authGuard } from "../Middlewares/authGuard.middleware";
 import domainRouter from "./Domains/Domains.route";
 import DHCPRouter from "./DHCP/DHCP.route";
 import dnsRouter from "./DNS/DNS.route";

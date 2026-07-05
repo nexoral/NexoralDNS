@@ -123,8 +123,8 @@ export default function SettingsPage() {
 
   // Handle Default TTL update
   const handleUpdateDefaultTTL = async () => {
-    if (!defaultTTL || defaultTTL < 10 || defaultTTL > 86400) {
-      toast.error('TTL must be between 10 and 86400 seconds');
+    if (defaultTTL === '' || defaultTTL < 0 || defaultTTL > 86400) {
+      toast.error('TTL must be between 0 and 86400 seconds');
       return;
     }
 
@@ -409,8 +409,8 @@ export default function SettingsPage() {
                         name="defaultTTL"
                         value={defaultTTL}
                         onChange={(e) => setDefaultTTL(e.target.value)}
-                        placeholder="10"
-                        min="10"
+                        placeholder="0"
+                        min="0"
                         max="86400"
                         className="w-full px-4 py-3 bg-[var(--surface-2)] border border-[rgba(91,140,255,0.25)] rounded-lg text-[var(--text-1)] placeholder-[var(--text-6)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-[var(--blue)]/60 transition-all duration-200 font-mono text-lg"
                       />

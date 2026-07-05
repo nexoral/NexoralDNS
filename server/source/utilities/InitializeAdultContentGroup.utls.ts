@@ -8,8 +8,9 @@
  * @version 3.3.42-stable
  */
 
+import container from '../container/appContainer';
+import { MongoCollectionManager } from '../Database/MongoCollectionManager';
 import { Console } from 'outers';
-import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import {
   ADULT_CONTENT_DOMAINS,
@@ -38,7 +39,7 @@ interface DomainGroupDocument {
  */
 export async function initializeAdultContentDomainGroup(): Promise<ObjectId | null> {
   try {
-    const domainGroupsCollection = getCollectionClient(
+    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 
@@ -133,7 +134,7 @@ export async function initializeAdultContentDomainGroup(): Promise<ObjectId | nu
  */
 export async function getAdultContentDomainGroupId(): Promise<ObjectId | null> {
   try {
-    const domainGroupsCollection = getCollectionClient(
+    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 

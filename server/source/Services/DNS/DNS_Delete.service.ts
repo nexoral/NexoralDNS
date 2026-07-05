@@ -7,25 +7,23 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class DnsUpdateService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Delete a DNS record
-  public async deleteDnsRecord(id: string, domainName: string, user: any): Promise<void> {
+  public async deleteDnsRecord(id: string, domainName: string, user: any, reply: FastifyReply): Promise<void> {
 
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "DNS record deleted successfully");
-    const DomainCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-    const DNSCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record deleted successfully");
+    const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
     // Add domain to the domains collection
     if (!DomainCollectionClient || !DNSCollectionClient) {
@@ -82,7 +80,7 @@ export default class DnsUpdateService {
         }
 
         Responser.setMessage("DNS record and associated domain deleted successfully");
-        RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
+        container.get<RedisCacheService>('RedisCacheService').delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
         return Responser.send({ deletedDNSCount: deleteResult.deletedCount, deletedDomainCount: domainDeleteResult.deletedCount });
       }
 
@@ -95,7 +93,7 @@ export default class DnsUpdateService {
       }
 
       Responser.setMessage("DNS record deleted successfully");
-      RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
+      container.get<RedisCacheService>('RedisCacheService').delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
       return Responser.send({ deletedCount: deleteResult.deletedCount });
     }
 

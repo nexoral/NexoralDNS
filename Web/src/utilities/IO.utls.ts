@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import dgram from 'dgram';
 import { IDNSIOHandler } from './IDNSIOHandler';
+import { DNSPacketCodec } from './DNSPacketCodec';
 
 
 /**
@@ -51,68 +52,17 @@ export default class InputOutputHandler implements IDNSIOHandler {
     rinfo: dgram.RemoteInfo,
     domain: string,
     ResponseIP: string = "0.0.0.0",
-    ttl: number = 10
+    ttl: number = 0
   ): boolean {
     try {
-      // Check if socket is still running before attempting to send
       if (!this.isSocketRunning()) {
         return false;
       }
 
-      // Transaction ID (first 2 bytes)
-      const transactionId = msg.subarray(0, 2);
-
-      // DNS header flags (response, recursion available, no error)
-      const flags = Buffer.from([0x81, 0x80]);
-      const qdcount = Buffer.from([0x00, 0x01]); // questions = 1
-      let ancount = Buffer.from([0x00, 0x01]); // answers = 1 by default
-      const nscount = Buffer.from([0x00, 0x00]);
-      const arcount = Buffer.from([0x00, 0x00]);
-
-      // Parse query name
-      let offset = 12;
-      const labels: string[] = [];
-      while (msg[offset] !== 0) {
-        const length = msg[offset];
-        labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
-        offset += length + 1;
-      }
-      const queryName = labels.join(".");
-      const question = msg.subarray(12, offset + 5); // QNAME + QTYPE + QCLASS
-
-      // Build answer
-      let answer = Buffer.alloc(0);
-      if (queryName === domain) {
-        // Name pointer (0xc00c = pointer to offset 12 where QNAME starts)
-        const name = Buffer.from([0xc0, 0x0c]);
-        const type = Buffer.from([0x00, 0x01]); // A record
-        const cls = Buffer.from([0x00, 0x01]); // IN class
-        const ttlBuffer = Buffer.alloc(4);
-        ttlBuffer.writeUInt32BE(ttl, 0);
-        const rdlength = Buffer.from([0x00, 0x04]); // IPv4 = 4 bytes
-        const rdata = Buffer.from(ResponseIP.split(".").map((octet) => parseInt(octet)));
-        answer = Buffer.concat([name, type, cls, ttlBuffer, rdlength, rdata]);
-      } else {
-        // No answer if domain doesn't match
-        ancount = Buffer.from([0x00, 0x00]);
-      }
-
-      // Construct DNS response
-      const response = Buffer.concat([
-        transactionId,
-        flags,
-        qdcount,
-        ancount,
-        nscount,
-        arcount,
-        question,
-        answer,
-      ]);
-
+      const response = DNSPacketCodec.buildResponsePayload(msg, domain, ResponseIP, ttl);
       this.udpInstance.send(response, rinfo.port, rinfo.address);
       return true;
     } catch (error) {
-      // Socket might have been closed during send operation
       return false;
     }
   }
@@ -150,33 +100,7 @@ export default class InputOutputHandler implements IDNSIOHandler {
    * @returns The parsed domain name as a string.
    */
   public parseQueryName(msg: Buffer, offset = 12): string {
-    const labels: string[] = [];
-    let jumped = false;
-    let jumpOffset = 0;
-
-    while (true) {
-      const length = msg[offset];
-
-      // End of name
-      if (length === 0) {
-        if (!jumped) offset++;
-        break;
-      }
-
-      // Compression pointer
-      if ((length & 0xC0) === 0xC0) {
-        if (!jumped) jumpOffset = offset + 2;
-        offset = ((length & 0x3F) << 8) | msg[offset + 1];
-        jumped = true;
-        continue;
-      }
-
-      // Normal label
-      labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
-      offset += length + 1;
-    }
-
-    return labels.join(".");
+    return DNSPacketCodec.parseQueryName(msg, offset);
   }
 
   /**
@@ -192,34 +116,7 @@ export default class InputOutputHandler implements IDNSIOHandler {
    *          or "Unknown (qtype)" for unrecognized types
    */
   public parseQueryType(msg: Buffer): string {
-    let offset = 12;
-    while (msg[offset] !== 0) {
-      const length = msg[offset];
-      offset += length + 1;
-    }
-    // Move past the null byte at the end of the QNAME
-    offset += 1;
-    const qtype = msg.readUInt16BE(offset);
-    switch (qtype) {
-      case 1:
-        return "A";
-      case 2:
-        return "NS";
-      case 5:
-        return "CNAME";
-      case 6:
-        return "SOA";
-      case 12:
-        return "PTR";
-      case 15:
-        return "MX";
-      case 16:
-        return "TXT";
-      case 28:
-        return "AAAA";
-      default:
-        return `Unknown (${qtype})`;
-    }
+    return DNSPacketCodec.parseQueryType(msg);
   }
 
   /**
@@ -236,74 +133,6 @@ export default class InputOutputHandler implements IDNSIOHandler {
    * @returns Parsed DNS record object or null if parsing fails or no answers exist.
    */
   public parseDNSResponse(response: Buffer, queryType: string): { type: string; name: string; value: string; ttl: number } | null {
-    try {
-      let offset = 12;
-
-      // Skip question section
-      const qdcount = response.readUInt16BE(4);
-      for (let i = 0; i < qdcount; i++) {
-        while (offset < response.length && response[offset] !== 0) {
-          if ((response[offset] & 0xC0) === 0xC0) {
-            offset += 2;
-            break;
-          }
-          offset += response[offset] + 1;
-        }
-        if (response[offset] === 0) offset++;
-        offset += 4; // Skip QTYPE and QCLASS
-      }
-
-      // Check if there are answers
-      const ancount = response.readUInt16BE(6);
-      if (ancount === 0) return null;
-
-      // Parse answer section - extract domain name
-      const name = this.parseQueryName(response, offset);
-
-      // Skip name field
-      if ((response[offset] & 0xC0) === 0xC0) {
-        offset += 2;
-      } else {
-        while (offset < response.length && response[offset] !== 0) {
-          offset += response[offset] + 1;
-        }
-        offset++;
-      }
-
-      // Read TYPE and CLASS
-      const type = response.readUInt16BE(offset);
-      offset += 4; // Skip TYPE and CLASS
-
-      // Read TTL
-      const ttl = response.readUInt32BE(offset);
-      offset += 4;
-
-      // Read RDLENGTH
-      const rdlength = response.readUInt16BE(offset);
-      offset += 2;
-
-      // Extract value based on type
-      let value = "";
-      if (type === 1 && rdlength === 4) { // A record
-        value = `${response[offset]}.${response[offset + 1]}.${response[offset + 2]}.${response[offset + 3]}`;
-      } else if (type === 28 && rdlength === 16) { // AAAA record
-        const parts = [];
-        for (let i = 0; i < 8; i++) {
-          parts.push(response.readUInt16BE(offset + i * 2).toString(16));
-        }
-        value = parts.join(":");
-      }
-
-      if (!value) return null;
-
-      return {
-        type: queryType,
-        name: name,
-        value: value,
-        ttl: ttl
-      };
-    } catch (error) {
-      return null;
-    }
+    return DNSPacketCodec.parseDNSResponse(response, queryType);
   }
 }

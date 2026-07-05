@@ -7,25 +7,23 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
+import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
-import RedisCache from "../../Redis/Redis.cache";
 
 
 export default class DnsUpdateService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   // Update a DNS record
-  public async updateDnsRecord(id: string, name: string, type: string, value: string, ttl: number, user: any): Promise<void> {
+  public async updateDnsRecord(id: string, name: string, type: string, value: string, ttl: number, user: any, reply: FastifyReply): Promise<void> {
 
     // construct Response
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "DNS record updated successfully");
-    const DomainCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-    const DNSCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record updated successfully");
+    const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
     // Add domain to the domains collection
     if (!DomainCollectionClient || !DNSCollectionClient) {
@@ -83,7 +81,7 @@ export default class DnsUpdateService {
         return Responser.send("Failed to update DNS record");
       }
 
-      RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${DnsDetails.name}`)
+      container.get<RedisCacheService>('RedisCacheService').delete(`${CacheKeys.Domain_DNS_Record}:${DnsDetails.name}`)
       return Responser.send({ dnsRecordIds: dnsUpdateResult.upsertedId });
     }
 

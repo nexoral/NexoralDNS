@@ -8,7 +8,9 @@ import dgram from "node:dgram";
 import { Console } from "outers";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
-import MongoConnector from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
+import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 import getLocalIP from "../../utilities/GetWLANIP.utls";
 
 const CERT_DIR  = process.env.DOT_CERT_DIR ?? "/etc/nexoral/cert";
@@ -94,7 +96,7 @@ export default class DNS_DoT {
       minVersion: "TLSv1.2",
     });
 
-    this.rulesService = new StartRulesService();
+    this.rulesService = container.get<StartRulesService>('StartRulesService');
   }
 
   /**
@@ -108,7 +110,13 @@ export default class DNS_DoT {
       );
     });
 
-    MongoConnector().catch((error) => {
+    // Initialize MongoDB via DI container
+    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
+    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
+    Promise.all([
+      mongoConnManager.connect(),
+      mongoCollManager.initialize(),
+    ]).catch((error) => {
       Console.red("DNS_DoT: Failed to connect to MongoDB:", error);
     });
 

@@ -6,6 +6,7 @@ import RefreshTokenService from "../../Services/Auth/RefreshToken.service";
 import VerifySessionService from "../../Services/Auth/VerifySession.service";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
+import container from '../../container/appContainer';
 
 type LoginRequestBody = {
   username: string;
@@ -33,7 +34,7 @@ export default class AuthController {
     }
 
     try {
-      return new LoginService(reply).login(username, password);
+      return container.get<LoginService>('LoginService').login(username, password, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -57,7 +58,7 @@ export default class AuthController {
     }
 
     try {
-      return new ChangePasswordService(reply).changePassword(user._id as string, currentPassword, newPassword);
+      return container.get<ChangePasswordService>('ChangePasswordService').changePassword(user._id as string, currentPassword, newPassword, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -76,7 +77,7 @@ export default class AuthController {
     }
 
     try {
-      return new LogoutService(reply).logout(accessToken);
+      return container.get<LogoutService>('LogoutService').logout(accessToken, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -95,7 +96,7 @@ export default class AuthController {
     }
 
     try {
-      return new RefreshTokenService(reply).refresh(refreshToken);
+      return container.get<RefreshTokenService>('RefreshTokenService').refresh(refreshToken, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -114,7 +115,7 @@ export default class AuthController {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return new VerifySessionService(reply).verify(user as any);
+      return container.get<VerifySessionService>('VerifySessionService').verify(user as any, reply);
     } catch (error) {
       return Responser.send(error);
     }

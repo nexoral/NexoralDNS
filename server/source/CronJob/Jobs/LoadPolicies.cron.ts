@@ -1,7 +1,8 @@
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
+import { RedisCacheService } from "../../Redis/Redis.cache";
 
 /**
  * Redis Data Structure for Access Control Policies:
@@ -37,9 +38,9 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   const startTime = Date.now();
 
   // Get MongoDB collections
-  const policiesCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
-  const ipGroupsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
-  const domainGroupsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+  const policiesCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+  const ipGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+  const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
 
   if (!policiesCollection || !ipGroupsCollection || !domainGroupsCollection) {
     throw new Error("Database collections not initialized");
@@ -74,10 +75,10 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
         targetIPs.push('*'); // Special marker for all users
         break;
       case 'single_ip':
-        if (policy.targetIP) targetIPs.push(policy.targetIP);
+        if (policy.targetIP) targetIPs.push(policy.targetIP.trim());
         break;
       case 'multiple_ips':
-        if (policy.targetIPs) targetIPs.push(...policy.targetIPs);
+        if (policy.targetIPs) targetIPs.push(...policy.targetIPs.map((ip: string) => ip.trim()));
         break;
       case 'ip_group':
         if (policy.targetIPGroup) {
@@ -194,34 +195,36 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 
   console.log(`[ACL] Built lookup structure: ${ipToDomains.size} IPs, ${allUsersBlockedDomains.size} global blocks`);
 
-  // Clear old ACL data in Redis (delete all acl:* keys)
-  // Note: This is a simplified approach. In production, consider using Redis pipeline for atomic updates
-  const redisClient = await RedisCache.getClient();
+  const redisClient = await container.get<RedisCacheService>('RedisCacheService').getClient();
+  const ONE_DAY = 86400;
 
-  // Delete old ACL keys (scan for acl:* pattern)
-  const aclKeys = await redisClient.keys('acl:*');
-  if (aclKeys.length > 0) {
-    await redisClient.del(aclKeys);
-    console.log(`[ACL] Cleared ${aclKeys.length} old ACL keys`);
-  }
+  // Scan old ACL keys to delete
+  const oldAclKeys: string[] = [];
+  let cursor = '0';
+  do {
+    const reply = await redisClient.scan(cursor, { MATCH: 'acl:*', COUNT: 100 });
+    cursor = reply.cursor;
+    oldAclKeys.push(...reply.keys);
+  } while (cursor !== '0');
 
-  // Write new data to Redis
+  // Atomically replace ACL data: delete old + write new in a single MULTI transaction
   const pipeline = redisClient.multi();
 
-  // Store global blocks (applies to all users)
-  if (allUsersBlockedDomains.size > 0) {
-    pipeline.sAdd('acl:all_users', Array.from(allUsersBlockedDomains));
-    pipeline.expire('acl:all_users', 120); // 2 minutes TTL (refresh every 60s)
+  if (oldAclKeys.length > 0) {
+    pipeline.del(oldAclKeys);
   }
 
-  // Store IP-specific blocks
+  if (allUsersBlockedDomains.size > 0) {
+    pipeline.sAdd('acl:all_users', Array.from(allUsersBlockedDomains));
+    pipeline.expire('acl:all_users', ONE_DAY);
+  }
+
   for (const [ip, domains] of ipToDomains.entries()) {
     const key = `acl:ip:${ip}`;
     pipeline.sAdd(key, Array.from(domains));
-    pipeline.expire(key, 120); // 2 minutes TTL
+    pipeline.expire(key, ONE_DAY);
   }
 
-  // Store metadata
   const metadata = {
     totalPolicies: activePolicies.length,
     expandedPolicies: expandedPolicies.length,
@@ -230,13 +233,15 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
     lastUpdated: Date.now(),
     loadDuration: Date.now() - startTime
   };
-  pipeline.set('acl:metadata', JSON.stringify(metadata), { EX: 120 });
+  pipeline.set('acl:metadata', JSON.stringify(metadata), { EX: ONE_DAY });
 
-  // Execute all Redis commands
   await pipeline.exec();
 
+  // Notify DNS engine to flush its in-memory blocklist caches immediately
+  await redisClient.publish('cache:invalidate', 'acl:reloaded');
+
   const duration = Date.now() - startTime;
-  console.log(`[ACL]  Successfully loaded policies to Redis in ${duration}ms`);
+  console.log(`[ACL] Successfully loaded policies to Redis in ${duration}ms`);
   console.log(`[ACL] Stats: ${metadata.expandedPolicies} policies, ${metadata.trackedIPs} IPs, ${metadata.globalBlocks} global blocks`);
 }
 

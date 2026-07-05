@@ -6,33 +6,31 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
-import RedisCache from "../../Redis/Redis.cache";
+import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 export default class DefaultTTLService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   /**
    * Get the current Default TTL value
    * @returns {Promise<void>}
    */
-  public async getDefaultTTL(): Promise<void> {
+  public async getDefaultTTL(reply: FastifyReply): Promise<void> {
     console.log("Fetching Default TTL...");
 
     // construct Response
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Default TTL fetched successfully"
     );
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -45,7 +43,7 @@ export default class DefaultTTLService {
       throw new Error("Service configuration not found.");
     }
 
-    const defaultTTL = serviceData.DefaultTTL || DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.DefaultTTL;
+    const defaultTTL = serviceData.DefaultTTL !== undefined ? serviceData.DefaultTTL : DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.DefaultTTL;
 
     console.log(`Current Default TTL: ${defaultTTL} seconds`);
 
@@ -60,13 +58,13 @@ export default class DefaultTTLService {
    * @param {number} newTTL - New TTL value in seconds (min: 10, max: 86400)
    * @returns {Promise<void>}
    */
-  public async updateDefaultTTL(newTTL: number): Promise<void> {
+  public async updateDefaultTTL(newTTL: number, reply: FastifyReply): Promise<void> {
     console.log(`Updating Default TTL to: ${newTTL} seconds`);
 
     // Validate TTL value
-    if (!newTTL || typeof newTTL !== "number") {
+    if (typeof newTTL !== "number" || isNaN(newTTL)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid TTL value"
       );
@@ -75,25 +73,25 @@ export default class DefaultTTLService {
       });
     }
 
-    if (newTTL < 10 || newTTL > 86400) {
+    if (newTTL < 0 || newTTL > 86400) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "TTL value out of range"
       );
       return ErrorResponse.send({
-        error: "TTL must be between 10 and 86400 seconds (10 seconds to 24 hours)"
+        error: "TTL must be between 0 and 86400 seconds (0 seconds to 24 hours)"
       });
     }
 
     // construct Response
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Default TTL updated successfully"
     );
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -108,8 +106,8 @@ export default class DefaultTTLService {
 
     // Delete the Cache After Updating Default TTL
     // This ensures the DNS server picks up the new TTL value
-    await RedisCache.delete(CacheKeys.Service_Status);
-    await RedisCache.delete("service:config");
+    await container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
+    await container.get<RedisCacheService>('RedisCacheService').delete("service:config");
 
     // Update the Default TTL in the database
     await dbClient.updateOne(

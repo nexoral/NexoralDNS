@@ -3,8 +3,9 @@ import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import AccessControlPolicyService, { AccessControlPolicyData } from "../../Services/AccessControl/AccessControlPolicy.service";
+import container from "../../container/appContainer";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
@@ -34,15 +35,15 @@ export default class AccessControlController {
     const requestKey = `create-policy:${request.user._id}:${policyData.policyName}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Failed to create policy");
-    const policyService = new AccessControlPolicyService(reply);
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
 
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await policyService.createPolicy(policyData);
+          await policyService.createPolicy(policyData, reply);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -61,7 +62,7 @@ export default class AccessControlController {
    */
   public static getPolicies(request: authGuardFastifyRequest, reply: FastifyReply) {
     const Responser = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to fetch policies");
-    const policyService = new AccessControlPolicyService(reply);
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
 
     try {
       const requestQuery = request.query as { filter?: string; skip?: string; limit?: string };
@@ -69,7 +70,7 @@ export default class AccessControlController {
       const skip = parseFloat(requestQuery.skip || "0") || 0;
       const limit = parseFloat(requestQuery.limit || "50") || 50;
 
-      return policyService.getPolicies(filter, skip, limit);
+      return policyService.getPolicies(filter, skip, limit, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -80,11 +81,11 @@ export default class AccessControlController {
    */
   public static getPolicyById(request: authGuardFastifyRequest, reply: FastifyReply) {
     const Responser = new BuildResponse(reply, StatusCodes.NOT_FOUND, "Failed to fetch policy");
-    const policyService = new AccessControlPolicyService(reply);
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
 
     try {
       const { policyId } = request.params as { policyId: string };
-      return policyService.getPolicyById(policyId);
+      return policyService.getPolicyById(policyId, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -99,15 +100,15 @@ export default class AccessControlController {
     const requestKey = `update-policy:${request.user._id}:${policyId}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Failed to update policy");
-    const policyService = new AccessControlPolicyService(reply);
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
 
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await policyService.updatePolicy(policyId, updateData);
+          await policyService.updatePolicy(policyId, updateData, reply);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -129,15 +130,15 @@ export default class AccessControlController {
     const requestKey = `toggle-policy:${request.user._id}:${policyId}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Failed to toggle policy status");
-    const policyService = new AccessControlPolicyService(reply);
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
 
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await policyService.togglePolicyStatus(policyId);
+          await policyService.togglePolicyStatus(policyId, reply);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -159,15 +160,15 @@ export default class AccessControlController {
     const requestKey = `delete-policy:${request.user._id}:${policyId}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.NOT_FOUND, "Failed to delete policy");
-    const policyService = new AccessControlPolicyService(reply);
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
 
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await policyService.deletePolicy(policyId);
+          await policyService.deletePolicy(policyId, reply);
           // Publish Cache Invalidation Event
-          await RedisCache.publish('cache:invalidate', 'acl-update');
+          await container.get<RedisCacheService>('RedisCacheService').publish('cache:invalidate', 'acl-update');
         } catch (error) {
           return Responser.send(error);
         }
@@ -179,5 +180,25 @@ export default class AccessControlController {
         console.log(`[CLEANUP] Removed in-flight delete policy request for ${key}`);
       }
     );
+  }
+
+  /**
+   * Invalidate ACL cache - reloads all policies from MongoDB to Redis and flushes DNS engine caches
+   */
+  public static async invalidateCache(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
+    const policyService = container.get<AccessControlPolicyService>('AccessControlPolicyService');
+
+    try {
+      const result = await policyService.invalidateCache();
+      const Responser = new BuildResponse(reply, StatusCodes.OK, "ACL cache invalidated successfully");
+      return Responser.send({
+        lastUpdated: result.lastUpdated,
+        stats: result.stats,
+        message: "ACL policies reloaded from database. DNS engine caches flushed."
+      });
+    } catch (error) {
+      const Responser = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to invalidate ACL cache");
+      return Responser.send({ error: "Failed to reload ACL policies" });
+    }
   }
 }

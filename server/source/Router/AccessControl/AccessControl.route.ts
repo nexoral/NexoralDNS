@@ -2,7 +2,7 @@
 import { FastifyInstance, FastifyPluginOptions } from "fastify";
 
 // middlewares
-import authGuard from "../../Middlewares/authGuard.middleware";
+import { authGuard } from "../../Middlewares/authGuard.middleware";
 import PermissionGuard from "../../Middlewares/permissionGuard.middleware";
 
 // Controllers
@@ -316,6 +316,24 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
     },
     preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
     handler: AccessControlController.deletePolicy
+  });
+
+  // ==================== CACHE MANAGEMENT ====================
+
+  // Invalidate ACL cache
+  fastify.post("/cache/invalidate", {
+    schema: {
+      description: 'Force-reload all ACL policies from MongoDB to Redis and flush DNS engine caches',
+      tags: ['Access Control'],
+      headers: {
+        type: 'object',
+        properties: {
+          authorization: { type: 'string', description: 'Bearer token for authentication' },
+        },
+      },
+    },
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
+    handler: AccessControlController.invalidateCache
   });
 
   // ==================== DOMAIN GROUPS ====================
