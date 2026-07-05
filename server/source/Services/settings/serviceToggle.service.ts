@@ -34,13 +34,18 @@ export default class ServiceToggleService {
 
     const newStatus = serviceData.Service_Status === "active" ? "inactive" : "active";
 
-    // Delete the Cache After Update Service Status
-    container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
-
+    // Update MongoDB first (source of truth)
     await dbClient.updateOne(
       { _id: new ObjectId(serviceData._id) },
       { $set: { Service_Status: newStatus } }
     );
+
+    // Proactively set Redis to new status so DNS engine picks it up instantly
+    const updatedServiceData = {
+      ...serviceData,
+      Service_Status: newStatus,
+    };
+    await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.Service_Status, updatedServiceData);
 
     console.log(`Service status updated to: ${newStatus}`);
 
