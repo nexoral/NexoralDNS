@@ -1,5 +1,5 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from 'outers';
 import { RabbitMQConnectionManager } from './RabbitMQConnectionManager';
 import { RabbitMQQueueManager } from './RabbitMQQueueManager';
 
@@ -31,15 +31,15 @@ export class RabbitMQPublisher {
       });
 
       if (sent) {
-        Console.bright(`📤 Published message to queue: ${queue}`);
+        logger.info(`📤 Published message to queue: ${queue}`);
       } else {
-        Console.yellow(`⚠️  Queue ${queue} is full, message buffered`);
+        logger.warn(`⚠️  Queue ${queue} is full, message buffered`);
       }
 
       return sent;
 
     } catch (error) {
-      Console.red(`❌ Failed to publish to queue ${queue}:`, error);
+      logger.error(`❌ Failed to publish to queue ${queue}:`, error);
       return false;
     }
   }
@@ -57,10 +57,10 @@ export class RabbitMQPublisher {
         if (sent) successCount++;
       }
 
-      Console.bright(`📤 Published ${successCount}/${messages.length} messages to queue: ${queue}`);
+      logger.info(`📤 Published ${successCount}/${messages.length} messages to queue: ${queue}`);
 
     } catch (error) {
-      Console.red(`❌ Failed to publish batch to queue ${queue}:`, error);
+      logger.error(`❌ Failed to publish batch to queue ${queue}:`, error);
     }
 
     return successCount;

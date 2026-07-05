@@ -1,6 +1,6 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, RedisClientType } from 'redis';
-import { Console } from 'outers';
 
 export class RedisConnectionManager {
   private client: RedisClientType | null = null;
@@ -23,8 +23,8 @@ export class RedisConnectionManager {
     try {
       const redisConfig = this.getRedisConfig();
 
-      Console.bright("📡 Connecting to Redis...");
-      Console.bright(`   Mode: ${redisConfig.mode}`);
+      logger.info("📡 Connecting to Redis...");
+      logger.info(`   Mode: ${redisConfig.mode}`);
 
       this.client = createClient(redisConfig.options);
 
@@ -32,15 +32,15 @@ export class RedisConnectionManager {
 
       await this.client.connect();
 
-      Console.green("✅ Connected to Redis successfully!");
-      Console.bright(`   Memory Policy: allkeys-lru`);
-      Console.bright(`   Max Memory: 256MB`);
+      logger.info("✅ Connected to Redis successfully!");
+      logger.info(`   Memory Policy: allkeys-lru`);
+      logger.info(`   Max Memory: 256MB`);
 
       this.reconnectAttempts = 0;
       return this.client;
 
     } catch (error) {
-      Console.red("❌ Failed to connect to Redis:", error);
+      logger.error("❌ Failed to connect to Redis:", error);
       throw error;
     } finally {
       this.isConnecting = false;
@@ -57,12 +57,12 @@ export class RedisConnectionManager {
         socket: {
           reconnectStrategy: (retries: number) => {
             if (retries > this.MAX_RECONNECT_ATTEMPTS) {
-              Console.red(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
+              logger.error(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
               return new Error('Max reconnection attempts reached');
             }
 
             const delay = Math.min(retries * 50, 500);
-            Console.yellow(`⏳ Reconnecting to Redis in ${delay}ms (attempt ${retries})`);
+            logger.warn(`⏳ Reconnecting to Redis in ${delay}ms (attempt ${retries})`);
 
             return delay;
           },
@@ -76,25 +76,25 @@ export class RedisConnectionManager {
     if (!this.client) return;
 
     this.client.on('connect', () => {
-      Console.green('🔵 Redis client connecting...');
+      logger.info('🔵 Redis client connecting...');
     });
 
     this.client.on('ready', () => {
-      Console.green('🟢 Redis client ready!');
+      logger.info('🟢 Redis client ready!');
       this.reconnectAttempts = 0;
     });
 
     this.client.on('error', (err) => {
-      Console.red('❌ Redis error:', err);
+      logger.error('❌ Redis error:', err);
       this.reconnectAttempts++;
     });
 
     this.client.on('reconnecting', () => {
-      Console.yellow('🔄 Redis client reconnecting...');
+      logger.warn('🔄 Redis client reconnecting...');
     });
 
     this.client.on('end', () => {
-      Console.yellow('🔴 Redis connection closed');
+      logger.warn('🔴 Redis connection closed');
     });
   }
 
@@ -122,10 +122,10 @@ export class RedisConnectionManager {
 
   async close(): Promise<void> {
     if (this.client) {
-      Console.bright('🔌 Closing Redis connection...');
+      logger.info('🔌 Closing Redis connection...');
       await this.client.quit();
       this.client = null;
     }
-    Console.green('✅ Redis connection closed');
+    logger.info('✅ Redis connection closed');
   }
 }

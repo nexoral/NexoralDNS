@@ -1,6 +1,6 @@
 import net from "node:net";
 import dgram from "node:dgram";
-import { Console } from "outers";
+import logger from "../../utilities/logger";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
 import container from "../../container/appContainer";
@@ -33,7 +33,7 @@ export default class DNS_TCP {
   public start(): this {
     this.server.on("listening", () => {
       const addr = this.server.address() as net.AddressInfo;
-      Console.green(
+      logger.info(
         `DNS TCP server running at tcp://${addr.address}:${addr.port} with Worker: ${process.pid}`
       );
     });
@@ -45,7 +45,7 @@ export default class DNS_TCP {
       mongoConnManager.connect(),
       mongoCollManager.initialize(),
     ]).catch((error) => {
-      Console.red("DNS_TCP: Failed to connect to MongoDB:", error);
+      logger.error("DNS_TCP: Failed to connect to MongoDB:", error as any);
     });
 
     // Bind to the same LAN interface as the UDP service to avoid conflicting
@@ -85,12 +85,12 @@ export default class DNS_TCP {
       });
 
       socket.on("error", (err: Error) => {
-        Console.red(`DNS TCP connection error [${baseRinfo.address}]: ${err.message}`);
+        logger.error(`DNS TCP connection error [${baseRinfo.address}]: ${err.message}`);
         socket.destroy();
       });
 
       socket.on("timeout", () => {
-        Console.red(`DNS TCP connection timeout [${baseRinfo.address}]`);
+        logger.error(`DNS TCP connection timeout [${baseRinfo.address}]`);
         socket.destroy();
       });
 
@@ -106,7 +106,7 @@ export default class DNS_TCP {
    */
   public listenError(): this {
     this.server.on("error", (err: Error) => {
-      Console.red(`DNS TCP server error:\n${err.stack}`);
+      logger.error(`DNS TCP server error:\n${err.stack}`);
       this.server.close();
     });
     return this;

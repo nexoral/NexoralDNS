@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
@@ -30,7 +31,7 @@ export default class DomainGroupService {
    * @returns {Promise<void>}
    */
   public async createDomainGroup(groupData: DomainGroupData, reply: FastifyReply): Promise<void> {
-    console.log("Creating new domain group:", groupData.name);
+    logger.info("Creating new domain group:", groupData.name);
 
     // Validate group name
     if (!groupData.name || groupData.name.trim() === "") {
@@ -87,7 +88,7 @@ export default class DomainGroupService {
     try {
       await forceReloadACLPolicies();
     } catch (error) {
-      console.error('[ACL] Failed to reload policies after domain group create:', error);
+      logger.error('[ACL] Failed to reload policies after domain group create:', error);
       // Don't fail the request if Redis reload fails
     }
 
@@ -111,7 +112,7 @@ export default class DomainGroupService {
    * @returns {Promise<void>}
    */
   public async getDomainGroups(skip: number = 0, limit: number = 50, reply: FastifyReply): Promise<void> {
-    console.log(`Fetching domain groups with skip: ${skip}, limit: ${limit}`);
+    logger.info(`Fetching domain groups with skip: ${skip}, limit: ${limit}`);
 
     const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
     if (!dbClient) {
@@ -147,7 +148,7 @@ export default class DomainGroupService {
    * @returns {Promise<void>}
    */
   public async getDomainGroupById(groupId: string, reply: FastifyReply): Promise<void> {
-    console.log(`Fetching domain group with ID: ${groupId}`);
+    logger.info(`Fetching domain group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
@@ -197,7 +198,7 @@ export default class DomainGroupService {
    * @returns {Promise<void>}
    */
   public async updateDomainGroup(groupId: string, updateData: Partial<DomainGroupData>, reply: FastifyReply): Promise<void> {
-    console.log(`Updating domain group with ID: ${groupId}`);
+    logger.info(`Updating domain group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
@@ -259,7 +260,7 @@ export default class DomainGroupService {
     try {
       await forceReloadACLPolicies();
     } catch (error) {
-      console.error('[ACL] Failed to reload policies after domain group update:', error);
+      logger.error('[ACL] Failed to reload policies after domain group update:', error);
       // Don't fail the request if Redis reload fails
     }
 
@@ -281,7 +282,7 @@ export default class DomainGroupService {
    * @returns {Promise<void>}
    */
   public async deleteDomainGroup(groupId: string, reply: FastifyReply): Promise<void> {
-    console.log(`Deleting domain group with ID: ${groupId}`);
+    logger.info(`Deleting domain group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
@@ -345,7 +346,7 @@ export default class DomainGroupService {
     try {
       await forceReloadACLPolicies();
     } catch (error) {
-      console.error('[ACL] Failed to reload policies after domain group delete:', error);
+      logger.error('[ACL] Failed to reload policies after domain group delete:', error);
       // Don't fail the request if Redis reload fails
     }
 

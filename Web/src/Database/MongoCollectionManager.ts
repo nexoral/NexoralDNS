@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Collection, Document } from 'mongodb';
-import { Console } from 'outers';
+import logger from '../utilities/logger';
 import { MongoConnectionManager } from './MongoConnectionManager';
 import { DB_DEFAULT_CONFIGS } from '../Config/key';
 
@@ -40,10 +40,10 @@ export class MongoCollectionManager {
         db.collection(colName);
       }
 
-      Console.green('✅ All collections initialized');
+      logger.info('✅ All collections initialized');
       this.initialized = true;
     } catch (error) {
-      Console.red('❌ Failed to initialize collections:', error);
+      logger.error('❌ Failed to initialize collections:', error as any);
       throw error;
     }
   }
@@ -56,7 +56,7 @@ export class MongoCollectionManager {
       // Resolve fresh from the current client each call (resilient to reconnects).
       return this.connectionManager.getDatabase().collection(collectionName);
     } catch (error) {
-      Console.yellow(`⚠️ Collection not available: ${collectionName}`, error);
+      logger.warn(`⚠️ Collection not available: ${collectionName}`, error as any);
       return undefined;
     }
   }

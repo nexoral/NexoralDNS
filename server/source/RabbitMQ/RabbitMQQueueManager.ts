@@ -1,5 +1,5 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from 'outers';
 import { RabbitMQConnectionManager } from './RabbitMQConnectionManager';
 
 export class RabbitMQQueueManager {
@@ -28,7 +28,7 @@ export class RabbitMQQueueManager {
       const queueInfo = await channel.checkQueue(queue);
       return queueInfo.messageCount;
     } catch (error) {
-      Console.red(`❌ Failed to get message count for queue ${queue}:`, error);
+      logger.error(`❌ Failed to get message count for queue ${queue}:`, error);
       return -1;
     }
   }
@@ -37,10 +37,10 @@ export class RabbitMQQueueManager {
     try {
       const channel = await this.connectionManager.connect();
       await channel.purgeQueue(queue);
-      Console.green(`✅ Purged all messages from queue: ${queue}`);
+      logger.info(`✅ Purged all messages from queue: ${queue}`);
       return true;
     } catch (error) {
-      Console.red(`❌ Failed to purge queue ${queue}:`, error);
+      logger.error(`❌ Failed to purge queue ${queue}:`, error);
       return false;
     }
   }
@@ -49,10 +49,10 @@ export class RabbitMQQueueManager {
     try {
       const channel = await this.connectionManager.connect();
       await channel.deleteQueue(queue);
-      Console.green(`✅ Deleted queue: ${queue}`);
+      logger.info(`✅ Deleted queue: ${queue}`);
       return true;
     } catch (error) {
-      Console.red(`❌ Failed to delete queue ${queue}:`, error);
+      logger.error(`❌ Failed to delete queue ${queue}:`, error);
       return false;
     }
   }

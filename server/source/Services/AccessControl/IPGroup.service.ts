@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
@@ -24,7 +25,7 @@ export default class IPGroupService {
    * @returns {Promise<void>}
    */
   public async createIPGroup(groupData: IPGroupData, reply: FastifyReply): Promise<void> {
-    console.log("Creating new IP group:", groupData.name);
+    logger.info("Creating new IP group:", groupData.name);
 
     // Validate group name
     if (!groupData.name || groupData.name.trim() === "") {
@@ -97,7 +98,7 @@ export default class IPGroupService {
    * @returns {Promise<void>}
    */
   public async getIPGroups(skip: number = 0, limit: number = 50, reply: FastifyReply): Promise<void> {
-    console.log(`Fetching IP groups with skip: ${skip}, limit: ${limit}`);
+    logger.info(`Fetching IP groups with skip: ${skip}, limit: ${limit}`);
 
     const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
     if (!dbClient) {
@@ -133,7 +134,7 @@ export default class IPGroupService {
    * @returns {Promise<void>}
    */
   public async getIPGroupById(groupId: string, reply: FastifyReply): Promise<void> {
-    console.log(`Fetching IP group with ID: ${groupId}`);
+    logger.info(`Fetching IP group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
@@ -183,7 +184,7 @@ export default class IPGroupService {
    * @returns {Promise<void>}
    */
   public async updateIPGroup(groupId: string, updateData: Partial<IPGroupData>, reply: FastifyReply): Promise<void> {
-    console.log(`Updating IP group with ID: ${groupId}`);
+    logger.info(`Updating IP group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
@@ -259,7 +260,7 @@ export default class IPGroupService {
    * @returns {Promise<void>}
    */
   public async deleteIPGroup(groupId: string, reply: FastifyReply): Promise<void> {
-    console.log(`Deleting IP group with ID: ${groupId}`);
+    logger.info(`Deleting IP group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(

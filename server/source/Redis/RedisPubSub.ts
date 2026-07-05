@@ -1,6 +1,6 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, RedisClientType } from 'redis';
-import { Console } from 'outers';
 import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class RedisPubSub {
@@ -24,26 +24,26 @@ export class RedisPubSub {
         this.subscriberClient = createClient(redisConfig.options);
 
         this.subscriberClient.on('error', (err) => {
-          Console.red('❌ Subscriber connection error:', err);
+          logger.error('❌ Subscriber connection error:', err);
           this.subscriberClient = null;
         });
 
         this.subscriberClient.on('end', () => {
-          Console.yellow('🔴 Subscriber connection closed');
+          logger.warn('🔴 Subscriber connection closed');
           this.subscriberClient = null;
         });
 
         await this.subscriberClient.connect();
-        Console.green('📡 Connected to Redis Subscriber Client');
+        logger.info('📡 Connected to Redis Subscriber Client');
       }
 
       await this.subscriberClient.subscribe(channel, (message) => {
         callback(message);
       });
-      Console.bright(`👂 Subscribed to channel: ${channel}`);
+      logger.info(`👂 Subscribed to channel: ${channel}`);
 
     } catch (error) {
-      Console.red(`❌ Failed to subscribe to channel ${channel}:`, error);
+      logger.error(`❌ Failed to subscribe to channel ${channel}:`, error);
       this.subscriberClient = null;
       throw error;
     }
@@ -54,7 +54,7 @@ export class RedisPubSub {
       const client = await this.connectionManager.getClient();
       return await client.publish(channel, message);
     } catch (error) {
-      Console.red(`❌ Failed to publish to channel ${channel}:`, error);
+      logger.error(`❌ Failed to publish to channel ${channel}:`, error);
       return 0;
     }
   }

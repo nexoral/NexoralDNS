@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import fs from "fs";
 import path from "path";
 import { Retry, Console } from "outers";
@@ -27,15 +28,15 @@ async function cleanupStaleExports(): Promise<void> {
           deletedCount++;
         }
       } catch (error) {
-        Console.red(`[CleanupExports] Failed to stat or unlink ${file}:`, error);
+        logger.error(`[CleanupExports] Failed to stat or unlink ${file}:`, error);
       }
     }
 
     if (deletedCount > 0) {
-      Console.blue(`[CleanupExports] Cleared ${deletedCount} stale log export file(s)`);
+      logger.info(`[CleanupExports] Cleared ${deletedCount} stale log export file(s)`);
     }
   } catch (error) {
-    Console.red("[CleanupExports] Failed to read exports directory:", error);
+    logger.error("[CleanupExports] Failed to read exports directory:", error);
   }
 }
 
@@ -44,7 +45,7 @@ export const CleanupExportsCronJob = () => {
     try {
       await cleanupStaleExports();
     } catch (error) {
-      console.error("[CleanupExports] Error during cleanup sweep:", error);
+      logger.error("[CleanupExports] Error during cleanup sweep:", error);
     }
   }, 60 * 60, false); // Every hour, no need to run immediately on boot
 };

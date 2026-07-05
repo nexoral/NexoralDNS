@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "dgram";
-import { Console } from "outers"
+import logger from "../../utilities/logger"
 
 // RabbitMQ
 import CacheKeys, { DNS_QUERY_STATUS_KEYS, QueueKeys } from "../../Redis/CacheKeys.cache";
@@ -15,13 +15,62 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
   { ip: "1.0.0.1", name: "Cloudflare DNS", location: "Global (Anycast)" },
   { ip: "8.8.8.8", name: "Google DNS", location: "Global (Anycast)" },
   { ip: "8.8.4.4", name: "Google DNS", location: "Global (Anycast)" },
-  // Unfiltered variant (9.9.9.10, not 9.9.9.9) — the default blocks malware
-  // domains itself, which would double up with NexoralDNS's own ACL layer.
   { ip: "9.9.9.10", name: "Quad9 DNS (Unfiltered)", location: "Global (Anycast)" },
   { ip: "149.112.112.10", name: "Quad9 DNS (Unfiltered)", location: "Global (Anycast)" },
 ];
 
 const ioHandler = new InputOutputHandler(null as any);
+
+/** Pre-allocated pool of reusable dgram sockets to avoid create/destroy per query. */
+class DgramSocketPool {
+  private readonly poolSize: number;
+  private sockets: dgram.Socket[] = [];
+  private inUse: boolean[] = [];
+  private waitQueue: Array<(socket: dgram.Socket, index: number) => void> = [];
+
+  constructor(poolSize: number) {
+    this.poolSize = poolSize;
+  }
+
+  async initialize(): Promise<void> {
+    for (let i = 0; i < this.poolSize; i++) {
+      const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+      socket.on('error', () => {});
+      socket.unref();
+      this.sockets.push(socket);
+      this.inUse.push(false);
+    }
+  }
+
+  async acquire(): Promise<{ socket: dgram.Socket; index: number }> {
+    for (let i = 0; i < this.poolSize; i++) {
+      if (!this.inUse[i]) {
+        this.inUse[i] = true;
+        return { socket: this.sockets[i], index: i };
+      }
+    }
+    return new Promise((resolve) => {
+      this.waitQueue.push((socket, index) => resolve({ socket, index }));
+    });
+  }
+
+  release(index: number): void {
+    if (this.waitQueue.length > 0) {
+      const next = this.waitQueue.shift()!;
+      next(this.sockets[index], index);
+    } else {
+      this.inUse[index] = false;
+    }
+  }
+
+  async close(): Promise<void> {
+    for (const socket of this.sockets) {
+      try { socket.close(); } catch { }
+    }
+    this.sockets = [];
+    this.inUse = [];
+  }
+}
 
 /** Rewrites the TTL of every answer/authority/additional record in a raw DNS response. */
 function modifyResponseTTL(response: Buffer, newTTL: number): Buffer {
@@ -71,14 +120,23 @@ function shuffleArray(array: any[]) {
 
 /**
  * GlobalDNSforwarder service — singleton that manages upstream DNS forwarding
- * with concurrent socket pooling (max 256 active forwards to prevent FD exhaustion)
+ * with a pre-allocated socket pool to eliminate create/destroy overhead per query.
  */
 export class GlobalDNSforwarderService {
   private readonly MAX_CONCURRENT_FORWARDS = 256;
+  private readonly POOL_SIZE = 256;
   private activeForwardCount = 0;
   private forwardWaitQueue: Array<() => void> = [];
   private totalForwardsAttempted = 0;
   private totalForwardsSucceeded = 0;
+  private socketPool: DgramSocketPool;
+
+  constructor() {
+    this.socketPool = new DgramSocketPool(this.POOL_SIZE);
+    this.socketPool.initialize().catch((err) => {
+      logger.error('Failed to initialize dgram socket pool:', err as any);
+    });
+  }
 
   private async acquireForwardSlot(): Promise<void> {
     if (this.activeForwardCount < this.MAX_CONCURRENT_FORWARDS) {
@@ -98,9 +156,9 @@ export class GlobalDNSforwarderService {
   }
 
   /**
-   * Forwards one query on its own short-lived socket, trying each upstream server in turn.
+   * Forwards one query using a pooled socket, trying each upstream server in turn.
    */
-  private async resolveOnDedicatedSocket(
+  private async resolveOnPooledSocket(
     msg: Buffer,
     queryName: string,
     queryType: string,
@@ -110,27 +168,23 @@ export class GlobalDNSforwarderService {
     isFailSafe: boolean
   ): Promise<Buffer | null> {
     await this.acquireForwardSlot();
+    const { socket, index } = await this.socketPool.acquire();
     const availableDNS = shuffleArray([...GlobalDNS]);
-    const socket = dgram.createSocket({ type: 'udp4' });
-    socket.on('error', () => { /* surfaced via the per-attempt timeout below */ });
 
     try {
-      const tryNext = async (index: number): Promise<Buffer | null> => {
-        if (index >= availableDNS.length) {
-          Console.red(`No response from any DNS server for ${queryName}`);
+      const tryNext = async (idx: number): Promise<Buffer | null> => {
+        if (idx >= availableDNS.length) {
+          logger.error(`No response from any DNS server for ${queryName}`);
           return null;
         }
 
-        const dnsIP = availableDNS[index];
+        const dnsIP = availableDNS[idx];
 
         const response = await new Promise<Buffer | null>((resolve) => {
           const cleanup = () => {
             clearTimeout(timeout);
             socket.removeListener('message', onMessage);
           };
-          // Filter by sender address: this socket is reused across sequential
-          // attempts to different servers, so a late reply from a prior attempt
-          // must not be mistaken for the current one's answer.
           const onMessage = (respMsg: Buffer, respRinfo: dgram.RemoteInfo) => {
             if (respRinfo.address !== dnsIP.ip) return;
             cleanup();
@@ -143,7 +197,7 @@ export class GlobalDNSforwarderService {
           try {
             socket.send(msg, 53, dnsIP.ip);
             if (process.env.DEBUG_DNS) {
-              Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
+              logger.info(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
             }
           } catch {
             cleanup();
@@ -151,7 +205,7 @@ export class GlobalDNSforwarderService {
           }
         });
 
-        if (!response) return tryNext(index + 1);
+        if (!response) return tryNext(idx + 1);
 
         const duration = performance.now() - start;
         await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.DNS_Analytics, {
@@ -175,14 +229,11 @@ export class GlobalDNSforwarderService {
 
       return await tryNext(0);
     } finally {
-      socket.close();
+      this.socketPool.release(index);
       this.releaseForwardSlot();
     }
   }
 
-  /**
-   * Main forward method — called by DNS query processors
-   */
   async forward(
     msg: Buffer,
     queryName: string,
@@ -193,47 +244,29 @@ export class GlobalDNSforwarderService {
     isFailSafe = false
   ): Promise<Buffer | null> {
     this.totalForwardsAttempted++;
-    return this.resolveOnDedicatedSocket(msg, queryName, queryType, customTTL, rinfo, start, isFailSafe);
+    return this.resolveOnPooledSocket(msg, queryName, queryType, customTTL, rinfo, start, isFailSafe);
   }
 
-  /**
-   * Get current queue depth (queries waiting for a forward slot)
-   */
   getQueueDepth(): number {
     return this.forwardWaitQueue.length;
   }
 
-  /**
-   * Get currently active forward sockets
-   */
   getActiveForwards(): number {
     return this.activeForwardCount;
   }
 
-  /**
-   * Get total forwards attempted since startup
-   */
   getTotalForwardsAttempted(): number {
     return this.totalForwardsAttempted;
   }
 
-  /**
-   * Get total forwards that succeeded (got response)
-   */
   getTotalForwardsSucceeded(): number {
     return this.totalForwardsSucceeded;
   }
 
-  /**
-   * Get concurrency limit
-   */
   getConcurrencyLimit(): number {
     return this.MAX_CONCURRENT_FORWARDS;
   }
 
-  /**
-   * Get detailed status
-   */
   getStatus(): {
     activeForwards: number;
     queueDepth: number;

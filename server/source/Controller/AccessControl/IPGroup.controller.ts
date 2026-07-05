@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -31,8 +32,8 @@ export default class IPGroupController {
           return Responser.send(error);
         }
       },
-      (key) => console.log(`[DEDUP] Duplicate create IP group request detected for ${key}`),
-      (key) => console.log(`[CLEANUP] Removed in-flight create IP group request for ${key}`)
+      (key) => logger.info(`[DEDUP] Duplicate create IP group request detected for ${key}`),
+      (key) => logger.info(`[CLEANUP] Removed in-flight create IP group request for ${key}`)
     );
   }
 
@@ -81,8 +82,8 @@ export default class IPGroupController {
           return Responser.send(error);
         }
       },
-      (key) => console.log(`[DEDUP] Duplicate update IP group request detected for ${key}`),
-      (key) => console.log(`[CLEANUP] Removed in-flight update IP group request for ${key}`)
+      (key) => logger.info(`[DEDUP] Duplicate update IP group request detected for ${key}`),
+      (key) => logger.info(`[CLEANUP] Removed in-flight update IP group request for ${key}`)
     );
   }
 
@@ -104,8 +105,8 @@ export default class IPGroupController {
           return Responser.send(error);
         }
       },
-      (key) => console.log(`[DEDUP] Duplicate delete IP group request detected for ${key}`),
-      (key) => console.log(`[CLEANUP] Removed in-flight delete IP group request for ${key}`)
+      (key) => logger.info(`[DEDUP] Duplicate delete IP group request detected for ${key}`),
+      (key) => logger.info(`[CLEANUP] Removed in-flight delete IP group request for ${key}`)
     );
   }
 }

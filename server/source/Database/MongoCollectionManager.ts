@@ -1,6 +1,6 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Collection, Document } from 'mongodb';
-import { Console } from 'outers';
 import { MongoConnectionManager } from './MongoConnectionManager';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import cluster from 'cluster';
@@ -44,7 +44,7 @@ export class MongoCollectionManager {
         this.collectionCache.set(colName, col);
       }
 
-      Console.green('✅ All collections initialized');
+      logger.info('✅ All collections initialized');
 
       // Setup indexes only on primary process
       if (cluster.isPrimary) {
@@ -54,7 +54,7 @@ export class MongoCollectionManager {
 
       this.initialized = true;
     } catch (error) {
-      Console.red('❌ Failed to initialize collections:', error);
+      logger.error('❌ Failed to initialize collections:', error);
       throw error;
     }
   }
@@ -115,9 +115,9 @@ export class MongoCollectionManager {
       await sessionManageCol.createIndex({ refreshToken: 1 });
       await sessionManageCol.createIndex({ updatedAt: 1 }, { expireAfterSeconds: 48 * 60 * 60 });
 
-      Console.green('✅ All indexes created');
+      logger.info('✅ All indexes created');
     } catch (error) {
-      Console.red('❌ Failed to setup indexes:', error);
+      logger.error('❌ Failed to setup indexes:', error);
       throw error;
     }
   }
@@ -138,11 +138,11 @@ export class MongoCollectionManager {
           const NewPerm = await permissionsCol.findOne({ _id: result.insertedId });
           if (NewPerm) InsertedPermissions.push(NewPerm);
         }
-        Console.green('✅ Permissions inserted');
+        logger.info('✅ Permissions inserted');
       } else {
         const allPerms = await permissionsCol.find().toArray();
         InsertedPermissions = allPerms;
-        Console.bright('ℹ️ Permissions already exist');
+        logger.info('ℹ️ Permissions already exist');
       }
 
       // Insert roles
@@ -158,9 +158,9 @@ export class MongoCollectionManager {
           const NewRole = await rolesCol.findOne({ _id: result.insertedId });
           if (NewRole) InsertedRoles.push(NewRole);
         }
-        Console.green('✅ Default roles created');
+        logger.info('✅ Default roles created');
       } else {
-        Console.bright('ℹ️ Default roles already exist');
+        logger.info('ℹ️ Default roles already exist');
       }
 
       // Insert admin user
@@ -173,9 +173,9 @@ export class MongoCollectionManager {
           passwordUpdatedAt: null,
           createdAt: Date.now(),
         });
-        Console.green('✅ Admin user created');
+        logger.info('✅ Admin user created');
       } else {
-        Console.bright('ℹ️ Admin user already exists');
+        logger.info('ℹ️ Admin user already exists');
       }
 
       // Insert service config
@@ -195,12 +195,12 @@ export class MongoCollectionManager {
           Total_Connected_Devices_To_Router: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Total_Connected_Devices_To_Router,
           List_of_Connected_Devices_Info: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.List_of_Connected_Devices_Info,
         });
-        Console.green('✅ Default service config created');
+        logger.info('✅ Default service config created');
       }
 
-      Console.green('🎉 RBAC setup completed');
+      logger.info('🎉 RBAC setup completed');
     } catch (error) {
-      Console.red('❌ Failed to setup default data:', error);
+      logger.error('❌ Failed to setup default data:', error);
       throw error;
     }
   }
@@ -214,7 +214,7 @@ export class MongoCollectionManager {
       // MongoClient) never leaves callers holding a handle bound to a dead client.
       return this.connectionManager.getDatabase().collection(collectionName);
     } catch (error) {
-      Console.yellow(`⚠️ Collection not available: ${collectionName}`, error);
+      logger.warn(`⚠️ Collection not available: ${collectionName}`, error);
       return undefined;
     }
   }

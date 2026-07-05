@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from 'outers';
+import logger from '../utilities/logger';
 import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class AclBlockingService {
@@ -22,7 +22,7 @@ export class AclBlockingService {
       ]);
       return [...(exact || []), ...(wild || [])];
     } catch (error) {
-      Console.yellow(`⚠️  Failed to get blocked domains for IP ${ip}:`, error);
+      logger.warn(`⚠️  Failed to get blocked domains for IP ${ip}:`, error as any);
       return [];
     }
   }
@@ -36,7 +36,7 @@ export class AclBlockingService {
       ]);
       return [...(exact || []), ...(wild || [])];
     } catch (error) {
-      Console.yellow(`⚠️  Failed to get globally blocked domains:`, error);
+      logger.warn(`⚠️  Failed to get globally blocked domains:`, error as any);
       return [];
     }
   }
@@ -47,7 +47,7 @@ export class AclBlockingService {
       const metadata = await client.get('acl:metadata');
       return metadata ? JSON.parse(metadata) : null;
     } catch (error) {
-      Console.yellow(`⚠️  Failed to get ACL metadata:`, error);
+      logger.warn(`⚠️  Failed to get ACL metadata:`, error as any);
       return null;
     }
   }
@@ -76,7 +76,7 @@ export class AclBlockingService {
       return false;
 
     } catch (error) {
-      Console.yellow(`⚠️  Failed to check if domain ${domain} is blocked for IP ${ip}:`, error);
+      logger.warn(`⚠️  Failed to check if domain ${domain} is blocked for IP ${ip}:`, error as any);
       return false;
     }
   }

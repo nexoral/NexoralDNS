@@ -1,5 +1,5 @@
+import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from 'outers';
 import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class RedisAdminInspector {
@@ -59,7 +59,7 @@ export class RedisAdminInspector {
 
       return records;
     } catch (error) {
-      Console.yellow(`⚠️  Failed to get records with pattern ${pattern}:`, error);
+      logger.warn(`⚠️  Failed to get records with pattern ${pattern}:`, error);
       return [];
     }
   }
@@ -69,12 +69,12 @@ export class RedisAdminInspector {
       const client = await this.connectionManager.getClient();
       const result = await client.del(key);
       if (result > 0) {
-        Console.bright(`🗑️  Deleted cache entry: ${key}`);
+        logger.info(`🗑️  Deleted cache entry: ${key}`);
         return true;
       }
       return false;
     } catch (error) {
-      Console.yellow(`⚠️  Failed to delete cache entry ${key}:`, error);
+      logger.warn(`⚠️  Failed to delete cache entry ${key}:`, error);
       return false;
     }
   }

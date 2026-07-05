@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { MongoClient } from 'mongodb';
-import { Console } from 'outers';
+import logger from '../utilities/logger';
 import os from 'os';
 import { DB_DEFAULT_CONFIGS } from '../Config/key';
 
@@ -49,18 +49,21 @@ export class MongoConnectionManager {
     this.isConnecting = true;
 
     try {
-      Console.bright('📡 Connecting to MongoDB...');
+      logger.info('📡 Connecting to MongoDB...');
       this.client = new MongoClient(this.MONGO_URI, {
         maxPoolSize: this.computePoolSize(),
+        connectTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 30000,
       });
 
       this.setupEventHandlers();
       await this.client.connect();
 
-      Console.green('✅ Connected to MongoDB successfully');
+      logger.info('✅ Connected to MongoDB successfully');
       return this.client;
     } catch (error) {
-      Console.red('❌ Failed to connect to MongoDB:', error);
+      logger.error('❌ Failed to connect to MongoDB:', error as any);
       this.client = null;
       throw error;
     } finally {
@@ -72,15 +75,15 @@ export class MongoConnectionManager {
     if (!this.client) return;
 
     this.client.on('error', (err) => {
-      Console.red('❌ MongoDB error:', err);
+      logger.error('❌ MongoDB error:', err as any);
     });
 
     this.client.on('connectionPoolClosed', () => {
-      Console.yellow('🔴 MongoDB connection pool closed');
+      logger.warn('🔴 MongoDB connection pool closed');
     });
 
     this.client.on('connectionCreated', () => {
-      Console.bright('🟢 MongoDB connection created');
+      logger.info('🟢 MongoDB connection created');
     });
   }
 
@@ -93,10 +96,10 @@ export class MongoConnectionManager {
 
   async close(): Promise<void> {
     if (this.client) {
-      Console.bright('🔌 Closing MongoDB connection...');
+      logger.info('🔌 Closing MongoDB connection...');
       await this.client.close();
       this.client = null;
-      Console.green('✅ MongoDB connection closed');
+      logger.info('✅ MongoDB connection closed');
     }
   }
 
