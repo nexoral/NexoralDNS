@@ -96,6 +96,37 @@ try {
 }
 ```
 
+## SOLID & Dependency Injection (MANDATORY)
+
+All class-based code in `server/` and `Web/` must follow SOLID and use the DI container. No `getInstance()` singletons, no `new XService()` in app code.
+
+### SOLID
+- **S**RP: one responsibility per class; split god-classes into focused collaborators.
+- **O**CP: extend via new collaborators, don't rewrite.
+- **L**SP: interface implementations must be substitutable.
+- **I**SP: small, focused interfaces.
+- **D**IP: depend on the DI container / abstractions, not concrete infra.
+
+### DI Rules
+```typescript
+// ✅ Register as singleton in appContainer.ts
+container.register('UsersService', () => new UsersService(), true);
+
+// ✅ Resolve singleton, pass reply + data to the method
+const service = container.get<UsersService>('UsersService');
+await service.createUser(data, reply);
+
+// ❌ Never store reply on the instance / instantiate directly
+const service = new UsersService(reply);
+```
+- Services are **stateless singletons**: empty `constructor() { }`, no per-request fields.
+- Pass request data (reply, params) as **method arguments**.
+- Fetch DB/Redis/RabbitMQ **fresh on each call** via the container (reconnect-safe); never cache clients in fields.
+- DI keys are strings, unchecked by `tsc` — `container.get('X')` must exactly match `register('X', ...)`.
+- Singletons reject per-call args; request data goes to methods.
+
+**Correctly NOT in DI**: `BuildResponse`, `Bcrypt`, `DNSPacketCodec`, `RequestControllerHelper`, static middleware (`authGuard`, `PermissionGuard`), socket IO handlers.
+
 ## Performance
 
 ### Cache First
@@ -144,6 +175,8 @@ Update when features change:
 ❌ Breaking backward compatibility
 ❌ Skipping documentation
 ❌ Sequential operations when parallel possible
+❌ `getInstance()` singletons or `new XService()` in app code (use DI container)
+❌ Storing `reply`/request state on service instances (pass as method args)
 
 ## Success Criteria
 

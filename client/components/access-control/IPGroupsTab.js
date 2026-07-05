@@ -210,6 +210,24 @@ function IPGroupModal({ group, onClose, onSave }) {
     ipAddresses: group?.ipAddresses || []
   });
   const [newIP, setNewIP] = useState('');
+  const [activeIPs, setActiveIPs] = useState([]);
+  const [loadingIPs, setLoadingIPs] = useState(false);
+
+  // Fetch currently active devices so the user can pick from real IPs
+  useEffect(() => {
+    const fetchActiveIPs = async () => {
+      setLoadingIPs(true);
+      try {
+        const response = await api.getDeviceList();
+        setActiveIPs(response.data?.data?.List_of_Connected_Devices_Info || []);
+      } catch (err) {
+        console.error('Error fetching active devices:', err);
+      } finally {
+        setLoadingIPs(false);
+      }
+    };
+    fetchActiveIPs();
+  }, []);
 
   const addIP = () => {
     if (newIP && !formData.ipAddresses.includes(newIP)) {
@@ -263,23 +281,33 @@ function IPGroupModal({ group, onClose, onSave }) {
 
           <div>
             <label className="block text-sm font-medium text-[var(--text-2)] mb-2">
-              IP Addresses / CIDR Ranges
+              IP Addresses
             </label>
             <p className="text-xs text-[var(--text-5)] mb-2">
-              You can add single IPs (192.168.1.100) or CIDR ranges (192.168.1.0/24)
+              Select from currently active devices on your network
             </p>
             <div className="flex space-x-2 mb-3">
-              <input
-                type="text"
-                placeholder="e.g., 192.168.1.100 or 192.168.1.0/24"
+              <select
                 value={newIP}
                 onChange={(e) => setNewIP(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addIP()}
                 className="flex-1 px-4 py-2 border border-[var(--border-4)] rounded-lg focus:ring-2 focus:ring-[var(--blue)]/50 focus:border-transparent"
-              />
+                disabled={loadingIPs}
+              >
+                <option value="">
+                  {loadingIPs ? 'Loading active devices...' : 'Select an active IP address'}
+                </option>
+                {activeIPs
+                  .filter((device) => !formData.ipAddresses.includes(device.ip))
+                  .map((device) => (
+                    <option key={device.ip} value={device.ip}>
+                      {device.ip}{device.hostname ? ` — ${device.hostname}` : ''}{device.status ? ` (${device.status})` : ''}
+                    </option>
+                  ))}
+              </select>
               <button
                 onClick={addIP}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={!newIP}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add
               </button>
