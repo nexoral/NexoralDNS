@@ -13,7 +13,6 @@ export default class UpdateResolveConfigFileService {
 
   public async updateConfig(): Promise<void> {
     console.log(`🔧 Updating ${this.configPath} with nameserver ${this.IP}...`);
-    let backupCreated = false;
 
     try {
       // Step 1: Read existing resolv.conf
