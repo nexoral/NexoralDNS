@@ -115,14 +115,14 @@ export default class StartRulesService {
       databaseOffline = true;
       serviceStatus = {
         serviceStatus: true,
-        serviceConfig: { DefaultTTL: 10 }
+        serviceConfig: { DefaultTTL: 0 }
       };
     }
 
     // Check Service Status Document is perfect or not
     if (!serviceStatus.serviceConfig || serviceStatus.serviceConfig == null) {
       serviceStatus.serviceConfig = {
-        DefaultTTL: 10
+        DefaultTTL: 0
       };
     }
 
@@ -252,7 +252,7 @@ export default class StartRulesService {
           }
 
           logger.error(`No response received from Global DNS for ${queryName}`);
-          io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
+          io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 0); // TTL=0 prevents client-side caching for instant policy toggle
         }
       } catch (error) {
         // Add to Analytics
