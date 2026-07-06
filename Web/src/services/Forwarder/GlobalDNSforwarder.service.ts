@@ -21,74 +21,82 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
 
 const ioHandler = new InputOutputHandler(null as any);
 
-/** Pre-allocated pool of reusable dgram sockets to avoid create/destroy per query.
- *  Uses DNS transaction ID (TXID) from the response to dispatch to the correct
- *  pending query, avoiding listener collision when multiple queries share a socket. */
-class DgramSocketPool {
-  private readonly poolSize: number;
+/**
+ * Pool of shared dgram sockets for upstream forwarding. Each socket multiplexes
+ * many in-flight queries at once, keyed by a generated 16-bit TXID, so a forward
+ * never blocks waiting for a free socket. A generated TXID (not the client's) is
+ * used on the wire so clients sharing a TXID can't clobber each other's pending
+ * entry; the caller restores the original TXID on the response before replying.
+ */
+class MultiplexedSocketPool {
+  private readonly size: number;
   private sockets: dgram.Socket[] = [];
-  private inUse: boolean[] = [];
-  private waitQueue: Array<(socket: dgram.Socket, index: number) => void> = [];
-  /** Per-socket map of TXID → response resolver */
-  private pending: Map<number, Map<number, (msg: Buffer) => void>> = new Map();
+  /** Per-socket generated-TXID → resolver (null = reserved, no attempt in flight). */
+  private pending: Array<Map<number, ((msg: Buffer) => void) | null>> = [];
+  private nextTxid: number[] = [];
+  private rr = 0;
 
-  constructor(poolSize: number) {
-    this.poolSize = poolSize;
+  constructor(size: number) {
+    this.size = Math.max(1, size);
   }
 
   async initialize(): Promise<void> {
-    for (let i = 0; i < this.poolSize; i++) {
+    for (let i = 0; i < this.size; i++) {
       const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-      socket.on('error', () => {});
+      socket.on('error', () => { /* per-query timeouts surface failures */ });
       socket.unref();
-      this.sockets.push(socket);
-      this.inUse.push(false);
-      this.pending.set(i, new Map());
-      // One permanent listener per socket — dispatches by DNS TXID
+      const map = new Map<number, ((msg: Buffer) => void) | null>();
       socket.on('message', (respMsg: Buffer) => {
+        if (respMsg.length < 2) return;
         const txid = respMsg.readUInt16BE(0);
-        const perSocket = this.pending.get(i);
-        if (!perSocket) return;
-        const resolver = perSocket.get(txid);
+        const resolver = map.get(txid);
         if (resolver) {
-          perSocket.delete(txid);
+          map.delete(txid);
           resolver(respMsg);
         }
       });
+      this.sockets.push(socket);
+      this.pending.push(map);
+      this.nextTxid.push(0);
     }
   }
 
-  /** Register a resolver for a given socket + TXID */
-  registerPending(socketIndex: number, txid: number, resolver: (msg: Buffer) => void): void {
-    const perSocket = this.pending.get(socketIndex);
-    if (perSocket) perSocket.set(txid, resolver);
+  pick(): number {
+    const i = this.rr;
+    this.rr = (this.rr + 1) % this.size;
+    return i;
   }
 
-  /** Unregister (on timeout or error) */
-  unregisterPending(socketIndex: number, txid: number): void {
-    const perSocket = this.pending.get(socketIndex);
-    if (perSocket) perSocket.delete(txid);
+  /** Reserve a free TXID on socket `i`, or -1 if all 65 536 are in flight. */
+  reserve(i: number): number {
+    const map = this.pending[i];
+    if (map.size >= 0x10000) return -1;
+    let txid = this.nextTxid[i];
+    while (map.has(txid)) txid = (txid + 1) & 0xFFFF;
+    map.set(txid, null);
+    this.nextTxid[i] = (txid + 1) & 0xFFFF;
+    return txid;
   }
 
-  async acquire(): Promise<{ socket: dgram.Socket; index: number }> {
-    for (let i = 0; i < this.poolSize; i++) {
-      if (!this.inUse[i]) {
-        this.inUse[i] = true;
-        return { socket: this.sockets[i], index: i };
-      }
-    }
-    return new Promise((resolve) => {
-      this.waitQueue.push((socket, index) => resolve({ socket, index }));
-    });
+  setResolver(i: number, txid: number, resolver: (msg: Buffer) => void): void {
+    if (this.pending[i].has(txid)) this.pending[i].set(txid, resolver);
   }
 
-  release(index: number): void {
-    if (this.waitQueue.length > 0) {
-      const next = this.waitQueue.shift()!;
-      next(this.sockets[index], index);
-    } else {
-      this.inUse[index] = false;
-    }
+  /** Drop the resolver but keep the reservation across retry attempts. */
+  clearResolver(i: number, txid: number): void {
+    if (this.pending[i].has(txid)) this.pending[i].set(txid, null);
+  }
+
+  release(i: number, txid: number): void {
+    this.pending[i].delete(txid);
+  }
+
+  socket(i: number): dgram.Socket {
+    return this.sockets[i];
+  }
+
+  totalPending(): number {
+    return this.pending.reduce((sum, m) => sum + m.size, 0);
   }
 
   async close(): Promise<void> {
@@ -96,8 +104,8 @@ class DgramSocketPool {
       try { socket.close(); } catch { /* empty */ }
     }
     this.sockets = [];
-    this.inUse = [];
-    this.pending.clear();
+    this.pending = [];
+    this.nextTxid = [];
   }
 }
 
@@ -212,18 +220,17 @@ class CircuitBreaker {
  * with a pre-allocated socket pool to eliminate create/destroy overhead per query.
  */
 export class GlobalDNSforwarderService {
-  private readonly MAX_CONCURRENT_FORWARDS = 256;
-  private readonly POOL_SIZE = 256;
-  private activeForwardCount = 0;
-  private forwardWaitQueue: Array<() => void> = [];
+  // Shared sockets; each multiplexes up to 65 536 queries via generated TXIDs, so
+  // this spreads kernel send/recv-buffer load, not concurrency.
+  private readonly SOCKET_POOL_SIZE = 64;
   private totalForwardsAttempted = 0;
   private totalForwardsSucceeded = 0;
-  private socketPool: DgramSocketPool;
+  private socketPool: MultiplexedSocketPool;
   /** Per-upstream circuit breakers keyed by IP */
   private breakers: Map<string, CircuitBreaker>;
 
   constructor() {
-    this.socketPool = new DgramSocketPool(this.POOL_SIZE);
+    this.socketPool = new MultiplexedSocketPool(this.SOCKET_POOL_SIZE);
     this.socketPool.initialize().catch((err) => {
       logger.error('Failed to initialize dgram socket pool:', err as any);
     });
@@ -232,26 +239,10 @@ export class GlobalDNSforwarderService {
     );
   }
 
-  private async acquireForwardSlot(): Promise<void> {
-    if (this.activeForwardCount < this.MAX_CONCURRENT_FORWARDS) {
-      this.activeForwardCount++;
-      return Promise.resolve();
-    }
-    return new Promise((resolve) => this.forwardWaitQueue.push(resolve));
-  }
-
-  private releaseForwardSlot(): void {
-    const next = this.forwardWaitQueue.shift();
-    if (next) {
-      next();
-    } else {
-      this.activeForwardCount--;
-    }
-  }
-
   /**
-   * Forwards one query using a pooled socket, trying each upstream server in turn.
-   * Uses DNS TXID dispatch to avoid listener collision on shared sockets.
+   * Forwards one query on a shared, multiplexed socket, trying each upstream in
+   * turn (circuit-breaker aware). A generated TXID dispatches the reply; the
+   * client's original TXID is restored on the response before returning.
    */
   private async resolveOnPooledSocket(
     msg: Buffer,
@@ -262,10 +253,18 @@ export class GlobalDNSforwarderService {
     start: number,
     isFailSafe: boolean
   ): Promise<Buffer | null> {
-    await this.acquireForwardSlot();
-    const { socket, index } = await this.socketPool.acquire();
+    const index = this.socketPool.pick();
+    const txid = this.socketPool.reserve(index);
+    if (txid < 0) {
+      logger.error(`Forward socket saturated for ${queryName}`);
+      return null;
+    }
+    const socket = this.socketPool.socket(index);
+    const originalTxid = msg.readUInt16BE(0);
+    // Copy so the client's buffer is untouched, then stamp our generated TXID.
+    const outMsg = Buffer.from(msg);
+    outMsg.writeUInt16BE(txid, 0);
     const availableDNS = shuffleArray([...GlobalDNS]);
-    const txid = msg.readUInt16BE(0);
 
     try {
       const tryNext = async (idx: number): Promise<Buffer | null> => {
@@ -285,7 +284,7 @@ export class GlobalDNSforwarderService {
         const response = await new Promise<Buffer | null>((resolve) => {
           const cleanup = () => {
             clearTimeout(timeout);
-            this.socketPool.unregisterPending(index, txid);
+            this.socketPool.clearResolver(index, txid);
           };
           const timeout = setTimeout(() => {
             cleanup();
@@ -293,13 +292,13 @@ export class GlobalDNSforwarderService {
             resolve(null);
           }, 2000);
 
-          this.socketPool.registerPending(index, txid, (respMsg: Buffer) => {
+          this.socketPool.setResolver(index, txid, (respMsg: Buffer) => {
             cleanup();
             resolve(respMsg);
           });
 
           try {
-            socket.send(msg, 53, dnsIP.ip);
+            socket.send(outMsg, 53, dnsIP.ip);
             if (process.env.DEBUG_DNS) {
               logger.info(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
             }
@@ -312,6 +311,9 @@ export class GlobalDNSforwarderService {
 
         if (!response) return tryNext(idx + 1);
         breaker.recordSuccess();
+
+        // Restore the client's original TXID so the reply matches their query.
+        response.writeUInt16BE(originalTxid, 0);
 
         const duration = performance.now() - start;
         // Fire-and-forget analytics — never block the response path
@@ -336,8 +338,7 @@ export class GlobalDNSforwarderService {
 
       return await tryNext(0);
     } finally {
-      this.socketPool.release(index);
-      this.releaseForwardSlot();
+      this.socketPool.release(index, txid);
     }
   }
 
@@ -354,12 +355,13 @@ export class GlobalDNSforwarderService {
     return this.resolveOnPooledSocket(msg, queryName, queryType, customTTL, rinfo, start, isFailSafe);
   }
 
+  /** No blocking queue in the multiplexed model — retained for API compatibility. */
   getQueueDepth(): number {
-    return this.forwardWaitQueue.length;
+    return 0;
   }
 
   getActiveForwards(): number {
-    return this.activeForwardCount;
+    return this.socketPool.totalPending();
   }
 
   getTotalForwardsAttempted(): number {
@@ -370,8 +372,9 @@ export class GlobalDNSforwarderService {
     return this.totalForwardsSucceeded;
   }
 
+  /** Natural ceiling: 65 536 TXIDs per socket × pool size (no artificial cap). */
   getConcurrencyLimit(): number {
-    return this.MAX_CONCURRENT_FORWARDS;
+    return this.SOCKET_POOL_SIZE * 0x10000;
   }
 
   getStatus(): {
@@ -387,9 +390,9 @@ export class GlobalDNSforwarderService {
     const attempted = this.totalForwardsAttempted;
     const states = ['CLOSED', 'OPEN', 'HALF_OPEN'];
     return {
-      activeForwards: this.activeForwardCount,
-      queueDepth: this.forwardWaitQueue.length,
-      concurrencyLimit: this.MAX_CONCURRENT_FORWARDS,
+      activeForwards: this.socketPool.totalPending(),
+      queueDepth: 0,
+      concurrencyLimit: this.SOCKET_POOL_SIZE * 0x10000,
       totalAttempted: attempted,
       totalSucceeded: succeeded,
       successRate: attempted > 0 ? (succeeded / attempted) * 100 : 0,

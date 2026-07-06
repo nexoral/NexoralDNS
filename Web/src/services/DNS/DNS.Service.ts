@@ -9,6 +9,7 @@ import IP_SCAN from "../../utilities/AutoIP_SCAN.utls";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../../utilities/IO.utls";
+import { createDnsListenerSocket } from "../../utilities/dnsSocket.utls";
 import container from "../../container/appContainer";
 import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
 import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
@@ -26,7 +27,7 @@ export default class DNS {
   private startRulesService: StartRulesService;
 
   constructor() {
-    this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket for IPv4
+    this.server = createDnsListenerSocket();
     this.IO = new InputOutputHandler(this.server);
     this.startRulesService = container.get<StartRulesService>('StartRulesService');
   }
