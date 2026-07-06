@@ -3,10 +3,11 @@ import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
+import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
+import { RedisCacheService } from "../../Redis/Redis.cache";
 import { validatePasswordStrength } from "../../helper/passwordPolicy.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 export interface CreateUserData {
   username: string;
@@ -24,45 +25,42 @@ export interface UpdateUserData {
 const PUBLIC_USER_PROJECTION = { password: 0 } as const;
 
 export default class UsersService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
-  public async createUser(userData: CreateUserData, createdBy: string): Promise<void> {
+  public async createUser(userData: CreateUserData, createdBy: string, reply: FastifyReply): Promise<void> {
     const username = userData.username?.trim();
     if (!username) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid username");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid username");
       return ErrorResponse.send({ error: "Username is required" });
     }
 
     if (!ObjectId.isValid(userData.roleId)) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid role");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid role");
       return ErrorResponse.send({ error: "The provided role ID is not valid" });
     }
 
     const strength = validatePasswordStrength(userData.password);
     if (!strength.valid) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Weak password");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Weak password");
       return ErrorResponse.send({ error: strength.message });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
     if (!usersCol || !rolesCol) {
       throw new Error("Database connection error.");
     }
 
     const existingUser = await usersCol.findOne({ username });
     if (existingUser) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.CONFLICT, "User already exists");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.CONFLICT, "User already exists");
       return ErrorResponse.send({ error: `A user with the username "${username}" already exists` });
     }
 
     const role = await rolesCol.findOne({ _id: new ObjectId(userData.roleId) });
     if (!role) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid role");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid role");
       return ErrorResponse.send({ error: `Role with ID "${userData.roleId}" not found` });
     }
 
@@ -81,7 +79,7 @@ export default class UsersService {
 
     const result = await usersCol.insertOne(newUser);
 
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.CREATED, "User created successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.CREATED, "User created successfully");
     return Responser.send({
       userId: result.insertedId,
       user: { ...newUser, password: undefined },
@@ -89,8 +87,8 @@ export default class UsersService {
     });
   }
 
-  public async getUsers(skip: number = 0, limit: number = 50): Promise<void> {
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+  public async getUsers(skip: number = 0, limit: number = 50, reply: FastifyReply): Promise<void> {
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     if (!usersCol) {
       throw new Error("Database connection error.");
     }
@@ -112,17 +110,17 @@ export default class UsersService {
       { $unwind: { path: "$role", preserveNullAndEmptyArrays: true } },
     ]).toArray();
 
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Users fetched successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Users fetched successfully");
     return Responser.send({ users, total, skip, limit });
   }
 
-  public async getUserById(userId: string): Promise<void> {
+  public async getUserById(userId: string, reply: FastifyReply): Promise<void> {
     if (!ObjectId.isValid(userId)) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid user ID");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid user ID");
       return ErrorResponse.send({ error: "The provided user ID is not valid" });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     if (!usersCol) {
       throw new Error("Database connection error.");
     }
@@ -142,35 +140,35 @@ export default class UsersService {
     ]).toArray();
 
     if (users.length === 0) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "User not found");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "User not found");
       return ErrorResponse.send({ error: `User with ID "${userId}" not found` });
     }
 
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "User fetched successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "User fetched successfully");
     return Responser.send({ user: users[0] });
   }
 
-  public async updateUser(userId: string, updateData: UpdateUserData, requestingUserId: string): Promise<void> {
+  public async updateUser(userId: string, updateData: UpdateUserData, requestingUserId: string, reply: FastifyReply): Promise<void> {
     if (!ObjectId.isValid(userId)) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid user ID");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid user ID");
       return ErrorResponse.send({ error: "The provided user ID is not valid" });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const rolesCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ROLES);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const rolesCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ROLES);
     if (!usersCol || !rolesCol) {
       throw new Error("Database connection error.");
     }
 
     const existingUser = await usersCol.findOne({ _id: new ObjectId(userId) });
     if (!existingUser) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "User not found");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "User not found");
       return ErrorResponse.send({ error: `User with ID "${userId}" not found` });
     }
 
     const isSelf = userId === requestingUserId;
     if (isSelf && (updateData.roleId !== undefined || updateData.isActive === false)) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.FORBIDDEN, "Cannot modify your own access");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.FORBIDDEN, "Cannot modify your own access");
       return ErrorResponse.send({ error: "You cannot change your own role or deactivate your own account" });
     }
 
@@ -180,13 +178,13 @@ export default class UsersService {
     if (updateData.username !== undefined) {
       const username = updateData.username.trim();
       if (!username) {
-        const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid username");
+        const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid username");
         return ErrorResponse.send({ error: "Username cannot be empty" });
       }
       if (username !== existingUser.username) {
         const duplicateUser = await usersCol.findOne({ username });
         if (duplicateUser) {
-          const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.CONFLICT, "Username already exists");
+          const ErrorResponse = new BuildResponse(reply, StatusCodes.CONFLICT, "Username already exists");
           return ErrorResponse.send({ error: `A user with the username "${username}" already exists` });
         }
       }
@@ -195,12 +193,12 @@ export default class UsersService {
 
     if (updateData.roleId !== undefined) {
       if (!ObjectId.isValid(updateData.roleId)) {
-        const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid role");
+        const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid role");
         return ErrorResponse.send({ error: "The provided role ID is not valid" });
       }
       const role = await rolesCol.findOne({ _id: new ObjectId(updateData.roleId) });
       if (!role) {
-        const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid role");
+        const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid role");
         return ErrorResponse.send({ error: `Role with ID "${updateData.roleId}" not found` });
       }
       updatedFields.roleId = role._id;
@@ -212,31 +210,31 @@ export default class UsersService {
 
     await usersCol.updateOne({ _id: new ObjectId(userId) }, { $set: updatedFields });
 
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "User updated successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "User updated successfully");
     return Responser.send({ userId, updated: updatedFields });
   }
 
-  public async resetPassword(userId: string, newPassword: string): Promise<void> {
+  public async resetPassword(userId: string, newPassword: string, reply: FastifyReply): Promise<void> {
     if (!ObjectId.isValid(userId)) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid user ID");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid user ID");
       return ErrorResponse.send({ error: "The provided user ID is not valid" });
     }
 
     const strength = validatePasswordStrength(newPassword);
     if (!strength.valid) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Weak password");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Weak password");
       return ErrorResponse.send({ error: strength.message });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
     if (!usersCol || !sessionCol) {
       throw new Error("Database connection error.");
     }
 
     const existingUser = await usersCol.findOne({ _id: new ObjectId(userId) });
     if (!existingUser) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "User not found");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "User not found");
       return ErrorResponse.send({ error: `User with ID "${userId}" not found` });
     }
 
@@ -252,49 +250,49 @@ export default class UsersService {
     // just without touching the requesting admin's own cookies
     const session = await sessionCol.findOne({ userId: new ObjectId(userId) });
     if (session?.accessToken) {
-      await RedisCache.delete(`session:${session.accessToken}`);
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${session.accessToken}`);
     }
     await sessionCol.updateOne(
       { userId: new ObjectId(userId) },
       { $set: { isLoggedIn: false, accessToken: null, refreshToken: null, updatedAt: new Date() } }
     );
 
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Password reset successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Password reset successfully");
     return Responser.send({ userId, message: `Temporary password set for "${existingUser.username}"` });
   }
 
-  public async deleteUser(userId: string, requestingUserId: string): Promise<void> {
+  public async deleteUser(userId: string, requestingUserId: string, reply: FastifyReply): Promise<void> {
     if (!ObjectId.isValid(userId)) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.BAD_REQUEST, "Invalid user ID");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Invalid user ID");
       return ErrorResponse.send({ error: "The provided user ID is not valid" });
     }
 
     if (userId === requestingUserId) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.FORBIDDEN, "Cannot delete your own account");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.FORBIDDEN, "Cannot delete your own account");
       return ErrorResponse.send({ error: "You cannot delete your own account" });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
     if (!usersCol || !sessionCol) {
       throw new Error("Database connection error.");
     }
 
     const existingUser = await usersCol.findOne({ _id: new ObjectId(userId) });
     if (!existingUser) {
-      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "User not found");
+      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "User not found");
       return ErrorResponse.send({ error: `User with ID "${userId}" not found` });
     }
 
     const session = await sessionCol.findOne({ userId: new ObjectId(userId) });
     if (session?.accessToken) {
-      await RedisCache.delete(`session:${session.accessToken}`);
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${session.accessToken}`);
     }
 
     await usersCol.deleteOne({ _id: new ObjectId(userId) });
     await sessionCol.deleteOne({ userId: new ObjectId(userId) });
 
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "User deleted successfully");
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "User deleted successfully");
     return Responser.send({ userId, message: `User "${existingUser.username}" has been deleted successfully` });
   }
 }

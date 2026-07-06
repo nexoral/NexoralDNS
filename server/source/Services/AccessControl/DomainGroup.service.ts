@@ -1,9 +1,10 @@
 import logger from '../../utilities/logger';
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
 
@@ -21,24 +22,21 @@ export interface DomainGroupData {
 }
 
 export default class DomainGroupService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   /**
    * Create a new domain group
    * @param {DomainGroupData} groupData - The domain group data
    * @returns {Promise<void>}
    */
-  public async createDomainGroup(groupData: DomainGroupData): Promise<void> {
+  public async createDomainGroup(groupData: DomainGroupData, reply: FastifyReply): Promise<void> {
     logger.info("Creating new domain group:", groupData.name);
 
     // Validate group name
     if (!groupData.name || groupData.name.trim() === "") {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group name"
       );
@@ -50,7 +48,7 @@ export default class DomainGroupService {
     // Validate domains
     if (!groupData.domains || groupData.domains.length === 0) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Domains are required"
       );
@@ -59,7 +57,7 @@ export default class DomainGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -68,7 +66,7 @@ export default class DomainGroupService {
     const existingGroup = await dbClient.findOne({ name: groupData.name });
     if (existingGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.CONFLICT,
         "Group already exists"
       );
@@ -95,7 +93,7 @@ export default class DomainGroupService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.CREATED,
       "Domain group created successfully"
     );
@@ -113,10 +111,10 @@ export default class DomainGroupService {
    * @param {number} limit - Maximum number of documents to return
    * @returns {Promise<void>}
    */
-  public async getDomainGroups(skip: number = 0, limit: number = 50): Promise<void> {
+  public async getDomainGroups(skip: number = 0, limit: number = 50, reply: FastifyReply): Promise<void> {
     logger.info(`Fetching domain groups with skip: ${skip}, limit: ${limit}`);
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -130,7 +128,7 @@ export default class DomainGroupService {
       .toArray();
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Domain groups fetched successfully"
     );
@@ -149,12 +147,12 @@ export default class DomainGroupService {
    * @param {string} groupId - The group ID
    * @returns {Promise<void>}
    */
-  public async getDomainGroupById(groupId: string): Promise<void> {
+  public async getDomainGroupById(groupId: string, reply: FastifyReply): Promise<void> {
     logger.info(`Fetching domain group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group ID"
       );
@@ -163,7 +161,7 @@ export default class DomainGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -172,7 +170,7 @@ export default class DomainGroupService {
 
     if (!group) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Group not found"
       );
@@ -182,7 +180,7 @@ export default class DomainGroupService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Domain group fetched successfully"
     );
@@ -199,12 +197,12 @@ export default class DomainGroupService {
    * @param {Partial<DomainGroupData>} updateData - The data to update
    * @returns {Promise<void>}
    */
-  public async updateDomainGroup(groupId: string, updateData: Partial<DomainGroupData>): Promise<void> {
+  public async updateDomainGroup(groupId: string, updateData: Partial<DomainGroupData>, reply: FastifyReply): Promise<void> {
     logger.info(`Updating domain group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group ID"
       );
@@ -213,7 +211,7 @@ export default class DomainGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -221,7 +219,7 @@ export default class DomainGroupService {
     const existingGroup = await dbClient.findOne({ _id: new ObjectId(groupId) });
     if (!existingGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Group not found"
       );
@@ -235,7 +233,7 @@ export default class DomainGroupService {
       const duplicateGroup = await dbClient.findOne({ name: updateData.name });
       if (duplicateGroup) {
         const ErrorResponse = new BuildResponse(
-          this.fastifyReply,
+          reply,
           StatusCodes.CONFLICT,
           "Group name already exists"
         );
@@ -267,7 +265,7 @@ export default class DomainGroupService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Domain group updated successfully"
     );
@@ -283,12 +281,12 @@ export default class DomainGroupService {
    * @param {string} groupId - The group ID
    * @returns {Promise<void>}
    */
-  public async deleteDomainGroup(groupId: string): Promise<void> {
+  public async deleteDomainGroup(groupId: string, reply: FastifyReply): Promise<void> {
     logger.info(`Deleting domain group with ID: ${groupId}`);
 
     if (!ObjectId.isValid(groupId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid group ID"
       );
@@ -297,7 +295,7 @@ export default class DomainGroupService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -305,7 +303,7 @@ export default class DomainGroupService {
     const existingGroup = await dbClient.findOne({ _id: new ObjectId(groupId) });
     if (!existingGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Group not found"
       );
@@ -315,7 +313,7 @@ export default class DomainGroupService {
     }
 
     // Check if this domain group is being used in any access control policies
-    const policyClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const policyClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!policyClient) {
       throw new Error("Database connection error.");
     }
@@ -331,7 +329,7 @@ export default class DomainGroupService {
     if (policiesUsingGroup.length > 0) {
       const policyNames = policiesUsingGroup.map(p => p.policyName).join(", ");
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.CONFLICT,
         "Domain group is in use"
       );
@@ -353,7 +351,7 @@ export default class DomainGroupService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Domain group deleted successfully"
     );

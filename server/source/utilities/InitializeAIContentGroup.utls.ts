@@ -1,3 +1,4 @@
+import logger from '../utilities/logger';
 /**
  * @fileoverview Initialize AI Content Domain Group on Server Startup
  * @module utilities/InitializeAIContentGroup
@@ -9,9 +10,9 @@
  * @version 3.6.45-stable
  */
 
-import logger from '../utilities/logger';
+import container from '../container/appContainer';
+import { MongoCollectionManager } from '../Database/MongoCollectionManager';
 import { ObjectId } from 'mongodb';
-import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import {
   AI_CONTENT_DOMAINS,
@@ -33,7 +34,7 @@ let cachedAIContentGroupId: ObjectId | null = null;
  */
 export async function initializeAIContentDomainGroup(): Promise<ObjectId | null> {
   try {
-    const domainGroupsCollection = getCollectionClient(
+    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 
@@ -122,7 +123,7 @@ export async function getAIContentDomainGroupId(): Promise<ObjectId | null> {
   }
 
   try {
-    const domainGroupsCollection = getCollectionClient(
+    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 

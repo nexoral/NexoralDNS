@@ -3,12 +3,13 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 
 // service import
-import { LogsService } from "../../Services/Logs/Logs.service";
+import LogsService from "../../Services/Logs/Logs.service";
 
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
 import { buildLogsQuery, LogsQueryFilters } from "../../helper/buildLogsQuery.helper";
+import container from '../../container/appContainer';
 
 
 export default class LogsController {
@@ -23,7 +24,7 @@ export default class LogsController {
     }
 
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Logs fetched successfully");
-    const LogsServices = new LogsService(reply);
+    const LogsServices = container.get<LogsService>('LogsService');
 
     // Parse Query params
     const requestQuery = request.query as requestQueryParams;
@@ -40,7 +41,7 @@ export default class LogsController {
     const query = buildLogsQuery(filters);
 
     try {
-      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query);
+      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query, reply);
     } catch (error) {
       logger.info(error)
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);

@@ -91,11 +91,15 @@ export default class ResponseSender {
    * responseBuilder.send(null, StatusCodes.CREATED);
    */
   public send(data: any, statusCode?: number, message?: string): void {
-    this.fastifyResponse.status(this.statusCode || statusCode || StatusCodes.OK).send(
+    // Single, consistent precedence for BOTH the HTTP header status and the body
+    // statusCode, so error responses never go out as HTTP 200. Explicit arg wins,
+    // then the instance value, then OK. `??` (not `||`) so 0/empty aren't dropped.
+    const resolvedStatus = statusCode ?? this.statusCode ?? StatusCodes.OK;
+    this.fastifyResponse.status(resolvedStatus).send(
       this.buildResponse(
-        statusCode || this.statusCode || StatusCodes.OK,
-        message || this.message || "Success",
-        this.data || data,
+        resolvedStatus,
+        message ?? this.message ?? "Success",
+        data ?? this.data,
       ),
     );
   }

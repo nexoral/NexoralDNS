@@ -1,23 +1,22 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import Bcrypt from "../../helper/bcrypt.helper";
 import { generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export default class LoginService {
-  private readonly fastifyReply: FastifyReply;
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
-  public async login(username: string, password: string): Promise<void> {
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Login successful");
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
-    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+  public async login(username: string, password: string, reply: FastifyReply): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Login successful");
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
 
     if (!usersCol || !sessionCol) {
       return Responser.send("Database connection error", StatusCodes.INTERNAL_SERVER_ERROR, "Database Error");
@@ -89,6 +88,11 @@ export default class LoginService {
       return Responser.send("Failed to generate tokens", StatusCodes.INTERNAL_SERVER_ERROR, "Token Generation Failed");
     }
 
+    // Capture the previous session token (if any) so its cached copy can be
+    // evicted below — the Mongo upsert replaces the doc but the Redis
+    // session:<oldToken> entry would otherwise stay valid until its TTL.
+    const previousSession = await sessionCol.findOne({ userId: new ObjectId(String(user._id)) });
+
     // One document per user — upsert replaces the previous session on re-login,
     // invalidating the old tokens immediately
     await sessionCol.updateOne(
@@ -106,18 +110,24 @@ export default class LoginService {
       { upsert: true }
     );
 
+    // Evict the old access token's Redis session cache so it can't be reused.
+    if (previousSession?.accessToken && previousSession.accessToken !== accessToken) {
+      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${previousSession.accessToken}`);
+    }
+
     // Set httpOnly cookies
-    const reply = this.fastifyReply as unknown as {
+    (reply as unknown as {
       setCookie(name: string, value: string, options: Record<string, unknown>): void;
-    };
-    reply.setCookie('access_token', accessToken, {
+    }).setCookie('access_token', accessToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 30 * 60, // 30 minutes
     });
-    reply.setCookie('refresh_token', refreshToken, {
+    (reply as unknown as {
+      setCookie(name: string, value: string, options: Record<string, unknown>): void;
+    }).setCookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',

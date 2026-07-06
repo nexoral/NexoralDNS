@@ -1,9 +1,11 @@
-import logger from '../../utilities/logger';
 import net from "node:net";
 import dgram from "node:dgram";
+import logger from "../../utilities/logger";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
-import MongoConnector from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
+import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 import getLocalIP from "../../utilities/GetWLANIP.utls";
 
 /**
@@ -22,7 +24,7 @@ export default class DNS_TCP {
 
   constructor() {
     this.server = net.createServer({ allowHalfOpen: false });
-    this.rulesService = new StartRulesService();
+    this.rulesService = container.get<StartRulesService>('StartRulesService');
   }
 
   /**
@@ -36,8 +38,14 @@ export default class DNS_TCP {
       );
     });
 
-    MongoConnector().catch((error) => {
-      logger.error("DNS_TCP: Failed to connect to MongoDB:", error);
+    // Initialize MongoDB via DI container
+    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
+    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
+    Promise.all([
+      mongoConnManager.connect(),
+      mongoCollManager.initialize(),
+    ]).catch((error) => {
+      logger.error("DNS_TCP: Failed to connect to MongoDB:", error as any);
     });
 
     // Bind to the same LAN interface as the UDP service to avoid conflicting

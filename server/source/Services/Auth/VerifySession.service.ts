@@ -1,9 +1,10 @@
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 export interface SessionUserPayload {
   _id: string;
@@ -13,11 +14,8 @@ export interface SessionUserPayload {
 }
 
 export default class VerifySessionService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   /**
    * Re-populates role name, permission objects, and profile fields (createdAt,
@@ -26,8 +24,8 @@ export default class VerifySessionService {
    * `{ user: {id, username, passwordUpdatedAt, createdAt, isActive}, role: {id, name, permissions} }`)
    * stays correctly hydrated on every dashboard page load, not just a fresh login.
    */
-  public async verify(userPayload: SessionUserPayload): Promise<void> {
-    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Session valid");
+  public async verify(userPayload: SessionUserPayload, reply: FastifyReply): Promise<void> {
+    const Responser = new BuildResponse(reply, StatusCodes.OK, "Session valid");
 
     if (!userPayload?._id) {
       return Responser.send({
@@ -36,7 +34,7 @@ export default class VerifySessionService {
       });
     }
 
-    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
+    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
     if (!usersCol) {
       throw new Error("Database connection error.");
     }

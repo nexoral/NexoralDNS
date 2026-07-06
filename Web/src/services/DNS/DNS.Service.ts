@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import logger from '../../utilities/logger';
 import dgram from "node:dgram";
+import logger from "../../utilities/logger"
 import StartRulesService from "../Start/Rules.service";
 
 // Utility to get local IP address
@@ -9,7 +9,10 @@ import IP_SCAN from "../../utilities/AutoIP_SCAN.utls";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../../utilities/IO.utls";
-import MongoConnector from "../../Database/mongodb.db";
+import { createDnsListenerSocket } from "../../utilities/dnsSocket.utls";
+import container from "../../container/appContainer";
+import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
+import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 
 
 /**
@@ -24,9 +27,9 @@ export default class DNS {
   private startRulesService: StartRulesService;
 
   constructor() {
-    this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket for IPv4
+    this.server = createDnsListenerSocket();
     this.IO = new InputOutputHandler(this.server);
-    this.startRulesService = new StartRulesService();
+    this.startRulesService = container.get<StartRulesService>('StartRulesService');
   }
 
   /**
@@ -65,8 +68,14 @@ export default class DNS {
       this.tuneSocketBuffers(this.server);
     });
 
-    MongoConnector().catch((error) => {
-      logger.error("Failed to connect to MongoDB:", error);
+    // Initialize MongoDB via DI container
+    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
+    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
+    Promise.all([
+      mongoConnManager.connect(),
+      mongoCollManager.initialize(),
+    ]).catch((error) => {
+      logger.error("Failed to connect to MongoDB:", error as any);
     });
 
     // Run on 5353 (non-root). Use 53 if root/admin
@@ -78,9 +87,8 @@ export default class DNS {
       this.server = newSocket;
       this.IO = new InputOutputHandler(this.server);
 
-      // IMPORTANT: Recreate StartRulesService with new socket and IO handler
-      // This prevents ERR_SOCKET_DGRAM_NOT_RUNNING errors on pending queries
-      this.startRulesService = new StartRulesService();
+      // Get singleton StartRulesService from DI container
+      this.startRulesService = container.get<StartRulesService>('StartRulesService');
 
       // Re-attach event listeners for the new socket
       this.listen();

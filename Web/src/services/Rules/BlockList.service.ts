@@ -1,5 +1,6 @@
 import logger from '../../utilities/logger';
-import RedisCache from "../../Redis/Redis.cache";
+import container from '../../container/appContainer';
+import { RedisCacheService } from '../../Redis/Redis.cache';
 
 /**
  * BlockList Service
@@ -8,24 +9,22 @@ import RedisCache from "../../Redis/Redis.cache";
  * Uses Redis to store and query blocked domains per IP
  */
 export default class BlockList {
-  // In-memory cache for recently checked domains (per instance)
-  private readonly localCache: Map<string, { blocked: boolean; timestamp: number }>;
-  private readonly CACHE_TTL = 5000; // 5 seconds local cache
+  private static instance: BlockList;
 
-  // Shared cache across all instances (class-level)
+  private readonly localCache: Map<string, { blocked: boolean; timestamp: number }>;
+  private readonly CACHE_TTL = 5000;
+
   private static globalCache: Map<string, { blocked: boolean; timestamp: number }> = new Map();
-  private static GLOBAL_CACHE_TTL = 3000; // 3 seconds
+  private static GLOBAL_CACHE_TTL = 3000;
 
   constructor() {
     this.localCache = new Map();
+    BlockList.instance = this;
   }
 
-  /**
-   * Clear all in-memory caches (both instance and global)
-   * This should be called when ACL policies are updated
-   */
   public static clearAllCaches(): void {
     BlockList.globalCache.clear();
+    BlockList.instance?.localCache.clear();
     logger.info('[BlockList] Cleared all in-memory caches');
   }
 
@@ -58,7 +57,7 @@ export default class BlockList {
 
     // Layer 3: Check Redis (ACL policies loaded by cron)
     try {
-      const isBlocked = await RedisCache.isDomainBlocked(clientIP, normalizedDomain);
+      const isBlocked = await container.get<RedisCacheService>('RedisCacheService').isDomainBlocked(clientIP, normalizedDomain);
 
       // Update both caches
       const cacheEntry = {
@@ -80,7 +79,7 @@ export default class BlockList {
       return isBlocked;
 
     } catch (error) {
-      logger.error(`[ACL] Error checking domain ${normalizedDomain} for IP ${clientIP}:`, error);
+      logger.error(`[ACL] Error checking domain ${normalizedDomain} for IP ${clientIP}:`, error as any);
       // Fail open (allow on error) to prevent blocking all traffic
       return false;
     }
@@ -116,13 +115,13 @@ export default class BlockList {
   public async getBlockedDomainsForClient(clientIP: string): Promise<string[]> {
     try {
       const [ipBlocks, globalBlocks] = await Promise.all([
-        RedisCache.getBlockedDomainsForIP(clientIP),
-        RedisCache.getGloballyBlockedDomains()
+        container.get<RedisCacheService>('RedisCacheService').getBlockedDomainsForIP(clientIP),
+        container.get<RedisCacheService>('RedisCacheService').getGloballyBlockedDomains()
       ]);
 
       return [...new Set([...ipBlocks, ...globalBlocks])]; // Remove duplicates
     } catch (error) {
-      logger.error(`[ACL] Error getting blocked domains for IP ${clientIP}:`, error);
+      logger.error(`[ACL] Error getting blocked domains for IP ${clientIP}:`, error as any);
       return [];
     }
   }
@@ -140,10 +139,10 @@ export default class BlockList {
     loadDuration: number;
   } | null> {
     try {
-      const metadata = await RedisCache.getACLMetadata();
+      const metadata = await container.get<RedisCacheService>('RedisCacheService').getACLMetadata();
       return metadata;
     } catch (error) {
-      logger.error('[ACL] Error getting ACL stats:', error);
+      logger.error('[ACL] Error getting ACL stats:', error as any);
       return null;
     }
   }

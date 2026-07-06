@@ -10,6 +10,7 @@ import { StatusCodes } from "outers";
 import DomainListService from "../../Services/Domain/Domain_List.service";
 import DomainRemoveService from "../../Services/Domain/Remove_Domain.service";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
+import container from '../../container/appContainer';
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
@@ -25,14 +26,14 @@ export default class DomainController {
     const requestKey = `${request.user._id}:${DomainName}:${IpAddress}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "Domain created successfully");
-    const domainAddService = new DomainAddService(reply);
+    const domainAddService = container.get<DomainAddService>('AddDomainService');
 
     // Execute with deduplication logic
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await domainAddService.addDomain(DomainName, type, IpAddress, request.user);
+          await domainAddService.addDomain(DomainName, type, IpAddress, request.user, reply);
         } catch (error) {
           Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
           Responser.setMessage("Error adding domain");
@@ -53,9 +54,9 @@ export default class DomainController {
   // List all domains for the authenticated user
   public static async list(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain list fetched successfully");
-    const domainListService = new DomainListService(reply);
+    const domainListService = container.get<DomainListService>('DomainListService');
     try {
-      await domainListService.getAllDomains(request.user);
+      await domainListService.getAllDomains(request.user, reply);
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error fetching domain list");
@@ -67,9 +68,9 @@ export default class DomainController {
   public static async remove(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const { domainName } = request.body as { domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain removed successfully");
-    const domainRemoveService = new DomainRemoveService(reply);
+    const domainRemoveService = container.get<DomainRemoveService>('RemoveDomainService');
     try {
-      await domainRemoveService.removeDomain(domainName, request.user);
+      await domainRemoveService.removeDomain(domainName, request.user, reply);
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error removing domain");

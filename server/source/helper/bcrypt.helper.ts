@@ -3,8 +3,9 @@ import { hash } from "bcryptjs";
 
 export default class Bcrypt {
   private saltRounds: number;
-  constructor() {
-    this.saltRounds = 10;
+
+  constructor(saltRounds: number = 10) {
+    this.saltRounds = saltRounds;
   }
 
   /**
