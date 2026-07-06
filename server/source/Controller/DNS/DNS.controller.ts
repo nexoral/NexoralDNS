@@ -1,4 +1,3 @@
-import logger from '../../utilities/logger';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import { StatusCodes } from "outers";
@@ -10,7 +9,6 @@ import DnsAddService from "../../Services/DNS/Add_DNS.service";
 import DnsListService from "../../Services/DNS/DNS_List.service";
 import DnsUpdateService from "../../Services/DNS/DNS_Update.service";
 import DnsDeleteService from "../../Services/DNS/DNS_Delete.service";
-import container from '../../container/appContainer';
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
@@ -26,14 +24,14 @@ export default class DnsController {
     const requestKey = `${request.user._id}:${DomainName}:${name}:${value}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "DNS record created successfully");
-    const dnsAddService = container.get<DnsAddService>('AddDNSService');
+    const dnsAddService = new DnsAddService(reply);
 
     // Execute with deduplication logic
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await dnsAddService.addDnsRecord(DomainName, name, type, value, ttl, request.user, reply);
+          await dnsAddService.addDnsRecord(DomainName, name, type, value, ttl, request.user);
         } catch (error) {
           Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
           Responser.setMessage("Error adding DNS record");
@@ -41,24 +39,24 @@ export default class DnsController {
         }
       },
       (key) => {
-        logger.info(`[DEDUP] Duplicate DNS record request detected for ${key}, waiting for existing request...`);
+        console.log(`[DEDUP] Duplicate DNS record request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        logger.info(`[CLEANUP] Removed in-flight DNS record request for ${key}`);
+        console.log(`[CLEANUP] Removed in-flight DNS record request for ${key}`);
       }
     );
 
-    logger.info(`[CREATE] Processing DNS record creation request for ${name} in domain ${DomainName} by user ${request.user._id}`);
+    console.log(`[CREATE] Processing DNS record creation request for ${name} in domain ${DomainName} by user ${request.user._id}`);
   }
 
   // Get all DNS records for a domain
   public static async list(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const { domain } = request.params as { domain: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS records retrieved successfully");
-    const dnsListService = container.get<DnsListService>('DNSListService');
+    const dnsListService = new DnsListService(reply);
 
     try {
-      await dnsListService.getAllDns(domain, request.user, reply);
+      await dnsListService.getAllDns(domain, request.user);
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error retrieving DNS records");
@@ -71,9 +69,9 @@ export default class DnsController {
     const { id } = request.params as { id: string };
     const { name, type, value, ttl } = request.body;
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record updated successfully");
-    const dnsUpdateService = container.get<DnsUpdateService>('DNSUpdateService');
+    const dnsUpdateService = new DnsUpdateService(reply);
     try {
-      await dnsUpdateService.updateDnsRecord(id, name, type, value, ttl, request.user, reply);
+      await dnsUpdateService.updateDnsRecord(id, name, type, value, ttl, request.user);
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error updating DNS record");
@@ -83,13 +81,13 @@ export default class DnsController {
 
   // Delete a DNS record by ID
   public static async delete(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
-    logger.info(`[DELETE] Processing DNS record deletion request by user ${request.user._id}`);
+    console.log(`[DELETE] Processing DNS record deletion request by user ${request.user._id}`);
     const { id, domainName } = request.body as { id: string, domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record deleted successfully");
-    const dnsDeleteService = container.get<DnsDeleteService>('DNSDeleteService');
+    const dnsDeleteService = new DnsDeleteService(reply);
 
     try {
-      await dnsDeleteService.deleteDnsRecord(id, domainName, request.user, reply);
+      await dnsDeleteService.deleteDnsRecord(id, domainName, request.user);
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error deleting DNS record");

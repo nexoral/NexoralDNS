@@ -3,10 +3,9 @@ import { StatusCodes } from "outers";
 import fs from "fs";
 import crypto from "crypto";
 import BuildResponse from "../../helper/responseBuilder.helper";
+import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
-import { RedisCacheService } from "../../Redis/Redis.cache";
-import container from "../../container/appContainer";
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
+import RedisCacheService from "../../Redis/Redis.cache";
 import { LogsQueryFilters } from "../../helper/buildLogsQuery.helper";
 
 export type LogExportFormat = "txt";
@@ -36,16 +35,18 @@ const CONTENT_TYPES: Record<LogExportFormat, string> = {
 };
 
 export default class LogsExportService {
+  private readonly fastifyReply: FastifyReply;
 
-  constructor() { }
+  constructor(reply: FastifyReply) {
+    this.fastifyReply = reply;
+  }
 
-  public async requestExport(userId: string, format: LogExportFormat, filters: LogsQueryFilters, reply: FastifyReply): Promise<void> {
-    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
+  public async requestExport(userId: string, format: LogExportFormat, filters: LogsQueryFilters): Promise<void> {
     const redisKey = `log-export:${userId}`;
-    const existingExport = await redisCacheService.get<LogExportMetadata>(redisKey);
+    const existingExport = await RedisCacheService.get<LogExportMetadata>(redisKey);
 
     if (existingExport && existingExport.status !== "failed") {
-      const ErrorResponse = new BuildResponse(reply, StatusCodes.CONFLICT, "Export already in progress");
+      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.CONFLICT, "Export already in progress");
       return ErrorResponse.send({
         error: existingExport.status === "ready"
           ? "You have a ready export waiting — download or discard it before requesting a new one"
@@ -64,47 +65,45 @@ export default class LogsExportService {
     };
 
     // Save metadata in Redis with a 24-hour expiration
-    await redisCacheService.set(redisKey, metadata, 24 * 60 * 60);
+    await RedisCacheService.set(redisKey, metadata, 24 * 60 * 60);
 
-    const published = await container.get<RabbitMQService>('RabbitMQService').publish(QueueKeys.LOGS_EXPORT, JSON.stringify({
+    const published = await RabbitMQService.publish(QueueKeys.LOGS_EXPORT, {
       userId,
       jobId,
       format,
       filters,
-    } as LogExportJobMessage));
+    } as LogExportJobMessage);
 
     if (!published) {
-      await redisCacheService.delete(redisKey);
-      const ErrorResponse = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to queue export");
+      await RedisCacheService.delete(redisKey);
+      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to queue export");
       return ErrorResponse.send({ error: "Failed to queue the export job, please try again" });
     }
 
-    const Responser = new BuildResponse(reply, StatusCodes.ACCEPTED, "Export queued");
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.ACCEPTED, "Export queued");
     return Responser.send({ jobId, status: "queued" });
   }
 
-  public async getExportStatus(userId: string, reply: FastifyReply): Promise<void> {
-    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
+  public async getExportStatus(userId: string): Promise<void> {
     const redisKey = `log-export:${userId}`;
-    const exportMeta = await redisCacheService.get<LogExportMetadata>(redisKey);
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "Export status fetched");
+    const exportMeta = await RedisCacheService.get<LogExportMetadata>(redisKey);
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Export status fetched");
     return Responser.send({ export: exportMeta });
   }
 
-  public async downloadExport(userId: string, reply: FastifyReply): Promise<unknown> {
-    const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
+  public async downloadExport(userId: string): Promise<unknown> {
     const redisKey = `log-export:${userId}`;
-    const exportMeta = await redisCacheService.get<LogExportMetadata>(redisKey);
+    const exportMeta = await RedisCacheService.get<LogExportMetadata>(redisKey);
 
     if (!exportMeta || exportMeta.status !== "ready" || !exportMeta.filePath) {
-      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "No export ready");
+      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "No export ready");
       return ErrorResponse.send({ error: "No export is ready to download" });
     }
 
     if (!fs.existsSync(exportMeta.filePath)) {
       // File vanished (e.g. cleaned up by the sweep) — clear the stale reference
-      await redisCacheService.delete(redisKey);
-      const ErrorResponse = new BuildResponse(reply, StatusCodes.NOT_FOUND, "Export file missing");
+      await RedisCacheService.delete(redisKey);
+      const ErrorResponse = new BuildResponse(this.fastifyReply, StatusCodes.NOT_FOUND, "Export file missing");
       return ErrorResponse.send({ error: "The export file is no longer available, please request a new export" });
     }
 
@@ -126,7 +125,7 @@ export default class LogsExportService {
         // Already removed — nothing to do
       }
       try {
-        await redisCacheService.delete(redisKey);
+        await RedisCacheService.delete(redisKey);
       } catch {
         // best effort
       }
@@ -150,7 +149,7 @@ export default class LogsExportService {
       }, 2000);
     });
 
-    return reply
+    return this.fastifyReply
       .header("Content-Type", contentType)
       .header("Content-Disposition", `attachment; filename="${fileName}"`)
       .send(stream);

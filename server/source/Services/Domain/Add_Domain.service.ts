@@ -1,6 +1,3 @@
-import logger from '../../utilities/logger';
-import container from '../../container/appContainer';
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -9,21 +6,25 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 
 
 export default class DomainAddService {
-  constructor() { }
+  private readonly fastifyReply: FastifyReply
+  constructor(reply: FastifyReply) {
+    this.fastifyReply = reply;
+  }
 
   // Add a new domain record
-  public async addDomain(domain: string, type: string, IpAddress: string, user: any, reply: FastifyReply): Promise<void> {
+  public async addDomain(domain: string, type: string, IpAddress: string, user: any): Promise<void> {
 
-    logger.info(`[SERVICE] addDomain called for domain: ${domain}, IP: ${IpAddress}, user: ${user._id}`);
+    console.log(`[SERVICE] addDomain called for domain: ${domain}, IP: ${IpAddress}, user: ${user._id}`);
 
     // construct Response
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain added successfully");
-    const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-    const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Domain added successfully");
+    const DomainCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    const DNSCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
     // Add domain to the domains collection
     if (!DomainCollectionClient || !DNSCollectionClient) {
@@ -35,7 +36,7 @@ export default class DomainAddService {
     const existingDomain = await DomainCollectionClient.find({ domain: domain, userId: new ObjectId(user._id) }).toArray();
     const existingIP = await DNSCollectionClient.find({ value: IpAddress }).toArray();
 
-    logger.info(`[SERVICE] Existing domain check: ${existingDomain.length}, Existing IP check: ${existingIP.length}`);
+    console.log(`[SERVICE] Existing domain check: ${existingDomain.length}, Existing IP check: ${existingIP.length}`);
 
     if (existingIP.length > 0) {
       Responser.setStatusCode(StatusCodes.CONFLICT);
@@ -47,7 +48,7 @@ export default class DomainAddService {
       return Responser.send("Domain already exists");
     }
     else {
-      logger.info(`[SERVICE] Inserting new domain: ${domain}`);
+      console.log(`[SERVICE] Inserting new domain: ${domain}`);
 
       const domainDoc = {
         domain: domain,
@@ -59,7 +60,7 @@ export default class DomainAddService {
 
       const insertResult = await DomainCollectionClient.insertOne(domainDoc);
 
-      logger.info(`[SERVICE] Domain insert result: ${insertResult.acknowledged}, ID: ${insertResult.insertedId}`);
+      console.log(`[SERVICE] Domain insert result: ${insertResult.acknowledged}, ID: ${insertResult.insertedId}`);
 
       if (!insertResult.acknowledged) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
@@ -80,7 +81,7 @@ export default class DomainAddService {
 
       const dnsInsertResult = await DNSCollectionClient.insertMany(dnsRecords);
 
-      logger.info(`[SERVICE] DNS records insert result: ${dnsInsertResult.acknowledged}`);
+      console.log(`[SERVICE] DNS records insert result: ${dnsInsertResult.acknowledged}`);
 
       if (!dnsInsertResult.acknowledged) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);

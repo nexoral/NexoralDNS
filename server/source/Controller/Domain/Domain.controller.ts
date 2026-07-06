@@ -1,4 +1,3 @@
-import logger from '../../utilities/logger';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 
@@ -10,7 +9,6 @@ import { StatusCodes } from "outers";
 import DomainListService from "../../Services/Domain/Domain_List.service";
 import DomainRemoveService from "../../Services/Domain/Remove_Domain.service";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
-import container from '../../container/appContainer';
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
@@ -26,14 +24,14 @@ export default class DomainController {
     const requestKey = `${request.user._id}:${DomainName}:${IpAddress}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.CREATED, "Domain created successfully");
-    const domainAddService = container.get<DomainAddService>('AddDomainService');
+    const domainAddService = new DomainAddService(reply);
 
     // Execute with deduplication logic
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await domainAddService.addDomain(DomainName, type, IpAddress, request.user, reply);
+          await domainAddService.addDomain(DomainName, type, IpAddress, request.user);
         } catch (error) {
           Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
           Responser.setMessage("Error adding domain");
@@ -41,22 +39,22 @@ export default class DomainController {
         }
       },
       (key) => {
-        logger.info(`[DEDUP] Duplicate request detected for ${key}, waiting for existing request...`);
+        console.log(`[DEDUP] Duplicate request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        logger.info(`[CLEANUP] Removed in-flight request for ${key}`);
+        console.log(`[CLEANUP] Removed in-flight request for ${key}`);
       }
     );
 
-    logger.info(`[CREATE] Processing domain creation request for ${DomainName} by user ${request.user._id}`);
+    console.log(`[CREATE] Processing domain creation request for ${DomainName} by user ${request.user._id}`);
   }
 
   // List all domains for the authenticated user
   public static async list(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain list fetched successfully");
-    const domainListService = container.get<DomainListService>('DomainListService');
+    const domainListService = new DomainListService(reply);
     try {
-      await domainListService.getAllDomains(request.user, reply);
+      await domainListService.getAllDomains(request.user);
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error fetching domain list");
@@ -68,9 +66,9 @@ export default class DomainController {
   public static async remove(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const { domainName } = request.body as { domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Domain removed successfully");
-    const domainRemoveService = container.get<DomainRemoveService>('RemoveDomainService');
+    const domainRemoveService = new DomainRemoveService(reply);
     try {
-      await domainRemoveService.removeDomain(domainName, request.user, reply);
+      await domainRemoveService.removeDomain(domainName, request.user);
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error removing domain");

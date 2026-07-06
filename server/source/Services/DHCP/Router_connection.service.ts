@@ -1,5 +1,3 @@
-import container from '../../container/appContainer';
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -8,17 +6,21 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { fetchConnectedIP } from "../../CronJob/Jobs/Connected_IP_fetcher.cron";
 
 export default class RouterService {
-  constructor() { }
+  private readonly fastifyReply: FastifyReply
+  constructor(reply: FastifyReply) {
+    this.fastifyReply = reply;
+  }
 
 
   // Fetch all connected IPs from the database
-  public async fetchConnectedIPs(reply: FastifyReply): Promise<void> {
+  public async fetchConnectedIPs(): Promise<void> {
     // construct Response
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "Record fetch Successful");
-    const collectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Record fetch Successful");
+    const collectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
 
     if (!collectionClient) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
@@ -60,9 +62,9 @@ export default class RouterService {
   }
 
   // refresh the connected IPs by calling the cron job function
-  public async refreshConnectedIPs(reply: FastifyReply): Promise<void> {
+  public async refreshConnectedIPs(): Promise<void> {
     // construct Response
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "Record updated Successful");
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Record updated Successful");
 
     // run the cron job function
     const status = await fetchConnectedIP();

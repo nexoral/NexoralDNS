@@ -1,6 +1,3 @@
-import logger from '../../utilities/logger';
-import container from '../../container/appContainer';
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { exec } from "child_process";
 import { readFile } from "fs/promises";
 import { networkInterfaces } from "os";
@@ -9,6 +6,7 @@ import getLocalIPRange from "../../utilities/GetWLANIP.utls";
 import { Retry } from "outers";
 import { pingIP } from "../../helper/IP_Ping.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { promisify } from "util";
 
 interface ARPEntry {
@@ -37,7 +35,7 @@ export async function getWiFiSSID(): Promise<string | null> {
     const { stdout } = await execAsync(command);
     return stdout.trim() || null;
   } catch (error) {
-    logger.error("Error fetching SSID:", error);
+    console.error("Error fetching SSID:", error);
     return null;
   }
 }
@@ -74,7 +72,7 @@ export async function getARPTable(): Promise<Map<string, ARPEntry>> {
       });
     }
   } catch (error) {
-    logger.error("Error reading ARP table:", error);
+    console.error("Error reading ARP table:", error);
   }
   return arpMap;
 }
@@ -98,7 +96,7 @@ export async function getOwnMachineInfo(targetIP: string): Promise<{ ip: string;
       }
     }
   } catch (error) {
-    logger.error("Error getting own machine info:", error);
+    console.error("Error getting own machine info:", error);
   }
 
   return {
@@ -130,7 +128,7 @@ export async function fetchConnectedIP(): Promise<Boolean> {
   const currentIP = getLocalIPRange("any");
   const SSID = await getWiFiSSID();
 
-  const serviceCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+  const serviceCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
   const serviceConfig = await serviceCol?.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
 
   if (currentIP && serviceConfig) {

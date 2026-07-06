@@ -2,7 +2,7 @@
 import { FastifyInstance, FastifyPluginOptions } from "fastify";
 
 // middlewares
-import { authGuard } from "../../Middlewares/authGuard.middleware";
+import authGuard from "../../Middlewares/authGuard.middleware";
 
 // Controllers
 import SettingsController from "../../Controller/settings/settings.controller";
@@ -79,9 +79,9 @@ export default async function SettingsRouter(fastify: FastifyInstance, _options:
         properties: {
           defaultTTL: {
             type: 'number',
-            minimum: 0,
+            minimum: 10,
             maximum: 86400,
-            description: 'New Default TTL value in seconds (min: 0, max: 86400)'
+            description: 'New Default TTL value in seconds (min: 10, max: 86400)'
           }
         }
       },

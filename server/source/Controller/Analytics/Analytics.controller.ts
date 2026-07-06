@@ -4,7 +4,6 @@ import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
 import DashboardService from "../../Services/Dashboard/Dashboard.service";
-import container from '../../container/appContainer';
 
 // Singleton instance for request deduplication
 const requestHelper = new RequestControllerHelper();
@@ -15,10 +14,10 @@ export default class AnalyticsController {
 
   // Responsible for Get Dashboard Data
   public static async getDashboardAnalytics(request: authGuardFastifyRequest, response: FastifyReply): Promise<void> {
-    const DashboardDataService = container.get<DashboardService>('DashboardService');
-    const Responser = new BuildResponse(response, StatusCodes.OK, "Dashboard Analytics retrieved successfully");
+    const DashboardDataService = new DashboardService(response);
+   const Responser = new BuildResponse(response, StatusCodes.OK, "Dashboard Analytics retrieved successfully");
     try {
-      await DashboardDataService.getDashboardData(response);
+      await DashboardDataService.getDashboardData();
     } catch (error) {
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error retrieving Dashboard Analytics");

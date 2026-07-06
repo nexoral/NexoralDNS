@@ -1,4 +1,3 @@
-import logger from '../utilities/logger';
 /**
  * @fileoverview Initialize Ad Blocking Domain Group on Server Startup
  * @module utilities/InitializeAdBlockingGroup
@@ -9,9 +8,9 @@ import logger from '../utilities/logger';
  * @version 3.3.42-stable
  */
 
-import container from '../container/appContainer';
-import { MongoCollectionManager } from '../Database/MongoCollectionManager';
+import { Console } from 'outers';
 import { ObjectId } from 'mongodb';
+import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import {
   AD_BLOCKING_DOMAINS,
@@ -33,12 +32,12 @@ let cachedAdBlockingGroupId: ObjectId | null = null;
  */
 export async function initializeAdBlockingDomainGroup(): Promise<ObjectId | null> {
   try {
-    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
+    const domainGroupsCollection = getCollectionClient(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 
     if (!domainGroupsCollection) {
-      logger.error('[Anti-Ads] Failed to get domain groups collection');
+      Console.red('[Anti-Ads] Failed to get domain groups collection');
       return null;
     }
 
@@ -55,7 +54,7 @@ export async function initializeAdBlockingDomainGroup(): Promise<ObjectId | null
       const existingDomainCount = existingGroup.domains?.length || 0;
 
       if (existingDomainCount !== currentDomainCount) {
-        logger.warn(
+        Console.yellow(
           `[Anti-Ads] Updating ad blocking domain group (${existingDomainCount} → ${currentDomainCount} domains)`
         );
 
@@ -70,9 +69,9 @@ export async function initializeAdBlockingDomainGroup(): Promise<ObjectId | null
           }
         );
 
-        logger.info('[Anti-Ads] Ad blocking domain group updated successfully');
+        Console.green('[Anti-Ads] Ad blocking domain group updated successfully');
       } else {
-        logger.info('[Anti-Ads] Ad blocking domain group already up-to-date');
+        Console.blue('[Anti-Ads] Ad blocking domain group already up-to-date');
       }
 
       cachedAdBlockingGroupId = existingGroup._id;
@@ -80,7 +79,7 @@ export async function initializeAdBlockingDomainGroup(): Promise<ObjectId | null
     }
 
     // Create new ad blocking domain group
-    logger.warn(`[Anti-Ads] Creating ad blocking domain group (${currentDomainCount} domains)...`);
+    Console.yellow(`[Anti-Ads] Creating ad blocking domain group (${currentDomainCount} domains)...`);
 
     const newGroup = {
       name: AD_BLOCKING_GROUP_METADATA.name,
@@ -98,14 +97,14 @@ export async function initializeAdBlockingDomainGroup(): Promise<ObjectId | null
 
     if (result.insertedId) {
       cachedAdBlockingGroupId = result.insertedId;
-      logger.info(`[Anti-Ads] Ad blocking domain group created successfully: ${result.insertedId}`);
+      Console.green(`[Anti-Ads] Ad blocking domain group created successfully: ${result.insertedId}`);
       return result.insertedId;
     }
 
-    logger.error('[Anti-Ads] Failed to create ad blocking domain group');
+    Console.red('[Anti-Ads] Failed to create ad blocking domain group');
     return null;
   } catch (error) {
-    logger.error('[Anti-Ads] Error initializing ad blocking domain group:', error);
+    Console.red('[Anti-Ads] Error initializing ad blocking domain group:', error);
     return null;
   }
 }
@@ -123,7 +122,7 @@ export async function getAdBlockingDomainGroupId(): Promise<ObjectId | null> {
   }
 
   try {
-    const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(
+    const domainGroupsCollection = getCollectionClient(
       DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS
     );
 
@@ -144,7 +143,7 @@ export async function getAdBlockingDomainGroupId(): Promise<ObjectId | null> {
     // If not found, try to initialize it
     return await initializeAdBlockingDomainGroup();
   } catch (error) {
-    logger.error('[Anti-Ads] Error getting ad blocking domain group ID:', error);
+    Console.red('[Anti-Ads] Error getting ad blocking domain group ID:', error);
     return null;
   }
 }
@@ -155,5 +154,5 @@ export async function getAdBlockingDomainGroupId(): Promise<ObjectId | null> {
  */
 export function clearAdBlockingGroupCache(): void {
   cachedAdBlockingGroupId = null;
-  logger.info('[Anti-Ads] Ad blocking domain group cache cleared');
+  Console.blue('[Anti-Ads] Ad blocking domain group cache cleared');
 }

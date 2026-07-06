@@ -4,18 +4,20 @@ import { StatusCodes } from "outers";
 import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import container from "../../container/appContainer";
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RedisCacheService } from "../../Redis/Redis.cache";
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { verifyToken, generateAccessToken, generateRefreshToken } from "../../helper/jwt.helper";
+import RedisCache from "../../Redis/Redis.cache";
 
 export default class RefreshTokenService {
-  constructor() { }
+  private readonly fastifyReply: FastifyReply;
+  constructor(reply: FastifyReply) {
+    this.fastifyReply = reply;
+  }
 
-  public async refresh(refreshToken: string, reply: FastifyReply): Promise<void> {
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "Token refreshed successfully");
-    const sessionCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
-    const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+  public async refresh(refreshToken: string): Promise<void> {
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Token refreshed successfully");
+    const sessionCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SESSION_MANAGE);
+    const usersCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.USERS);
 
     if (!sessionCol || !usersCol) {
       return Responser.send("Database connection error", StatusCodes.INTERNAL_SERVER_ERROR, "Database Error");
@@ -79,7 +81,7 @@ export default class RefreshTokenService {
 
     // Evict old access token from Redis before replacing it
     if (session.accessToken) {
-      await container.get<RedisCacheService>('RedisCacheService').delete(`session:${session.accessToken}`);
+      await RedisCache.delete(`session:${session.accessToken}`);
     }
 
     // Replace both tokens in the session document
@@ -88,18 +90,17 @@ export default class RefreshTokenService {
       { $set: { accessToken: newAccessToken, refreshToken: newRefreshToken, updatedAt: new Date() } }
     );
 
-    (reply as unknown as {
+    const reply = this.fastifyReply as unknown as {
       setCookie(name: string, value: string, options: Record<string, unknown>): void;
-    }).setCookie('access_token', newAccessToken, {
+    };
+    reply.setCookie('access_token', newAccessToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 30 * 60,
     });
-    (reply as unknown as {
-      setCookie(name: string, value: string, options: Record<string, unknown>): void;
-    }).setCookie('refresh_token', newRefreshToken, {
+    reply.setCookie('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',

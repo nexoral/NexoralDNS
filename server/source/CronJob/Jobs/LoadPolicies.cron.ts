@@ -1,9 +1,7 @@
-import logger from '../../utilities/logger';
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import container from "../../container/appContainer";
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RedisCacheService } from "../../Redis/Redis.cache";
+import { getCollectionClient } from "../../Database/mongodb.db";
+import RedisCache from "../../Redis/Redis.cache";
 
 /**
  * Redis Data Structure for Access Control Policies:
@@ -34,14 +32,14 @@ interface ExpandedPolicy {
  * This runs every 60 seconds to keep policies in sync
  */
 export async function loadAccessControlPoliciesToRedis(): Promise<void> {
-  logger.info('[ACL] Loading access control policies to Redis...');
+  console.log('[ACL] Loading access control policies to Redis...');
 
   const startTime = Date.now();
 
   // Get MongoDB collections
-  const policiesCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
-  const ipGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
-  const domainGroupsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
+  const policiesCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+  const ipGroupsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.IP_GROUPS);
+  const domainGroupsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAIN_GROUPS);
 
   if (!policiesCollection || !ipGroupsCollection || !domainGroupsCollection) {
     throw new Error("Database collections not initialized");
@@ -49,7 +47,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 
   // Fetch all active policies
   const activePolicies = await policiesCollection.find({ isActive: true }).toArray();
-  logger.info(`[ACL] Found ${activePolicies.length} active policies`);
+  console.log(`[ACL] Found ${activePolicies.length} active policies`);
 
   // Fetch all IP groups and Domain groups for expansion
   const [ipGroups, domainGroups] = await Promise.all([
@@ -61,7 +59,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   const ipGroupMap = new Map(ipGroups.map(g => [g._id.toString(), g.ipAddresses || []]));
   const domainGroupMap = new Map(domainGroups.map(g => [g._id.toString(), g.domains || []]));
 
-  logger.info(`[ACL] Loaded ${ipGroups.length} IP groups and ${domainGroups.length} domain groups`);
+  console.log(`[ACL] Loaded ${ipGroups.length} IP groups and ${domainGroups.length} domain groups`);
 
   // Expand all policies (resolve group references to actual IPs and domains)
   const expandedPolicies: ExpandedPolicy[] = [];
@@ -76,10 +74,10 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
         targetIPs.push('*'); // Special marker for all users
         break;
       case 'single_ip':
-        if (policy.targetIP) targetIPs.push(policy.targetIP.trim());
+        if (policy.targetIP) targetIPs.push(policy.targetIP);
         break;
       case 'multiple_ips':
-        if (policy.targetIPs) targetIPs.push(...policy.targetIPs.map((ip: string) => ip.trim()));
+        if (policy.targetIPs) targetIPs.push(...policy.targetIPs);
         break;
       case 'ip_group':
         if (policy.targetIPGroup) {
@@ -163,23 +161,12 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
     }
   }
 
-  logger.info(`[ACL] Expanded ${expandedPolicies.length} policies`);
+  console.log(`[ACL] Expanded ${expandedPolicies.length} policies`);
 
-  // Build Redis data structure — split exact vs wildcard so the DNS engine can
-  // do O(1) SISMEMBER lookups for exact matches and scan only the small wildcard
-  // sets. Exact domains are stored as plain strings; wildcard entries as JSON.
-  const ipToExact = new Map<string, Set<string>>();   // acl:ip:{ip}:exact
-  const ipToWild = new Map<string, Set<string>>();    // acl:ip:{ip}:wild
-  const allUsersExact = new Set<string>();            // acl:all_users:exact
-  const allUsersWild = new Set<string>();             // acl:all_users:wild
-
-  const addEntry = (exactSet: Set<string>, wildSet: Set<string>, entry: DomainEntry) => {
-    if (entry.isWildcard) {
-      wildSet.add(JSON.stringify(entry)); // preserve pattern shape for boundary matching
-    } else {
-      exactSet.add(entry.domain);         // plain string for SISMEMBER
-    }
-  };
+  // Build Redis data structure
+  // Store domains as JSON strings to preserve wildcard state
+  const ipToDomains = new Map<string, Set<string>>();
+  const allUsersBlockedDomains = new Set<string>();
 
   for (const policy of expandedPolicies) {
     if (!policy.isActive) continue;
@@ -188,84 +175,69 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
       if (ip === '*') {
         // Policy applies to all users
         for (const domainEntry of policy.blockedDomains) {
-          addEntry(allUsersExact, allUsersWild, domainEntry);
+          // Store as JSON to preserve wildcard state
+          allUsersBlockedDomains.add(JSON.stringify(domainEntry));
         }
       } else {
         // Policy applies to specific IP
-        if (!ipToExact.has(ip)) ipToExact.set(ip, new Set());
-        if (!ipToWild.has(ip)) ipToWild.set(ip, new Set());
+        if (!ipToDomains.has(ip)) {
+          ipToDomains.set(ip, new Set());
+        }
+        const domainSet = ipToDomains.get(ip)!;
         for (const domainEntry of policy.blockedDomains) {
-          addEntry(ipToExact.get(ip)!, ipToWild.get(ip)!, domainEntry);
+          // Store as JSON to preserve wildcard state
+          domainSet.add(JSON.stringify(domainEntry));
         }
       }
     }
   }
 
-  const trackedIPs = new Set<string>([...ipToExact.keys(), ...ipToWild.keys()]);
-  const globalBlockCount = allUsersExact.size + allUsersWild.size;
-  logger.info(`[ACL] Built lookup structure: ${trackedIPs.size} IPs, ${globalBlockCount} global blocks`);
+  console.log(`[ACL] Built lookup structure: ${ipToDomains.size} IPs, ${allUsersBlockedDomains.size} global blocks`);
 
-  const redisClient = await container.get<RedisCacheService>('RedisCacheService').getClient();
-  const ONE_DAY = 86400;
+  // Clear old ACL data in Redis (delete all acl:* keys)
+  // Note: This is a simplified approach. In production, consider using Redis pipeline for atomic updates
+  const redisClient = await RedisCache.getClient();
 
-  // Scan old ACL keys to delete
-  const oldAclKeys: string[] = [];
-  let cursor = '0';
-  do {
-    const reply = await redisClient.scan(cursor, { MATCH: 'acl:*', COUNT: 100 });
-    cursor = reply.cursor;
-    oldAclKeys.push(...reply.keys);
-  } while (cursor !== '0');
+  // Delete old ACL keys (scan for acl:* pattern)
+  const aclKeys = await redisClient.keys('acl:*');
+  if (aclKeys.length > 0) {
+    await redisClient.del(aclKeys);
+    console.log(`[ACL] Cleared ${aclKeys.length} old ACL keys`);
+  }
 
-  // Atomically replace ACL data: delete old + write new in a single MULTI transaction
+  // Write new data to Redis
   const pipeline = redisClient.multi();
 
-  if (oldAclKeys.length > 0) {
-    pipeline.del(oldAclKeys);
+  // Store global blocks (applies to all users)
+  if (allUsersBlockedDomains.size > 0) {
+    pipeline.sAdd('acl:all_users', Array.from(allUsersBlockedDomains));
+    pipeline.expire('acl:all_users', 120); // 2 minutes TTL (refresh every 60s)
   }
 
-  if (allUsersExact.size > 0) {
-    pipeline.sAdd('acl:all_users:exact', Array.from(allUsersExact));
-    pipeline.expire('acl:all_users:exact', ONE_DAY);
-  }
-  if (allUsersWild.size > 0) {
-    pipeline.sAdd('acl:all_users:wild', Array.from(allUsersWild));
-    pipeline.expire('acl:all_users:wild', ONE_DAY);
+  // Store IP-specific blocks
+  for (const [ip, domains] of ipToDomains.entries()) {
+    const key = `acl:ip:${ip}`;
+    pipeline.sAdd(key, Array.from(domains));
+    pipeline.expire(key, 120); // 2 minutes TTL
   }
 
-  for (const ip of trackedIPs) {
-    const exact = ipToExact.get(ip);
-    const wild = ipToWild.get(ip);
-    if (exact && exact.size > 0) {
-      const key = `acl:ip:${ip}:exact`;
-      pipeline.sAdd(key, Array.from(exact));
-      pipeline.expire(key, ONE_DAY);
-    }
-    if (wild && wild.size > 0) {
-      const key = `acl:ip:${ip}:wild`;
-      pipeline.sAdd(key, Array.from(wild));
-      pipeline.expire(key, ONE_DAY);
-    }
-  }
-
+  // Store metadata
   const metadata = {
     totalPolicies: activePolicies.length,
     expandedPolicies: expandedPolicies.length,
-    trackedIPs: trackedIPs.size,
-    globalBlocks: globalBlockCount,
+    trackedIPs: ipToDomains.size,
+    globalBlocks: allUsersBlockedDomains.size,
     lastUpdated: Date.now(),
     loadDuration: Date.now() - startTime
   };
-  pipeline.set('acl:metadata', JSON.stringify(metadata), { EX: ONE_DAY });
+  pipeline.set('acl:metadata', JSON.stringify(metadata), { EX: 120 });
 
+  // Execute all Redis commands
   await pipeline.exec();
 
-  // Notify DNS engine to flush its in-memory blocklist caches immediately
-  await redisClient.publish('cache:invalidate', 'acl:reloaded');
-
   const duration = Date.now() - startTime;
-  logger.info(`[ACL] Successfully loaded policies to Redis in ${duration}ms`);
-  logger.info(`[ACL] Stats: ${metadata.expandedPolicies} policies, ${metadata.trackedIPs} IPs, ${metadata.globalBlocks} global blocks`);
+  console.log(`[ACL]  Successfully loaded policies to Redis in ${duration}ms`);
+  console.log(`[ACL] Stats: ${metadata.expandedPolicies} policies, ${metadata.trackedIPs} IPs, ${metadata.globalBlocks} global blocks`);
 }
 
 /**
@@ -275,9 +247,9 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 export async function forceReloadACLPolicies(): Promise<void> {
   try {
     await loadAccessControlPoliciesToRedis();
-    logger.info('[ACL] Force reload completed successfully');
+    console.log('[ACL] Force reload completed successfully');
   } catch (error) {
-    logger.error('[ACL] Error during force reload:', error);
+    console.error('[ACL] Error during force reload:', error);
     throw error;
   }
 }
@@ -290,7 +262,7 @@ export const LoadAccessControlPoliciesCronJob = () => {
     try {
       await loadAccessControlPoliciesToRedis();
     } catch (error) {
-      logger.error('[ACL] Error loading policies to Redis:', error);
+      console.error('[ACL] Error loading policies to Redis:', error);
     }
   }, 60, true); // Run every 60 seconds, run immediately on start
 };

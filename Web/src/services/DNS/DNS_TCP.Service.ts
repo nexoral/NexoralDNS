@@ -1,11 +1,9 @@
 import net from "node:net";
 import dgram from "node:dgram";
-import logger from "../../utilities/logger";
+import { Console } from "outers";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
-import container from "../../container/appContainer";
-import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
-import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
+import MongoConnector from "../../Database/mongodb.db";
 import getLocalIP from "../../utilities/GetWLANIP.utls";
 
 /**
@@ -24,7 +22,7 @@ export default class DNS_TCP {
 
   constructor() {
     this.server = net.createServer({ allowHalfOpen: false });
-    this.rulesService = container.get<StartRulesService>('StartRulesService');
+    this.rulesService = new StartRulesService();
   }
 
   /**
@@ -33,19 +31,13 @@ export default class DNS_TCP {
   public start(): this {
     this.server.on("listening", () => {
       const addr = this.server.address() as net.AddressInfo;
-      logger.info(
+      Console.green(
         `DNS TCP server running at tcp://${addr.address}:${addr.port} with Worker: ${process.pid}`
       );
     });
 
-    // Initialize MongoDB via DI container
-    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
-    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
-    Promise.all([
-      mongoConnManager.connect(),
-      mongoCollManager.initialize(),
-    ]).catch((error) => {
-      logger.error("DNS_TCP: Failed to connect to MongoDB:", error as any);
+    MongoConnector().catch((error) => {
+      Console.red("DNS_TCP: Failed to connect to MongoDB:", error);
     });
 
     // Bind to the same LAN interface as the UDP service to avoid conflicting
@@ -85,12 +77,12 @@ export default class DNS_TCP {
       });
 
       socket.on("error", (err: Error) => {
-        logger.error(`DNS TCP connection error [${baseRinfo.address}]: ${err.message}`);
+        Console.red(`DNS TCP connection error [${baseRinfo.address}]: ${err.message}`);
         socket.destroy();
       });
 
       socket.on("timeout", () => {
-        logger.error(`DNS TCP connection timeout [${baseRinfo.address}]`);
+        Console.red(`DNS TCP connection timeout [${baseRinfo.address}]`);
         socket.destroy();
       });
 
@@ -106,7 +98,7 @@ export default class DNS_TCP {
    */
   public listenError(): this {
     this.server.on("error", (err: Error) => {
-      logger.error(`DNS TCP server error:\n${err.stack}`);
+      Console.red(`DNS TCP server error:\n${err.stack}`);
       this.server.close();
     });
     return this;

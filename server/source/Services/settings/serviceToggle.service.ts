@@ -1,4 +1,3 @@
-import logger from '../../utilities/logger';
 
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
@@ -8,22 +7,24 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 // db connections
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
-import container from "../../container/appContainer";
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RedisCacheService } from "../../Redis/Redis.cache";
+import RedisCache from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class ServiceToggleService {
-  constructor() { }
+  private readonly fastifyReply: FastifyReply
+  constructor(reply: FastifyReply) {
+    this.fastifyReply = reply;
+  }
 
   // Toggle a service's active status
-  public async toggleService(reply: FastifyReply): Promise<void> {
-    logger.info("Toggling service status...");
+  public async toggleService(): Promise<void> {
+    console.log("Toggling service status...");
     // construct Response
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "Service updated Successful");
-    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Service updated Successful");
+    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -35,20 +36,15 @@ export default class ServiceToggleService {
 
     const newStatus = serviceData.Service_Status === "active" ? "inactive" : "active";
 
-    // Update MongoDB first (source of truth)
+    // Delete the Cache After Update Service Status
+    RedisCache.delete(CacheKeys.Service_Status);
+
     await dbClient.updateOne(
       { _id: new ObjectId(serviceData._id) },
       { $set: { Service_Status: newStatus } }
     );
 
-    // Proactively set Redis to new status so DNS engine picks it up instantly
-    const updatedServiceData = {
-      ...serviceData,
-      Service_Status: newStatus,
-    };
-    await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.Service_Status, updatedServiceData);
-
-    logger.info(`Service status updated to: ${newStatus}`);
+    console.log(`Service status updated to: ${newStatus}`);
 
     return Responser.send({ serviceStatus: newStatus });
   }

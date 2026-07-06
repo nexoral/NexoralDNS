@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "node:dgram";
-import logger from "../../utilities/logger"
+import { Console } from "outers"
 import StartRulesService from "../Start/Rules.service";
 
 // Utility to get local IP address
@@ -9,10 +9,7 @@ import IP_SCAN from "../../utilities/AutoIP_SCAN.utls";
 
 // Input/Output handler for UDP messages
 import InputOutputHandler from "../../utilities/IO.utls";
-import { createDnsListenerSocket } from "../../utilities/dnsSocket.utls";
-import container from "../../container/appContainer";
-import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
-import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
+import MongoConnector from "../../Database/mongodb.db";
 
 
 /**
@@ -27,9 +24,9 @@ export default class DNS {
   private startRulesService: StartRulesService;
 
   constructor() {
-    this.server = createDnsListenerSocket();
+    this.server = dgram.createSocket({ type: "udp4", reuseAddr: true }); // Create a UDP socket for IPv4
     this.IO = new InputOutputHandler(this.server);
-    this.startRulesService = container.get<StartRulesService>('StartRulesService');
+    this.startRulesService = new StartRulesService();
   }
 
   /**
@@ -46,9 +43,9 @@ export default class DNS {
     try {
       socket.setRecvBufferSize(4 * 1024 * 1024); // 4MB requested
       socket.setSendBufferSize(4 * 1024 * 1024);
-      logger.info(`DNS UDP socket buffers granted: recv=${socket.getRecvBufferSize()} send=${socket.getSendBufferSize()} (raise net.core.rmem_max/wmem_max if lower than requested)`);
+      Console.bright(`DNS UDP socket buffers granted: recv=${socket.getRecvBufferSize()} send=${socket.getSendBufferSize()} (raise net.core.rmem_max/wmem_max if lower than requested)`);
     } catch (error) {
-      logger.warn(`Could not resize UDP socket buffers: ${error}`);
+      Console.yellow(`Could not resize UDP socket buffers: ${error}`);
     }
   }
 
@@ -64,18 +61,12 @@ export default class DNS {
   public start(): this {
     this.server.on("listening", () => {
       const address = this.server.address();
-      logger.info(`DNS server running at udp://${address.address}:${address.port} with Worker: ${process.pid}`);
+      Console.green(`DNS server running at udp://${address.address}:${address.port} with Worker: ${process.pid}`);
       this.tuneSocketBuffers(this.server);
     });
 
-    // Initialize MongoDB via DI container
-    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
-    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
-    Promise.all([
-      mongoConnManager.connect(),
-      mongoCollManager.initialize(),
-    ]).catch((error) => {
-      logger.error("Failed to connect to MongoDB:", error as any);
+    MongoConnector().catch((error) => {
+      Console.red("Failed to connect to MongoDB:", error);
     });
 
     // Run on 5353 (non-root). Use 53 if root/admin
@@ -87,8 +78,9 @@ export default class DNS {
       this.server = newSocket;
       this.IO = new InputOutputHandler(this.server);
 
-      // Get singleton StartRulesService from DI container
-      this.startRulesService = container.get<StartRulesService>('StartRulesService');
+      // IMPORTANT: Recreate StartRulesService with new socket and IO handler
+      // This prevents ERR_SOCKET_DGRAM_NOT_RUNNING errors on pending queries
+      this.startRulesService = new StartRulesService();
 
       // Re-attach event listeners for the new socket
       this.listen();
@@ -99,7 +91,7 @@ export default class DNS {
       // here runs before that completes, so buffer tuning can't happen inline)
       this.server.on("listening", () => {
         const address = this.server.address();
-        logger.info(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker process: ${process.pid}`);
+        Console.green(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker process: ${process.pid}`);
         this.tuneSocketBuffers(this.server);
       });
     });
@@ -136,7 +128,7 @@ export default class DNS {
    */
   public listenError(): this {
     this.server.on("error", (err) => {
-      logger.error(`DNS server error:\n${err.stack}`);
+      Console.red(`DNS server error:\n${err.stack}`);
       this.server.close();
     });
     return this;

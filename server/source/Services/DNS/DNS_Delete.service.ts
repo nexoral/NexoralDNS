@@ -7,23 +7,25 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 
 // db connections
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
-import container from "../../container/appContainer";
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RedisCacheService } from "../../Redis/Redis.cache";
+import RedisCache from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 
 export default class DnsUpdateService {
-  constructor() { }
+  private readonly fastifyReply: FastifyReply
+  constructor(reply: FastifyReply) {
+    this.fastifyReply = reply;
+  }
 
   // Delete a DNS record
-  public async deleteDnsRecord(id: string, domainName: string, user: any, reply: FastifyReply): Promise<void> {
+  public async deleteDnsRecord(id: string, domainName: string, user: any): Promise<void> {
 
     // construct Response
-    const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record deleted successfully");
-    const DomainCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-    const DNSCollectionClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+    const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "DNS record deleted successfully");
+    const DomainCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    const DNSCollectionClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
     // Add domain to the domains collection
     if (!DomainCollectionClient || !DNSCollectionClient) {
@@ -69,21 +71,6 @@ export default class DnsUpdateService {
     }
     else {
 
-      // Ownership enforcement: the target record MUST be one the caller owns
-      // (present in the user-scoped DnsList). This guards BOTH branches — without
-      // it, a user could delete another user's record by passing its id alongside
-      // one of their own domains. Return 404 to avoid revealing existence.
-      const target = DnsList.find((record) => record._id.toString() === id);
-      if (!target) {
-        Responser.setStatusCode(StatusCodes.NOT_FOUND);
-        Responser.setMessage("DNS record not found");
-        return Responser.send("DNS record not found");
-      }
-
-      const cache = container.get<RedisCacheService>('RedisCacheService');
-      // Engine caches by record name — invalidate that key, not the domain name.
-      const cacheKey = `${CacheKeys.Domain_DNS_Record}:${target.name}`;
-
       if (DnsList.length === 1) {
         const deleteResult = await DNSCollectionClient.deleteOne({ _id: new ObjectId(id) });
         const domainDeleteResult = await DomainCollectionClient.deleteOne({ domain: domainName, userId: new ObjectId(user._id) });
@@ -95,7 +82,7 @@ export default class DnsUpdateService {
         }
 
         Responser.setMessage("DNS record and associated domain deleted successfully");
-        await cache.delete(cacheKey);
+        RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
         return Responser.send({ deletedDNSCount: deleteResult.deletedCount, deletedDomainCount: domainDeleteResult.deletedCount });
       }
 
@@ -108,7 +95,7 @@ export default class DnsUpdateService {
       }
 
       Responser.setMessage("DNS record deleted successfully");
-      await cache.delete(cacheKey);
+      RedisCache.delete(`${CacheKeys.Domain_DNS_Record}:${domainName}`)
       return Responser.send({ deletedCount: deleteResult.deletedCount });
     }
 

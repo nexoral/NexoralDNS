@@ -1,15 +1,13 @@
-import logger from '../../utilities/logger';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 
 // service import
-import LogsService from "../../Services/Logs/Logs.service";
+import { LogsService } from "../../Services/Logs/Logs.service";
 
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { StatusCodes } from "outers";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
 import { buildLogsQuery, LogsQueryFilters } from "../../helper/buildLogsQuery.helper";
-import container from '../../container/appContainer';
 
 
 export default class LogsController {
@@ -24,7 +22,7 @@ export default class LogsController {
     }
 
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Logs fetched successfully");
-    const LogsServices = container.get<LogsService>('LogsService');
+    const LogsServices = new LogsService(reply);
 
     // Parse Query params
     const requestQuery = request.query as requestQueryParams;
@@ -41,9 +39,9 @@ export default class LogsController {
     const query = buildLogsQuery(filters);
 
     try {
-      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query, reply);
+      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query);
     } catch (error) {
-      logger.info(error)
+      console.log(error)
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error fetching logs list");
       return Responser.send("An error occurred while fetching the logs list");
