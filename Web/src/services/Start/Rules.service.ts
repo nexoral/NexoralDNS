@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from "outers";
+import logger from '../../utilities/logger';
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 import { DomainDBPoolService } from "../DB/DB_Pool.service";
@@ -40,7 +40,7 @@ export default class StartRulesService {
       StartRulesService.#subscribed = true;
       RedisCache.subscribe('cache:invalidate', async (message) => {
       // Log only on invalidation event (rare)
-      Console.yellow(`🔔 Received Cache Invalidation Request: ${message}`);
+      logger.warn(`🔔 Received Cache Invalidation Request: ${message}`);
 
       // Clear BlockList Caches
       BlockList.clearAllCaches();
@@ -53,7 +53,7 @@ export default class StartRulesService {
         // Logic to clear specific IP cache if implemented
       }
 
-      Console.green('✅ Local Caches Cleared');
+      logger.info('✅ Local Caches Cleared');
       });
     }
   }
@@ -70,7 +70,7 @@ export default class StartRulesService {
     const queryName: string = io.parseQueryName(msg);
     const queryType: string = io.parseQueryType(msg);
 
-    Console.blue(`🔍 DNS Query: ${queryName} (${queryType}) from ${rinfo.address}`);
+    logger.info(`🔍 DNS Query: ${queryName} (${queryType}) from ${rinfo.address}`);
 
     // Analytics Payload
     const AnalyticsMSgPayload: {
@@ -111,7 +111,7 @@ export default class StartRulesService {
         return;
       }
     } catch (error) {
-      Console.yellow(`⚠️ Fail-Safe Active: Database offline for query ${queryName}. Bypassing access controls.`);
+      logger.warn(`⚠️ Fail-Safe Active: Database offline for query ${queryName}. Bypassing access controls.`);
       databaseOffline = true;
       serviceStatus = {
         serviceStatus: true,
@@ -133,7 +133,7 @@ export default class StartRulesService {
         PolicyCheckRuleStatus = await this.blockList.checkDomain(queryName, rinfo.address);
       } catch (err) {
         databaseOffline = true;
-        Console.yellow(`⚠️ Fail-Safe Active: Block list check failed due to DB error. Bypassing.`);
+        logger.warn(`⚠️ Fail-Safe Active: Block list check failed due to DB error. Bypassing.`);
       }
     }
 
@@ -170,7 +170,7 @@ export default class StartRulesService {
                 return await this.dbPoolService.getDnsRecordByDomainName(queryName);
               } catch (error) {
                 databaseOffline = true;
-                Console.yellow(`⚠️ Fail-Safe Active: DB query error for record ${queryName}. Bypassing.`);
+                logger.warn(`⚠️ Fail-Safe Active: DB query error for record ${queryName}. Bypassing.`);
                 return null;
               } finally {
                 this.inflight.delete(queryName);
@@ -192,7 +192,7 @@ export default class StartRulesService {
         }
       } catch (err) {
         databaseOffline = true;
-        Console.yellow(`⚠️ Fail-Safe Active: Cache/DB record lookup failed. Bypassing.`);
+        logger.warn(`⚠️ Fail-Safe Active: Cache/DB record lookup failed. Bypassing.`);
       }
     }
 
@@ -212,7 +212,7 @@ export default class StartRulesService {
         AnalyticsMSgPayload.duration = performance.now() - start;
 
         this.publishAnalytics(AnalyticsMSgPayload);
-        Console.red(`Failed to respond to ${queryName}`);
+        logger.error(`Failed to respond to ${queryName}`);
       }
     } else {
       // Forward to Global DNS for non-matching domains (or when database is offline)
@@ -239,7 +239,7 @@ export default class StartRulesService {
               AnalyticsMSgPayload.duration = performance.now() - start;
               this.publishAnalytics(AnalyticsMSgPayload);
             }
-            Console.red(`Failed to forward ${queryName} to Global DNS`);
+            logger.error(`Failed to forward ${queryName} to Global DNS`);
           }
           // Note: GlobalDNSforwarder pushes its own analytics for the forwarding event
         }
@@ -251,7 +251,7 @@ export default class StartRulesService {
             this.publishAnalytics(AnalyticsMSgPayload);
           }
 
-          Console.red(`No response received from Global DNS for ${queryName}`);
+          logger.error(`No response received from Global DNS for ${queryName}`);
           io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
         }
       } catch (error) {
@@ -261,7 +261,7 @@ export default class StartRulesService {
           AnalyticsMSgPayload.duration = performance.now() - start;
           this.publishAnalytics(AnalyticsMSgPayload);
         }
-        Console.red(`Failed to forward ${queryName} to Global DNS:`, error);
+        logger.error(`Failed to forward ${queryName} to Global DNS:`, error);
       }
     }
   }

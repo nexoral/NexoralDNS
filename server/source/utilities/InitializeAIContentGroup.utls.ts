@@ -9,7 +9,7 @@
  * @version 3.6.45-stable
  */
 
-import { Console } from 'outers';
+import logger from '../utilities/logger';
 import { ObjectId } from 'mongodb';
 import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
@@ -38,7 +38,7 @@ export async function initializeAIContentDomainGroup(): Promise<ObjectId | null>
     );
 
     if (!domainGroupsCollection) {
-      Console.red('[Anti-AI] Failed to get domain groups collection');
+      logger.error('[Anti-AI] Failed to get domain groups collection');
       return null;
     }
 
@@ -55,7 +55,7 @@ export async function initializeAIContentDomainGroup(): Promise<ObjectId | null>
       const existingDomainCount = existingGroup.domains?.length || 0;
 
       if (existingDomainCount !== currentDomainCount) {
-        Console.yellow(
+        logger.warn(
           `[Anti-AI] Updating AI content domain group (${existingDomainCount} → ${currentDomainCount} domains)`
         );
 
@@ -70,9 +70,9 @@ export async function initializeAIContentDomainGroup(): Promise<ObjectId | null>
           }
         );
 
-        Console.green('[Anti-AI] AI content domain group updated successfully');
+        logger.info('[Anti-AI] AI content domain group updated successfully');
       } else {
-        Console.blue('[Anti-AI] AI content domain group already up-to-date');
+        logger.info('[Anti-AI] AI content domain group already up-to-date');
       }
 
       cachedAIContentGroupId = existingGroup._id;
@@ -80,7 +80,7 @@ export async function initializeAIContentDomainGroup(): Promise<ObjectId | null>
     }
 
     // Create new AI content domain group
-    Console.yellow(`[Anti-AI] Creating AI content domain group (${currentDomainCount} domains)...`);
+    logger.warn(`[Anti-AI] Creating AI content domain group (${currentDomainCount} domains)...`);
 
     const newGroup = {
       name: AI_CONTENT_GROUP_METADATA.name,
@@ -97,14 +97,14 @@ export async function initializeAIContentDomainGroup(): Promise<ObjectId | null>
 
     if (result.insertedId) {
       cachedAIContentGroupId = result.insertedId;
-      Console.green(`[Anti-AI] AI content domain group created successfully: ${result.insertedId}`);
+      logger.info(`[Anti-AI] AI content domain group created successfully: ${result.insertedId}`);
       return result.insertedId;
     }
 
-    Console.red('[Anti-AI] Failed to create AI content domain group');
+    logger.error('[Anti-AI] Failed to create AI content domain group');
     return null;
   } catch (error) {
-    Console.red('[Anti-AI] Error initializing AI content domain group:', error);
+    logger.error('[Anti-AI] Error initializing AI content domain group:', error);
     return null;
   }
 }
@@ -143,7 +143,7 @@ export async function getAIContentDomainGroupId(): Promise<ObjectId | null> {
     // If not found, try to initialize it
     return await initializeAIContentDomainGroup();
   } catch (error) {
-    Console.red('[Anti-AI] Error getting AI content domain group ID:', error);
+    logger.error('[Anti-AI] Error getting AI content domain group ID:', error);
     return null;
   }
 }
@@ -154,5 +154,5 @@ export async function getAIContentDomainGroupId(): Promise<ObjectId | null> {
  */
 export function clearAIContentGroupCache(): void {
   cachedAIContentGroupId = null;
-  Console.blue('[Anti-AI] AI content domain group cache cleared');
+  logger.info('[Anti-AI] AI content domain group cache cleared');
 }

@@ -1,7 +1,7 @@
+import logger from '../../utilities/logger';
 import fs from "fs";
 import path from "path";
 import { ObjectId } from "mongodb";
-import { Console } from "outers";
 import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
 import RedisCacheService from "../../Redis/Redis.cache";
@@ -112,10 +112,10 @@ export default async function LogsExportWorker() {
         await RedisCacheService.set(redisKey, existing, 24 * 60 * 60);
       }
 
-      Console.green(`[LogsExport] Export ${job.jobId} ready for user ${job.userId}`);
+      logger.info(`[LogsExport] Export ${job.jobId} ready for user ${job.userId}`);
       return true;
     } catch (error) {
-      Console.red(`[LogsExport] Failed to process export ${job.jobId}:`, error);
+      logger.error(`[LogsExport] Failed to process export ${job.jobId}:`, error);
       try {
         const existing = await RedisCacheService.get<LogExportMetadata>(redisKey);
         if (existing) {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import logger from '../../utilities/logger';
 import dgram from "dgram";
-import { Console } from "outers"
 
 // RabbitMQ
 import CacheKeys, { DNS_QUERY_STATUS_KEYS, QueueKeys } from "../../Redis/CacheKeys.cache";
@@ -154,7 +154,7 @@ async function resolveOnDedicatedSocket(
   try {
     const tryNext = async (index: number): Promise<Buffer | null> => {
       if (index >= availableDNS.length) {
-        Console.red(`No response from any DNS server for ${queryName}`);
+        logger.error(`No response from any DNS server for ${queryName}`);
         return null;
       }
 
@@ -190,7 +190,7 @@ async function resolveOnDedicatedSocket(
         try {
           socket.send(msg, 53, dnsIP.ip);
           if (process.env.DEBUG_DNS) {
-            Console.bright(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
+            logger.info(`Forwarding ${queryName} to ${dnsIP.name} (${dnsIP.ip})`);
           }
         } catch {
           cleanup();

@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { exec } from "child_process";
 import { readFile } from "fs/promises";
 import { networkInterfaces } from "os";
@@ -35,7 +36,7 @@ export async function getWiFiSSID(): Promise<string | null> {
     const { stdout } = await execAsync(command);
     return stdout.trim() || null;
   } catch (error) {
-    console.error("Error fetching SSID:", error);
+    logger.error("Error fetching SSID:", error);
     return null;
   }
 }
@@ -72,7 +73,7 @@ export async function getARPTable(): Promise<Map<string, ARPEntry>> {
       });
     }
   } catch (error) {
-    console.error("Error reading ARP table:", error);
+    logger.error("Error reading ARP table:", error);
   }
   return arpMap;
 }
@@ -96,7 +97,7 @@ export async function getOwnMachineInfo(targetIP: string): Promise<{ ip: string;
       }
     }
   } catch (error) {
-    console.error("Error getting own machine info:", error);
+    logger.error("Error getting own machine info:", error);
   }
 
   return {

@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -37,8 +38,8 @@ export default class RolesController {
           return Responser.send(error);
         }
       },
-      (key) => console.log(`[DEDUP] Duplicate create role request detected for ${key}`),
-      (key) => console.log(`[CLEANUP] Removed in-flight create role request for ${key}`)
+      (key) => logger.info(`[DEDUP] Duplicate create role request detected for ${key}`),
+      (key) => logger.info(`[CLEANUP] Removed in-flight create role request for ${key}`)
     );
   }
 
@@ -85,8 +86,8 @@ export default class RolesController {
           return Responser.send(error);
         }
       },
-      (key) => console.log(`[DEDUP] Duplicate update role request detected for ${key}`),
-      (key) => console.log(`[CLEANUP] Removed in-flight update role request for ${key}`)
+      (key) => logger.info(`[DEDUP] Duplicate update role request detected for ${key}`),
+      (key) => logger.info(`[CLEANUP] Removed in-flight update role request for ${key}`)
     );
   }
 
@@ -106,8 +107,8 @@ export default class RolesController {
           return Responser.send(error);
         }
       },
-      (key) => console.log(`[DEDUP] Duplicate delete role request detected for ${key}`),
-      (key) => console.log(`[CLEANUP] Removed in-flight delete role request for ${key}`)
+      (key) => logger.info(`[DEDUP] Duplicate delete role request detected for ${key}`),
+      (key) => logger.info(`[CLEANUP] Removed in-flight delete role request for ${key}`)
     );
   }
 }

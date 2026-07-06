@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Console } from "outers";
+import logger from '../../utilities/logger';
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
@@ -37,7 +37,7 @@ export default class ServiceStatusChecker {
     // If cache exists, use it
     if (serviceStatusCache !== null) {
       if (serviceStatusCache.Service_Status !== "active") {
-        Console.red("Service is inactive (from cache). DNS query processing is halted.");
+        logger.error("Service is inactive (from cache). DNS query processing is halted.");
         IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 10); // Respond with NXDOMAIN
         return {
           serviceStatus: false,
@@ -54,7 +54,7 @@ export default class ServiceStatusChecker {
 
     const serviceCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE)
     if (!serviceCollection) {
-      Console.red("Service collection not found in the database.");
+      logger.error("Service collection not found in the database.");
       return {
         serviceStatus: false,
         serviceConfig: null
@@ -65,7 +65,7 @@ export default class ServiceStatusChecker {
 
 
     if (!serviceConfig) {
-      Console.red("Service configuration not found in the database.");
+      logger.error("Service configuration not found in the database.");
       return {
         serviceStatus: false,
         serviceConfig: null
@@ -74,7 +74,7 @@ export default class ServiceStatusChecker {
 
     await RedisCache.set(CacheKeys.Service_Status, serviceConfig);
     if (serviceConfig.Service_Status !== "active") {
-      Console.red("Service is inactive. DNS query processing is halted.");
+      logger.error("Service is inactive. DNS query processing is halted.");
       IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceConfig.DefaultTTL ? serviceConfig.DefaultTTL : 10); // Respond with NXDOMAIN
       return {
         serviceStatus: false,

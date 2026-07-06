@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -19,7 +20,7 @@ export default class DomainAddService {
   // Add a new domain record
   public async addDomain(domain: string, type: string, IpAddress: string, user: any): Promise<void> {
 
-    console.log(`[SERVICE] addDomain called for domain: ${domain}, IP: ${IpAddress}, user: ${user._id}`);
+    logger.info(`[SERVICE] addDomain called for domain: ${domain}, IP: ${IpAddress}, user: ${user._id}`);
 
     // construct Response
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Domain added successfully");
@@ -36,7 +37,7 @@ export default class DomainAddService {
     const existingDomain = await DomainCollectionClient.find({ domain: domain, userId: new ObjectId(user._id) }).toArray();
     const existingIP = await DNSCollectionClient.find({ value: IpAddress }).toArray();
 
-    console.log(`[SERVICE] Existing domain check: ${existingDomain.length}, Existing IP check: ${existingIP.length}`);
+    logger.info(`[SERVICE] Existing domain check: ${existingDomain.length}, Existing IP check: ${existingIP.length}`);
 
     if (existingIP.length > 0) {
       Responser.setStatusCode(StatusCodes.CONFLICT);
@@ -48,7 +49,7 @@ export default class DomainAddService {
       return Responser.send("Domain already exists");
     }
     else {
-      console.log(`[SERVICE] Inserting new domain: ${domain}`);
+      logger.info(`[SERVICE] Inserting new domain: ${domain}`);
 
       const domainDoc = {
         domain: domain,
@@ -60,7 +61,7 @@ export default class DomainAddService {
 
       const insertResult = await DomainCollectionClient.insertOne(domainDoc);
 
-      console.log(`[SERVICE] Domain insert result: ${insertResult.acknowledged}, ID: ${insertResult.insertedId}`);
+      logger.info(`[SERVICE] Domain insert result: ${insertResult.acknowledged}, ID: ${insertResult.insertedId}`);
 
       if (!insertResult.acknowledged) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
@@ -81,7 +82,7 @@ export default class DomainAddService {
 
       const dnsInsertResult = await DNSCollectionClient.insertMany(dnsRecords);
 
-      console.log(`[SERVICE] DNS records insert result: ${dnsInsertResult.acknowledged}`);
+      logger.info(`[SERVICE] DNS records insert result: ${dnsInsertResult.acknowledged}`);
 
       if (!dnsInsertResult.acknowledged) {
         Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);

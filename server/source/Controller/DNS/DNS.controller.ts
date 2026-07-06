@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import { StatusCodes } from "outers";
@@ -39,14 +40,14 @@ export default class DnsController {
         }
       },
       (key) => {
-        console.log(`[DEDUP] Duplicate DNS record request detected for ${key}, waiting for existing request...`);
+        logger.info(`[DEDUP] Duplicate DNS record request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        console.log(`[CLEANUP] Removed in-flight DNS record request for ${key}`);
+        logger.info(`[CLEANUP] Removed in-flight DNS record request for ${key}`);
       }
     );
 
-    console.log(`[CREATE] Processing DNS record creation request for ${name} in domain ${DomainName} by user ${request.user._id}`);
+    logger.info(`[CREATE] Processing DNS record creation request for ${name} in domain ${DomainName} by user ${request.user._id}`);
   }
 
   // Get all DNS records for a domain
@@ -81,7 +82,7 @@ export default class DnsController {
 
   // Delete a DNS record by ID
   public static async delete(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
-    console.log(`[DELETE] Processing DNS record deletion request by user ${request.user._id}`);
+    logger.info(`[DELETE] Processing DNS record deletion request by user ${request.user._id}`);
     const { id, domainName } = request.body as { id: string, domainName: string };
     const Responser = new BuildResponse(reply, StatusCodes.OK, "DNS record deleted successfully");
     const dnsDeleteService = new DnsDeleteService(reply);

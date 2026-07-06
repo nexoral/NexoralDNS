@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 
@@ -39,14 +40,14 @@ export default class DomainController {
         }
       },
       (key) => {
-        console.log(`[DEDUP] Duplicate request detected for ${key}, waiting for existing request...`);
+        logger.info(`[DEDUP] Duplicate request detected for ${key}, waiting for existing request...`);
       },
       (key) => {
-        console.log(`[CLEANUP] Removed in-flight request for ${key}`);
+        logger.info(`[CLEANUP] Removed in-flight request for ${key}`);
       }
     );
 
-    console.log(`[CREATE] Processing domain creation request for ${DomainName} by user ${request.user._id}`);
+    logger.info(`[CREATE] Processing domain creation request for ${DomainName} by user ${request.user._id}`);
   }
 
   // List all domains for the authenticated user

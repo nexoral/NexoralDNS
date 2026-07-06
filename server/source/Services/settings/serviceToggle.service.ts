@@ -1,4 +1,5 @@
 
+import logger from '../../utilities/logger';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -21,7 +22,7 @@ export default class ServiceToggleService {
 
   // Toggle a service's active status
   public async toggleService(): Promise<void> {
-    console.log("Toggling service status...");
+    logger.info("Toggling service status...");
     // construct Response
     const Responser = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Service updated Successful");
     const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
@@ -44,7 +45,7 @@ export default class ServiceToggleService {
       { $set: { Service_Status: newStatus } }
     );
 
-    console.log(`Service status updated to: ${newStatus}`);
+    logger.info(`Service status updated to: ${newStatus}`);
 
     return Responser.send({ serviceStatus: newStatus });
   }

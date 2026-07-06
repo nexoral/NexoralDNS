@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -42,7 +43,7 @@ export default class AccessControlPolicyService {
    * @returns {Promise<void>}
    */
   public async createPolicy(policyData: AccessControlPolicyData): Promise<void> {
-    console.log("Creating new access control policy:", policyData.policyName);
+    logger.info("Creating new access control policy:", policyData.policyName);
 
     // Validate policy name
     if (!policyData.policyName || policyData.policyName.trim() === "") {
@@ -274,9 +275,9 @@ export default class AccessControlPolicyService {
     // Note: In-memory caches in BlockList will expire after 5 seconds
     try {
       await forceReloadACLPolicies();
-      console.log('[ACL] Policies reloaded to Redis after policy creation');
+      logger.info('[ACL] Policies reloaded to Redis after policy creation');
     } catch (error) {
-      console.error('[ACL] Failed to reload policies after create:', error);
+      logger.error('[ACL] Failed to reload policies after create:', error);
       // Don't fail the request if Redis reload fails
     }
 
@@ -301,7 +302,7 @@ export default class AccessControlPolicyService {
    * @returns {Promise<void>}
    */
   public async getPolicies(filter: string = "all", skip: number = 0, limit: number = 50): Promise<void> {
-    console.log(`Fetching access control policies with filter: ${filter}, skip: ${skip}, limit: ${limit}`);
+    logger.info(`Fetching access control policies with filter: ${filter}, skip: ${skip}, limit: ${limit}`);
 
     const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
@@ -353,7 +354,7 @@ export default class AccessControlPolicyService {
    * @returns {Promise<void>}
    */
   public async getPolicyById(policyId: string): Promise<void> {
-    console.log(`Fetching access control policy with ID: ${policyId}`);
+    logger.info(`Fetching access control policy with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
@@ -403,7 +404,7 @@ export default class AccessControlPolicyService {
    * @returns {Promise<void>}
    */
   public async updatePolicy(policyId: string, updateData: Partial<AccessControlPolicyData>): Promise<void> {
-    console.log(`Updating access control policy with ID: ${policyId}`);
+    logger.info(`Updating access control policy with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
@@ -465,7 +466,7 @@ export default class AccessControlPolicyService {
     try {
       await forceReloadACLPolicies();
     } catch (error) {
-      console.error('[ACL] Failed to reload policies after update:', error);
+      logger.error('[ACL] Failed to reload policies after update:', error);
       // Don't fail the request if Redis reload fails
     }
 
@@ -487,7 +488,7 @@ export default class AccessControlPolicyService {
    * @returns {Promise<void>}
    */
   public async togglePolicyStatus(policyId: string): Promise<void> {
-    console.log(`Toggling access control policy status with ID: ${policyId}`);
+    logger.info(`Toggling access control policy status with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
@@ -528,7 +529,7 @@ export default class AccessControlPolicyService {
     try {
       await forceReloadACLPolicies();
     } catch (error) {
-      console.error('[ACL] Failed to reload policies after toggle:', error);
+      logger.error('[ACL] Failed to reload policies after toggle:', error);
       // Don't fail the request if Redis reload fails
     }
 
@@ -551,7 +552,7 @@ export default class AccessControlPolicyService {
    * @returns {Promise<void>}
    */
   public async deletePolicy(policyId: string): Promise<void> {
-    console.log(`Deleting access control policy with ID: ${policyId}`);
+    logger.info(`Deleting access control policy with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
@@ -587,7 +588,7 @@ export default class AccessControlPolicyService {
     try {
       await forceReloadACLPolicies();
     } catch (error) {
-      console.error('[ACL] Failed to reload policies after delete:', error);
+      logger.error('[ACL] Failed to reload policies after delete:', error);
       // Don't fail the request if Redis reload fails
     }
 

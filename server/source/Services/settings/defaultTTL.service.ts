@@ -1,4 +1,5 @@
 
+import logger from '../../utilities/logger';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
@@ -23,7 +24,7 @@ export default class DefaultTTLService {
    * @returns {Promise<void>}
    */
   public async getDefaultTTL(): Promise<void> {
-    console.log("Fetching Default TTL...");
+    logger.info("Fetching Default TTL...");
 
     // construct Response
     const Responser = new BuildResponse(
@@ -47,7 +48,7 @@ export default class DefaultTTLService {
 
     const defaultTTL = serviceData.DefaultTTL || DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.DefaultTTL;
 
-    console.log(`Current Default TTL: ${defaultTTL} seconds`);
+    logger.info(`Current Default TTL: ${defaultTTL} seconds`);
 
     return Responser.send({
       defaultTTL,
@@ -61,7 +62,7 @@ export default class DefaultTTLService {
    * @returns {Promise<void>}
    */
   public async updateDefaultTTL(newTTL: number): Promise<void> {
-    console.log(`Updating Default TTL to: ${newTTL} seconds`);
+    logger.info(`Updating Default TTL to: ${newTTL} seconds`);
 
     // Validate TTL value
     if (!newTTL || typeof newTTL !== "number") {
@@ -117,7 +118,7 @@ export default class DefaultTTLService {
       { $set: { DefaultTTL: newTTL } }
     );
 
-    console.log(`Default TTL successfully updated to: ${newTTL} seconds`);
+    logger.info(`Default TTL successfully updated to: ${newTTL} seconds`);
 
     return Responser.send({
       defaultTTL: newTTL,

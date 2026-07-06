@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
@@ -32,7 +33,7 @@ interface ExpandedPolicy {
  * This runs every 60 seconds to keep policies in sync
  */
 export async function loadAccessControlPoliciesToRedis(): Promise<void> {
-  console.log('[ACL] Loading access control policies to Redis...');
+  logger.info('[ACL] Loading access control policies to Redis...');
 
   const startTime = Date.now();
 
@@ -47,7 +48,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 
   // Fetch all active policies
   const activePolicies = await policiesCollection.find({ isActive: true }).toArray();
-  console.log(`[ACL] Found ${activePolicies.length} active policies`);
+  logger.info(`[ACL] Found ${activePolicies.length} active policies`);
 
   // Fetch all IP groups and Domain groups for expansion
   const [ipGroups, domainGroups] = await Promise.all([
@@ -59,7 +60,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   const ipGroupMap = new Map(ipGroups.map(g => [g._id.toString(), g.ipAddresses || []]));
   const domainGroupMap = new Map(domainGroups.map(g => [g._id.toString(), g.domains || []]));
 
-  console.log(`[ACL] Loaded ${ipGroups.length} IP groups and ${domainGroups.length} domain groups`);
+  logger.info(`[ACL] Loaded ${ipGroups.length} IP groups and ${domainGroups.length} domain groups`);
 
   // Expand all policies (resolve group references to actual IPs and domains)
   const expandedPolicies: ExpandedPolicy[] = [];
@@ -161,7 +162,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
     }
   }
 
-  console.log(`[ACL] Expanded ${expandedPolicies.length} policies`);
+  logger.info(`[ACL] Expanded ${expandedPolicies.length} policies`);
 
   // Build Redis data structure
   // Store domains as JSON strings to preserve wildcard state
@@ -192,7 +193,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
     }
   }
 
-  console.log(`[ACL] Built lookup structure: ${ipToDomains.size} IPs, ${allUsersBlockedDomains.size} global blocks`);
+  logger.info(`[ACL] Built lookup structure: ${ipToDomains.size} IPs, ${allUsersBlockedDomains.size} global blocks`);
 
   // Clear old ACL data in Redis (delete all acl:* keys)
   // Note: This is a simplified approach. In production, consider using Redis pipeline for atomic updates
@@ -202,7 +203,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   const aclKeys = await redisClient.keys('acl:*');
   if (aclKeys.length > 0) {
     await redisClient.del(aclKeys);
-    console.log(`[ACL] Cleared ${aclKeys.length} old ACL keys`);
+    logger.info(`[ACL] Cleared ${aclKeys.length} old ACL keys`);
   }
 
   // Write new data to Redis
@@ -236,8 +237,8 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   await pipeline.exec();
 
   const duration = Date.now() - startTime;
-  console.log(`[ACL]  Successfully loaded policies to Redis in ${duration}ms`);
-  console.log(`[ACL] Stats: ${metadata.expandedPolicies} policies, ${metadata.trackedIPs} IPs, ${metadata.globalBlocks} global blocks`);
+  logger.info(`[ACL]  Successfully loaded policies to Redis in ${duration}ms`);
+  logger.info(`[ACL] Stats: ${metadata.expandedPolicies} policies, ${metadata.trackedIPs} IPs, ${metadata.globalBlocks} global blocks`);
 }
 
 /**
@@ -247,9 +248,9 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
 export async function forceReloadACLPolicies(): Promise<void> {
   try {
     await loadAccessControlPoliciesToRedis();
-    console.log('[ACL] Force reload completed successfully');
+    logger.info('[ACL] Force reload completed successfully');
   } catch (error) {
-    console.error('[ACL] Error during force reload:', error);
+    logger.error('[ACL] Error during force reload:', error);
     throw error;
   }
 }
@@ -262,7 +263,7 @@ export const LoadAccessControlPoliciesCronJob = () => {
     try {
       await loadAccessControlPoliciesToRedis();
     } catch (error) {
-      console.error('[ACL] Error loading policies to Redis:', error);
+      logger.error('[ACL] Error loading policies to Redis:', error);
     }
   }, 60, true); // Run every 60 seconds, run immediately on start
 };

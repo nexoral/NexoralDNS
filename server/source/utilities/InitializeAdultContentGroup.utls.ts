@@ -8,7 +8,7 @@
  * @version 3.3.42-stable
  */
 
-import { Console } from 'outers';
+import logger from '../utilities/logger';
 import { getCollectionClient } from '../Database/mongodb.db';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import {
@@ -43,7 +43,7 @@ export async function initializeAdultContentDomainGroup(): Promise<ObjectId | nu
     );
 
     if (!domainGroupsCollection) {
-      Console.red('[Anti-Porn Init] Failed to get domain_groups collection');
+      logger.error('[Anti-Porn Init] Failed to get domain_groups collection');
       return null;
     }
 
@@ -62,7 +62,7 @@ export async function initializeAdultContentDomainGroup(): Promise<ObjectId | nu
 
       if (existingDomainCount !== newDomainCount) {
         // Update the group with new domains
-        Console.yellow(
+        logger.warn(
           `[Anti-Porn Init] Updating adult content group (${existingDomainCount} → ${newDomainCount} domains)`
         );
 
@@ -78,14 +78,14 @@ export async function initializeAdultContentDomainGroup(): Promise<ObjectId | nu
         );
 
         if (updateResult.modifiedCount > 0) {
-          Console.green(
+          logger.info(
             `[Anti-Porn Init] Adult content group updated successfully (ID: ${existingGroup._id})`
           );
         } else {
-          Console.yellow('[Anti-Porn Init] Adult content group already up to date');
+          logger.warn('[Anti-Porn Init] Adult content group already up to date');
         }
       } else {
-        Console.green(
+        logger.info(
           `[Anti-Porn Init] Adult content group already exists (${existingDomainCount} domains)`
         );
       }
@@ -94,7 +94,7 @@ export async function initializeAdultContentDomainGroup(): Promise<ObjectId | nu
     }
 
     // Group doesn't exist, create it
-    Console.yellow(
+    logger.warn(
       `[Anti-Porn Init] Creating adult content domain group with ${ADULT_CONTENT_DOMAINS.length} domains...`
     );
 
@@ -111,16 +111,16 @@ export async function initializeAdultContentDomainGroup(): Promise<ObjectId | nu
     const insertResult = await domainGroupsCollection.insertOne(newGroup);
 
     if (insertResult.acknowledged) {
-      Console.green(
+      logger.info(
         `[Anti-Porn Init] Adult content domain group created successfully (ID: ${insertResult.insertedId})`
       );
       return insertResult.insertedId;
     }
 
-    Console.red('[Anti-Porn Init] Failed to create adult content domain group');
+    logger.error('[Anti-Porn Init] Failed to create adult content domain group');
     return null;
   } catch (error) {
-    Console.red('[Anti-Porn Init] Error initializing adult content domain group:', error);
+    logger.error('[Anti-Porn Init] Error initializing adult content domain group:', error);
     return null;
   }
 }
@@ -138,7 +138,7 @@ export async function getAdultContentDomainGroupId(): Promise<ObjectId | null> {
     );
 
     if (!domainGroupsCollection) {
-      Console.red('[Anti-Porn] Failed to get domain_groups collection');
+      logger.error('[Anti-Porn] Failed to get domain_groups collection');
       return null;
     }
 
@@ -149,7 +149,7 @@ export async function getAdultContentDomainGroupId(): Promise<ObjectId | null> {
 
     return group?._id || null;
   } catch (error) {
-    Console.red('[Anti-Porn] Error getting adult content domain group ID:', error);
+    logger.error('[Anti-Porn] Error getting adult content domain group ID:', error);
     return null;
   }
 }

@@ -1,3 +1,4 @@
+import logger from '../utilities/logger';
 import { Socket, createSocket } from "node:dgram";
 import os from "os";
 import { Retry } from "outers";
@@ -20,11 +21,11 @@ export default class IP_SCAN {
       const currentIP = await this.getCurrentIP();
       this.CURRENT_IP = currentIP;
       if (this.CURRENT_IP !== this.PREVIOUS_IP) {
-        console.log(`IP Change Detected: ${this.PREVIOUS_IP} -> ${this.CURRENT_IP}`);
+        logger.info(`IP Change Detected: ${this.PREVIOUS_IP} -> ${this.CURRENT_IP}`);
         this.PREVIOUS_IP = this.CURRENT_IP;
 
         this.socket.close(() => {
-          console.log(`Rebinding DNS server to new IP: ${this.CURRENT_IP}`);
+          logger.info(`Rebinding DNS server to new IP: ${this.CURRENT_IP}`);
           
           // Create new socket since closed sockets cannot be reused
           const newSocket = createSocket('udp4');

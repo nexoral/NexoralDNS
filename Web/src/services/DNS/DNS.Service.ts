@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import logger from '../../utilities/logger';
 import dgram from "node:dgram";
-import { Console } from "outers"
 import StartRulesService from "../Start/Rules.service";
 
 // Utility to get local IP address
@@ -43,9 +43,9 @@ export default class DNS {
     try {
       socket.setRecvBufferSize(4 * 1024 * 1024); // 4MB requested
       socket.setSendBufferSize(4 * 1024 * 1024);
-      Console.bright(`DNS UDP socket buffers granted: recv=${socket.getRecvBufferSize()} send=${socket.getSendBufferSize()} (raise net.core.rmem_max/wmem_max if lower than requested)`);
+      logger.info(`DNS UDP socket buffers granted: recv=${socket.getRecvBufferSize()} send=${socket.getSendBufferSize()} (raise net.core.rmem_max/wmem_max if lower than requested)`);
     } catch (error) {
-      Console.yellow(`Could not resize UDP socket buffers: ${error}`);
+      logger.warn(`Could not resize UDP socket buffers: ${error}`);
     }
   }
 
@@ -61,12 +61,12 @@ export default class DNS {
   public start(): this {
     this.server.on("listening", () => {
       const address = this.server.address();
-      Console.green(`DNS server running at udp://${address.address}:${address.port} with Worker: ${process.pid}`);
+      logger.info(`DNS server running at udp://${address.address}:${address.port} with Worker: ${process.pid}`);
       this.tuneSocketBuffers(this.server);
     });
 
     MongoConnector().catch((error) => {
-      Console.red("Failed to connect to MongoDB:", error);
+      logger.error("Failed to connect to MongoDB:", error);
     });
 
     // Run on 5353 (non-root). Use 53 if root/admin
@@ -91,7 +91,7 @@ export default class DNS {
       // here runs before that completes, so buffer tuning can't happen inline)
       this.server.on("listening", () => {
         const address = this.server.address();
-        Console.green(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker process: ${process.pid}`);
+        logger.info(`DNS server successfully rebound to udp://${address.address}:${address.port} with Worker process: ${process.pid}`);
         this.tuneSocketBuffers(this.server);
       });
     });
@@ -128,7 +128,7 @@ export default class DNS {
    */
   public listenError(): this {
     this.server.on("error", (err) => {
-      Console.red(`DNS server error:\n${err.stack}`);
+      logger.error(`DNS server error:\n${err.stack}`);
       this.server.close();
     });
     return this;

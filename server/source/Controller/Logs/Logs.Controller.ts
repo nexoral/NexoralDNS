@@ -1,3 +1,4 @@
+import logger from '../../utilities/logger';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 
@@ -41,7 +42,7 @@ export default class LogsController {
     try {
       await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query);
     } catch (error) {
-      console.log(error)
+      logger.info(error)
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);
       Responser.setMessage("Error fetching logs list");
       return Responser.send("An error occurred while fetching the logs list");
