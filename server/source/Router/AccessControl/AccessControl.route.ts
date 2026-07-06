@@ -318,6 +318,24 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
     handler: AccessControlController.deletePolicy
   });
 
+  // ==================== CACHE MANAGEMENT ====================
+
+  // Invalidate ACL cache — force-reload all policies from MongoDB to Redis
+  fastify.post("/cache/invalidate", {
+    schema: {
+      description: 'Force-reload all ACL policies from MongoDB to Redis and flush DNS engine caches',
+      tags: ['Access Control'],
+      headers: {
+        type: 'object',
+        properties: {
+          authorization: { type: 'string', description: 'Bearer token for authentication' },
+        },
+      },
+    },
+    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(4, 8)],
+    handler: AccessControlController.invalidateCache
+  });
+
   // ==================== DOMAIN GROUPS ====================
 
   // Create domain group

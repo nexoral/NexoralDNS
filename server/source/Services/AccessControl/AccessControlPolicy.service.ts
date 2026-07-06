@@ -5,6 +5,7 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
+import RedisCache from "../../Redis/Redis.cache";
 
 export interface DomainEntry {
   domain: string;
@@ -600,5 +601,19 @@ export default class AccessControlPolicyService {
       policyId,
       message: `Policy "${existingPolicy.policyName}" has been deleted successfully`
     });
+  }
+
+  /**
+   * Force-reload ACL policies from MongoDB to Redis and invalidate all caches.
+   * Ensures the DNS engine picks up the latest policy changes immediately.
+   */
+  public async invalidateCache(): Promise<{ lastUpdated: number; stats: Record<string, unknown> | null }> {
+    await forceReloadACLPolicies();
+
+    const redisClient = await RedisCache.getClient();
+    const raw = await redisClient.get('acl:metadata');
+    const stats = raw ? JSON.parse(raw) : null;
+
+    return { lastUpdated: Date.now(), stats };
   }
 }
