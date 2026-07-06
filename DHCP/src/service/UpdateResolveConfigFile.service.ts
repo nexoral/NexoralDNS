@@ -2,6 +2,10 @@ import path from "path";
 import fs from "fs/promises";
 
 export default class UpdateResolveConfigFileService {
+  // Serializes all resolv.conf writes across instances/ticks so overlapping
+  // updates can never interleave writes to the same critical system file.
+  private static writeChain: Promise<void> = Promise.resolve();
+
   private readonly configPath: string;
   private readonly localIP: string = "127.0.0.53";
   private readonly IP: string;
@@ -12,6 +16,13 @@ export default class UpdateResolveConfigFileService {
   }
 
   public async updateConfig(): Promise<void> {
+    const run = UpdateResolveConfigFileService.writeChain.then(() => this.doUpdate());
+    // Keep the chain alive even if this write rejects; still surface the error to caller.
+    UpdateResolveConfigFileService.writeChain = run.catch(() => { });
+    return run;
+  }
+
+  private async doUpdate(): Promise<void> {
     console.log(`🔧 Updating ${this.configPath} with nameserver ${this.IP}...`);
 
     try {
