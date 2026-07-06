@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 COPY . .
@@ -17,7 +17,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Node.js and minimal runtime dependencies
 RUN apt-get update && apt-get install -y curl sudo libcap2-bin dnsutils iputils-ping iproute2 && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g pm2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*

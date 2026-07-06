@@ -1,7 +1,8 @@
-import { Socket, createSocket } from "node:dgram";
+import { Socket } from "node:dgram";
 import os from "os";
 import { Retry } from "outers";
 import logger from './logger';
+import { createDnsListenerSocket } from './dnsSocket.utls';
 
 export default class IP_SCAN {
   private CURRENT_IP: string = "";
@@ -27,14 +28,14 @@ export default class IP_SCAN {
         this.socket.close(() => {
           logger.info(`Rebinding DNS server to new IP: ${this.CURRENT_IP}`);
 
-          // Create new socket since closed sockets cannot be reused
-          const newSocket = createSocket('udp4');
+          // Shared factory keeps reuseAddr/reusePort in sync with the original listener.
+          const newSocket = createDnsListenerSocket();
 
           // Handle bind failure (e.g. the new IP isn't bindable yet) instead of
           // letting the socket 'error' tear down the UDP service permanently.
           // Reset PREVIOUS_IP so the next scan tick retries the rebind.
           newSocket.once('error', (err) => {
-            logger.error(`Failed to rebind DNS server to ${this.CURRENT_IP}:`, err as any);
+            logger.error(`Failed to rebind DNS server to ${this.CURRENT_IP}:`, err as unknown);
             this.PREVIOUS_IP = "";
             try { newSocket.close(); } catch { /* already closing */ }
           });
