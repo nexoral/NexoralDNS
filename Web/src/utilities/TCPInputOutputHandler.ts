@@ -100,8 +100,11 @@ export default class TCPInputOutputHandler implements IDNSIOHandler {
 
     let offset = 12;
     const labels: string[] = [];
-    while (msg[offset] !== 0) {
+    // Bounded walk: guard against truncated packets with no null terminator
+    // (an unbounded loop here is a CPU DoS on a single malformed packet).
+    while (offset < msg.length && msg[offset] !== 0) {
       const length = msg[offset];
+      if (offset + 1 + length > msg.length) break; // truncated label
       labels.push(msg.subarray(offset + 1, offset + 1 + length).toString());
       offset += length + 1;
     }
