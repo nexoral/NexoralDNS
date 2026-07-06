@@ -1,6 +1,4 @@
 import logger from '../../utilities/logger';
-import container from '../../container/appContainer';
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { exec } from "child_process";
 import { readFile } from "fs/promises";
 import { networkInterfaces } from "os";
@@ -9,6 +7,7 @@ import getLocalIPRange from "../../utilities/GetWLANIP.utls";
 import { Retry } from "outers";
 import { pingIP } from "../../helper/IP_Ping.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { promisify } from "util";
 
 interface ARPEntry {
@@ -130,7 +129,7 @@ export async function fetchConnectedIP(): Promise<Boolean> {
   const currentIP = getLocalIPRange("any");
   const SSID = await getWiFiSSID();
 
-  const serviceCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE);
+  const serviceCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE);
   const serviceConfig = await serviceCol?.findOne({ SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME });
 
   if (currentIP && serviceConfig) {

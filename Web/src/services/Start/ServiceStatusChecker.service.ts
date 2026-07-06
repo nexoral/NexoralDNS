@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import logger from "../../utilities/logger";
+import logger from '../../utilities/logger';
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 
 // Cache Settings
-import container from "../../container/appContainer";
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RedisCacheService } from "../../Redis/Redis.cache";
+import RedisCache from "../../Redis/Redis.cache";
 import CacheKeys from "../../Redis/CacheKeys.cache";
 
 export type ServiceStatusResult = {
@@ -33,7 +32,7 @@ export default class ServiceStatusChecker {
     rinfo: dgram.RemoteInfo
   ): Promise<ServiceStatusResult> {
     // Check Redis Cache first
-    const serviceStatusCache = await container.get<RedisCacheService>('RedisCacheService').get(CacheKeys.Service_Status);
+    const serviceStatusCache = await RedisCache.get(CacheKeys.Service_Status);
 
     // If cache exists, use it
     if (serviceStatusCache !== null) {
@@ -53,7 +52,7 @@ export default class ServiceStatusChecker {
       }
     }
 
-    const serviceCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.SERVICE)
+    const serviceCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.SERVICE)
     if (!serviceCollection) {
       logger.error("Service collection not found in the database.");
       return {
@@ -73,7 +72,7 @@ export default class ServiceStatusChecker {
       };
     }
 
-    await container.get<RedisCacheService>('RedisCacheService').set(CacheKeys.Service_Status, serviceConfig);
+    await RedisCache.set(CacheKeys.Service_Status, serviceConfig);
     if (serviceConfig.Service_Status !== "active") {
       logger.error("Service is inactive. DNS query processing is halted.");
       IO.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceConfig.DefaultTTL !== undefined ? serviceConfig.DefaultTTL : 0); // Respond with NXDOMAIN

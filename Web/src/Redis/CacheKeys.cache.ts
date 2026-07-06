@@ -1,11 +1,12 @@
 enum CacheKeys {
   Service_Status= "dns-server-status",
-  Domain_DNS_Record = "Domain_DNS_Record"
+  Domain_DNS_Record = "Domain_DNS_Record",
+  Block_Domains = "Blocked_Domain"
 }
 
 
 export enum QueueKeys {
-  DNS_Analytics = "DNS_analytics"
+  DNS_Analytics = "DNS_analytcs"
 }
 
 export enum DNS_QUERY_STATUS_KEYS {

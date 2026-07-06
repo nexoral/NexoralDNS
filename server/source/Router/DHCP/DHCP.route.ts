@@ -2,7 +2,7 @@
 import { FastifyInstance, FastifyPluginOptions } from "fastify";
 
 // middlewares
-import { authGuard } from "../../Middlewares/authGuard.middleware";
+import authGuard from "../../Middlewares/authGuard.middleware";
 
 // Controllers
 import DhcpController from "../../Controller/DHCP/DHCP.controller";

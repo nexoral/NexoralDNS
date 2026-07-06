@@ -1,20 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import logger from "../../utilities/logger";
+import logger from '../../utilities/logger';
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "dgram";
 import { DomainDBPoolService } from "../DB/DB_Pool.service";
-import { GlobalDNSforwarderService } from "../Forwarder/GlobalDNSforwarder.service";
+import GlobalDNSforwarder from "../Forwarder/GlobalDNSforwarder.service";
 
 // Rules Services
 import ServiceStatusChecker, { ServiceStatusResult } from "./ServiceStatusChecker.service";
+import RedisCache from "../../Redis/Redis.cache";
 import CacheKeys, { QueueKeys } from "../../Redis/CacheKeys.cache";
 
 // RabbitMQ
 import { DNS_QUERY_STATUS_KEYS } from "../../Redis/CacheKeys.cache";
-import container from "../../container/appContainer";
-import { RedisCacheService } from "../../Redis/Redis.cache";
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
+import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import BlockList from "../Rules/BlockList.service";
 
 export default class StartRulesService {
@@ -30,16 +29,16 @@ export default class StartRulesService {
   private dbPoolService: DomainDBPoolService;
 
   constructor() {
-    // Get services from DI container
-    this.blockList = container.get<BlockList>('BlockList');
-    this.serviceStatusChecker = container.get<ServiceStatusChecker>('ServiceStatusChecker');
-    this.dbPoolService = container.get<DomainDBPoolService>('DomainDBPoolService');
+    // Initialize services once
+    this.blockList = new BlockList();
+    this.serviceStatusChecker = new ServiceStatusChecker();
+    this.dbPoolService = new DomainDBPoolService();
 
     // Subscribe to Cache Invalidation Channel — guarded so only one subscription
     // is registered per process regardless of how many service instances are created
     if (!StartRulesService.#subscribed) {
       StartRulesService.#subscribed = true;
-      container.get<RedisCacheService>('RedisCacheService').subscribe('cache:invalidate', async (message) => {
+      RedisCache.subscribe('cache:invalidate', async (message) => {
       // Log only on invalidation event (rare)
       logger.warn(`🔔 Received Cache Invalidation Request: ${message}`);
 
@@ -47,7 +46,7 @@ export default class StartRulesService {
       BlockList.clearAllCaches();
 
       // Clear Service Status Cache
-      await container.get<RedisCacheService>('RedisCacheService').delete(CacheKeys.Service_Status);
+      await RedisCache.delete(CacheKeys.Service_Status);
 
       // Clear blocked domains local cache if specific IP mentioned (optional optimization)
       if (message.includes('ip:')) {
@@ -55,55 +54,25 @@ export default class StartRulesService {
       }
 
       logger.info('✅ Local Caches Cleared');
-      }).catch((error) => {
-        // Allow a retry on the next instance construction instead of staying dead
-        StartRulesService.#subscribed = false;
-        logger.error('❌ Failed to subscribe to cache:invalidate channel:', error as any);
       });
     }
   }
 
   public async execute(msg: Buffer<ArrayBufferLike>, rinfo: dgram.RemoteInfo, io: IDNSIOHandler): Promise<void | boolean> {
+    // Start Performance Timer
     const start = performance.now();
 
-    if (!msg || !rinfo) return;
-
-    const QUERY_TIMEOUT_MS = 5000;
-    const timeoutSignal = { aborted: false };
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        timeoutSignal.aborted = true;
-        reject(new Error(`Query processing timed out after ${QUERY_TIMEOUT_MS}ms`));
-      }, QUERY_TIMEOUT_MS);
-    });
-
-    try {
-      await Promise.race([
-        this.executeCore(msg, rinfo, io, start, timeoutSignal),
-        timeoutPromise,
-      ]);
-    } catch (error) {
-      if (timeoutSignal.aborted) {
-        logger.error(`Query timeout for ${io.parseQueryName(msg)} from ${rinfo.address}`);
-        try { io.buildSendAnswer(msg, rinfo, '', '0.0.0.0', 0); } catch { /* best-effort SERVFAIL */ }
-      } else {
-        logger.error(`Query error:`, error as any);
-      }
+    if (!msg || !rinfo) {
+      return;
     }
-  }
 
-  private async executeCore(
-    msg: Buffer<ArrayBufferLike>,
-    rinfo: dgram.RemoteInfo,
-    io: IDNSIOHandler,
-    start: number,
-    timeoutSignal: { aborted: boolean }
-  ): Promise<void> {
+    // Parse query name
     const queryName: string = io.parseQueryName(msg);
     const queryType: string = io.parseQueryType(msg);
 
-    logger.info(`DNS Query: ${queryName} (${queryType}) from ${rinfo.address}`);
+    logger.info(`🔍 DNS Query: ${queryName} (${queryType}) from ${rinfo.address}`);
 
+    // Analytics Payload
     const AnalyticsMSgPayload: {
       queryName: string,
       queryType: string,
@@ -122,6 +91,8 @@ export default class StartRulesService {
       duration: 0
     }
 
+
+    // Add Rule Checker with Fail-Safe
     let serviceStatus: ServiceStatusResult;
     let databaseOffline = false;
 
@@ -129,8 +100,10 @@ export default class StartRulesService {
       serviceStatus = await this.serviceStatusChecker.checkServiceStatus(queryName, io, msg, rinfo);
       if (!serviceStatus.serviceStatus) {
         if (!serviceStatus.serviceConfig) {
+          // MongoDB offline/uninitialized returns false with config = null
           throw new Error("Service config missing — database offline");
         }
+        // Service is explicitly set to inactive
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN;
         AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.SERVICE_DOWN_FROM;
         AnalyticsMSgPayload.duration = performance.now() - start;
@@ -138,7 +111,7 @@ export default class StartRulesService {
         return;
       }
     } catch (error) {
-      logger.warn(`Fail-Safe Active: Database offline for query ${queryName}. Bypassing access controls.`);
+      logger.warn(`⚠️ Fail-Safe Active: Database offline for query ${queryName}. Bypassing access controls.`);
       databaseOffline = true;
       serviceStatus = {
         serviceStatus: true,
@@ -146,49 +119,58 @@ export default class StartRulesService {
       };
     }
 
+    // Check Service Status Document is perfect or not
     if (!serviceStatus.serviceConfig || serviceStatus.serviceConfig == null) {
-      serviceStatus.serviceConfig = { DefaultTTL: 0 };
+      serviceStatus.serviceConfig = {
+        DefaultTTL: 0
+      };
     }
 
+    // Check Access Control Policy Check with Fail-Safe
     let PolicyCheckRuleStatus = false;
     if (!databaseOffline) {
       try {
         PolicyCheckRuleStatus = await this.blockList.checkDomain(queryName, rinfo.address);
       } catch (err) {
         databaseOffline = true;
-        logger.warn(`Fail-Safe Active: Block list check failed due to DB error. Bypassing.`);
+        logger.warn(`⚠️ Fail-Safe Active: Block list check failed due to DB error. Bypassing.`);
       }
     }
 
     if (PolicyCheckRuleStatus) {
+      // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.BLOCKED;
       AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_BLOCKED;
       AnalyticsMSgPayload.duration = performance.now() - start;
 
-      io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL);
       this.publishAnalytics(AnalyticsMSgPayload);
+      io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", serviceStatus.serviceConfig.DefaultTTL); // Respond with NXDOMAIN
       return;
     }
 
+    // Taking Record From Cache / DB with Fail-Safe
     let record;
     if (!databaseOffline) {
       try {
-        const RecordFromCache = await container.get<RedisCacheService>('RedisCacheService').get(`${CacheKeys.Domain_DNS_Record}:${queryName}`);
+        const RecordFromCache = await RedisCache.get(`${CacheKeys.Domain_DNS_Record}:${queryName}`);
         if (RecordFromCache !== null) {
           record = RecordFromCache;
           AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_CACHE;
         } else {
+          // Single-flight DB request: if multiple requests for same domain arrive, they share one DB call
           let NewRecordFromDB = null;
 
           if (this.inflight.has(queryName)) {
+            // Join existing DB call
             NewRecordFromDB = await this.inflight.get(queryName);
           } else {
+            // Create new DB call promise
             const promise = (async () => {
               try {
                 return await this.dbPoolService.getDnsRecordByDomainName(queryName);
               } catch (error) {
                 databaseOffline = true;
-                logger.warn(`Fail-Safe Active: DB query error for record ${queryName}. Bypassing.`);
+                logger.warn(`⚠️ Fail-Safe Active: DB query error for record ${queryName}. Bypassing.`);
                 return null;
               } finally {
                 this.inflight.delete(queryName);
@@ -200,39 +182,46 @@ export default class StartRulesService {
           }
 
           if (NewRecordFromDB) {
+            // If Cache Fail then take from MongoDB
             record = NewRecordFromDB;
             AnalyticsMSgPayload.From = DNS_QUERY_STATUS_KEYS.FROM_DB;
 
-            container.get<RedisCacheService>('RedisCacheService').set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl);
+            // Add the new Document to the Cache with Domain's Default TTL
+            RedisCache.set(`${CacheKeys.Domain_DNS_Record}:${queryName}`, NewRecordFromDB, record.ttl);
           }
         }
       } catch (err) {
         databaseOffline = true;
-        logger.warn(`Fail-Safe Active: Cache/DB record lookup failed. Bypassing.`);
+        logger.warn(`⚠️ Fail-Safe Active: Cache/DB record lookup failed. Bypassing.`);
       }
     }
 
     if (!databaseOffline && queryName === record?.name) {
+      // Add to Analytics
       AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.RESOLVED;
       AnalyticsMSgPayload.duration = performance.now() - start;
 
-      const response = io.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
       this.publishAnalytics(AnalyticsMSgPayload);
 
+      // Use buildSendAnswer method from utilities
+      const response = io.buildSendAnswer(msg, rinfo, record.name, record.value, record.ttl);
+
       if (!response) {
+        // Add to Analytics
         AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
         AnalyticsMSgPayload.duration = performance.now() - start;
+
         this.publishAnalytics(AnalyticsMSgPayload);
         logger.error(`Failed to respond to ${queryName}`);
       }
     } else {
+      // Forward to Global DNS for non-matching domains (or when database is offline)
       if (!databaseOffline) {
-        AnalyticsMSgPayload.From = "Upstream";
+        AnalyticsMSgPayload.From = "Upstream"; // Will be updated by forwarder logic
       }
 
       try {
-        const forwarder = container.get<GlobalDNSforwarderService>('GlobalDNSforwarder');
-        const forwardedResponse = await forwarder.forward(
+        const forwardedResponse = await GlobalDNSforwarder(
           msg,
           queryName,
           queryType,
@@ -244,6 +233,7 @@ export default class StartRulesService {
         if (forwardedResponse) {
           const resp: boolean = io.sendRawAnswer(forwardedResponse, rinfo);
           if (!resp) {
+            // Add to Analytics
             if (!databaseOffline) {
               AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
               AnalyticsMSgPayload.duration = performance.now() - start;
@@ -251,8 +241,10 @@ export default class StartRulesService {
             }
             logger.error(`Failed to forward ${queryName} to Global DNS`);
           }
+          // Note: GlobalDNSforwarder pushes its own analytics for the forwarding event
         }
         else {
+          // Add to Analytics
           if (!databaseOffline) {
             AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
             AnalyticsMSgPayload.duration = performance.now() - start;
@@ -260,25 +252,22 @@ export default class StartRulesService {
           }
 
           logger.error(`No response received from Global DNS for ${queryName}`);
-          io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 0);
+          io.buildSendAnswer(msg, rinfo, queryName, "0.0.0.0", 0); // TTL=0 prevents client-side caching for instant policy toggle
         }
       } catch (error) {
+        // Add to Analytics
         if (!databaseOffline) {
           AnalyticsMSgPayload.Status = DNS_QUERY_STATUS_KEYS.FAILED;
           AnalyticsMSgPayload.duration = performance.now() - start;
           this.publishAnalytics(AnalyticsMSgPayload);
         }
-        logger.error(`Failed to forward ${queryName} to Global DNS:`, error as any);
+        logger.error(`Failed to forward ${queryName} to Global DNS:`, error);
       }
     }
   }
 
-  // Helper to publish analytics — fire-and-forget. Analytics is a best-effort,
-  // non-critical concern and must NEVER block or delay the DNS answer, even when
-  // the broker is down (a pending/failed publish stays off the response path).
-  private publishAnalytics(payload: any): void {
-    container.get<RabbitMQService>('RabbitMQService')
-      .publish(QueueKeys.DNS_Analytics, payload, { persistent: false, priority: 5 })
-      .catch(() => { /* swallow — never surface broker errors to DNS resolution */ });
+  // Helper to publish analytics with optimized settings
+  private publishAnalytics(payload: any) {
+    RabbitMQService.publish(QueueKeys.DNS_Analytics, payload, { persistent: false, priority: 5 });
   }
 }

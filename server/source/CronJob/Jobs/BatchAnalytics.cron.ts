@@ -1,15 +1,13 @@
 import logger from '../../utilities/logger';
+import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
 
 // mongoDB
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import container from "../../container/appContainer";
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
-import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export default async function BatchProcessAnalytics() {
-  const AnalyticsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+  const AnalyticsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
 
   // Handle the Initilization Error
   if (!AnalyticsCollection) {
@@ -17,7 +15,7 @@ export default async function BatchProcessAnalytics() {
   }
 
   logger.info("Running Batch Process")
-  await container.get<RabbitMQService>('RabbitMQService').consumeBatch(QueueKeys.DNS_Analytics, async (messages: any[]) => {
+  await RabbitMQService.consumeBatch(QueueKeys.DNS_Analytics, async (messages: any[]) => {
     logger.info("Batch", messages)
     const currentTimestamp = new Date();
     const messagesWithTimestamps = messages.map((message) => ({

@@ -2,13 +2,12 @@ import logger from '../../utilities/logger';
 import fs from "fs";
 import path from "path";
 import { ObjectId } from "mongodb";
+import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 import { QueueKeys } from "../../Redis/CacheKeys.cache";
-import { RedisCacheService } from "../../Redis/Redis.cache";
+import RedisCacheService from "../../Redis/Redis.cache";
+import { getCollectionClient } from "../../Database/mongodb.db";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { buildLogsQuery } from "../../helper/buildLogsQuery.helper";
-import container from "../../container/appContainer";
-import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { LogExportJobMessage, LogExportMetadata } from "../../Services/Logs/LogsExport.service";
 
 const EXPORTS_DIR = path.join(__dirname, "..", "..", "..", "exports");
@@ -25,7 +24,7 @@ function ensureExportsDir(): void {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function* scrollAnalytics(query: Record<string, any>): AsyncGenerator<any[]> {
-  const analyticsCol = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+  const analyticsCol = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
   if (!analyticsCol) throw new Error("Analytics collection not initialized");
 
   let cursorId: ObjectId | undefined;
@@ -88,17 +87,15 @@ async function writeTxt(filePath: string, query: Record<string, unknown>): Promi
  */
 export default async function LogsExportWorker() {
   ensureExportsDir();
-  const rabbitMQService = container.get<RabbitMQService>('RabbitMQService');
-  const redisCacheService = container.get<RedisCacheService>('RedisCacheService');
 
-  await rabbitMQService.consume(QueueKeys.LOGS_EXPORT, async (job: LogExportJobMessage): Promise<boolean> => {
+  await RabbitMQService.consume(QueueKeys.LOGS_EXPORT, async (job: LogExportJobMessage): Promise<boolean> => {
     const redisKey = `log-export:${job.userId}`;
 
     try {
-      const existing = await redisCacheService.get<LogExportMetadata>(redisKey);
+      const existing = await RedisCacheService.get<LogExportMetadata>(redisKey);
       if (existing) {
         existing.status = "processing";
-        await redisCacheService.set(redisKey, existing, 24 * 60 * 60);
+        await RedisCacheService.set(redisKey, existing, 24 * 60 * 60);
       }
 
       const query = buildLogsQuery(job.filters);
@@ -112,7 +109,7 @@ export default async function LogsExportWorker() {
         existing.readyAt = Date.now();
         existing.filePath = filePath;
         existing.fileName = fileName;
-        await redisCacheService.set(redisKey, existing, 24 * 60 * 60);
+        await RedisCacheService.set(redisKey, existing, 24 * 60 * 60);
       }
 
       logger.info(`[LogsExport] Export ${job.jobId} ready for user ${job.userId}`);
@@ -120,11 +117,11 @@ export default async function LogsExportWorker() {
     } catch (error) {
       logger.error(`[LogsExport] Failed to process export ${job.jobId}:`, error);
       try {
-        const existing = await redisCacheService.get<LogExportMetadata>(redisKey);
+        const existing = await RedisCacheService.get<LogExportMetadata>(redisKey);
         if (existing) {
           existing.status = "failed";
           existing.error = error instanceof Error ? error.message : "Unknown error";
-          await redisCacheService.set(redisKey, existing, 24 * 60 * 60);
+          await RedisCacheService.set(redisKey, existing, 24 * 60 * 60);
         }
       } catch {
         // best effort

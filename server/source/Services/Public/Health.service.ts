@@ -1,11 +1,10 @@
-import container from "../../container/appContainer";
-import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
-import { RedisCacheService } from "../../Redis/Redis.cache";
+import { getMongoClient } from "../../Database/mongodb.db";
+import RedisCacheService from "../../Redis/Redis.cache";
+import RabbitMQService from "../../RabbitMQ/Rabbitmq.config";
 
 /**
  * Service class to check the health of the application and its dependencies.
- *
+ * 
  * @export
  * @class HealthService
  */
@@ -21,8 +20,7 @@ export default class HealthService {
 
     // 1. MongoDB Check
     try {
-      const mongoConnectionManager = container.get<MongoConnectionManager>('MongoConnectionManager');
-      const client = await mongoConnectionManager.connect();
+      const client = getMongoClient();
       await client.db().command({ ping: 1 });
       health.details.mongodb = "healthy";
     } catch (err: any) {
@@ -32,8 +30,7 @@ export default class HealthService {
 
     // 2. Redis Check
     try {
-      const redisConnectionManager = container.get<any>('RedisConnectionManager');
-      const client = await redisConnectionManager.getClient();
+      const client = await RedisCacheService.getClient();
       await client.ping();
       health.details.redis = "healthy";
     } catch (err: any) {
@@ -43,7 +40,7 @@ export default class HealthService {
 
     // 3. RabbitMQ Check
     try {
-      const channel = await container.get<RabbitMQService>('RabbitMQService').connect();
+      const channel = await RabbitMQService.connect();
       if (channel) {
         health.details.rabbitmq = "healthy";
       } else {

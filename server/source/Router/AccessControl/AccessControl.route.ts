@@ -2,7 +2,7 @@
 import { FastifyInstance, FastifyPluginOptions } from "fastify";
 
 // middlewares
-import { authGuard } from "../../Middlewares/authGuard.middleware";
+import authGuard from "../../Middlewares/authGuard.middleware";
 import PermissionGuard from "../../Middlewares/permissionGuard.middleware";
 
 // Controllers
@@ -320,7 +320,7 @@ export default async function AccessControlRouter(fastify: FastifyInstance, _opt
 
   // ==================== CACHE MANAGEMENT ====================
 
-  // Invalidate ACL cache
+  // Invalidate ACL cache — force-reload all policies from MongoDB to Redis
   fastify.post("/cache/invalidate", {
     schema: {
       description: 'Force-reload all ACL policies from MongoDB to Redis and flush DNS engine caches',
