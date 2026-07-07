@@ -43,6 +43,18 @@ function cookieHeader(session: McpUserSession): string {
  * would be overkill for a module with no Mongo/Redis/RabbitMQ of its own.
  */
 class ApiClient {
+  /**
+   * Transport connections (MCP session IDs) that have already been told which
+   * account they're using. Sessions now persist to disk across reconnects and
+   * process restarts (see `McpSessionStore`), so a brand-new connection can
+   * find itself already authenticated without ever calling `login` — this
+   * tracks which connections still need that one-time heads-up.
+   */
+  private readonly announcedSessions = new Set<string>();
+
+  /** One-shot: set right after a successful automatic re-login, consumed by the very next response. */
+  private readonly reloginNotices = new Set<string>();
+
   constructor(
     private readonly health: IHealthMonitor,
     private readonly sessions: ISessionStore,
@@ -84,7 +96,8 @@ class ApiClient {
       return { ok: false, statusCode: 500, message: "Login succeeded but no session tokens were issued", data: null };
     }
 
-    this.sessions.set(mcpSessionId, { username, accessToken, refreshToken });
+    this.sessions.set(mcpSessionId, { username, accessToken, refreshToken }, password);
+    this.announcedSessions.add(mcpSessionId); // the "Logged in as X" reply below already covers it
     logger.info(`[Auth] "${username}" logged in (session ${mcpSessionId})`);
     return result;
   }
@@ -99,6 +112,31 @@ class ApiClient {
       logger.info(`[Auth] "${session.username}" logged out (session ${mcpSessionId})`);
     }
     this.sessions.clear(mcpSessionId);
+    this.announcedSessions.delete(mcpSessionId);
+  }
+
+  /**
+   * On a transport connection's first successful authenticated call, if it
+   * never called `login` itself (i.e. it picked up the persisted on-disk
+   * session), returns a one-time note of which account is active so the
+   * LLM/user isn't left guessing. Returns `undefined` on every later call.
+   */
+  private announceIfFirstCall(mcpSessionId: string): string | undefined {
+    if (this.announcedSessions.has(mcpSessionId)) return undefined;
+    this.announcedSessions.add(mcpSessionId);
+    const session = this.sessions.get(mcpSessionId);
+    return session ? `[Using existing session — logged in as "${session.username}"]` : undefined;
+  }
+
+  /** Picks the one-shot re-login notice over the "first call" notice; both are single-use. */
+  private consumeNote(mcpSessionId: string): string | undefined {
+    if (this.reloginNotices.delete(mcpSessionId)) {
+      const session = this.sessions.get(mcpSessionId);
+      return session
+        ? `[Refresh token had expired — automatically re-authenticated as "${session.username}"]`
+        : undefined;
+    }
+    return this.announceIfFirstCall(mcpSessionId);
   }
 
   /**
@@ -114,7 +152,9 @@ class ApiClient {
     if ("statusCode" in response) {
       return { ok: false, statusCode: response.statusCode, message: response.message, data: null };
     }
-    return parseEnvelope<T>(response);
+    const result = await parseEnvelope<T>(response);
+    const note = this.consumeNote(mcpSessionId);
+    return note ? { ...result, message: `${note} ${result.message}` } : result;
   }
 
   /**
@@ -128,18 +168,22 @@ class ApiClient {
       return { ok: false, statusCode: response.statusCode, message: response.message, data: null };
     }
 
+    const note = this.consumeNote(mcpSessionId);
+    const withNote = (result: ApiResult<string>): ApiResult<string> =>
+      note ? { ...result, message: `${note} ${result.message}` } : result;
+
     if (!response.ok || (response.headers.get("content-type") ?? "").includes("application/json")) {
-      return parseEnvelope<string>(response);
+      return withNote(await parseEnvelope<string>(response));
     }
 
     const text = await response.text();
     const truncated = text.length > MAX_DOWNLOAD_CHARS;
-    return {
+    return withNote({
       ok: true,
       statusCode: response.status,
       message: truncated ? `Export truncated to ${MAX_DOWNLOAD_CHARS} characters` : "Export downloaded",
       data: truncated ? text.slice(0, MAX_DOWNLOAD_CHARS) : text,
-    };
+    });
   }
 
   /**
@@ -174,12 +218,54 @@ class ApiClient {
     let response = await doRequest(session);
 
     if (response.status === 401) {
-      const refreshed = await this.refresh(mcpSessionId);
-      if (!refreshed) return { statusCode: 401, message: "Session expired — call the login tool again" };
+      const refreshed = await this.refresh(mcpSessionId) || (await this.attemptAutoRelogin(mcpSessionId));
+      if (!refreshed) {
+        // Refresh token itself is invalid/expired (48h), and there were no
+        // usable saved credentials to silently re-authenticate with — drop
+        // the stale session so the next call reports "not logged in" instead
+        // of retrying a doomed refresh, and ask the caller to log in again.
+        this.sessions.clear(mcpSessionId);
+        this.announcedSessions.delete(mcpSessionId);
+        this.reloginNotices.delete(mcpSessionId);
+        return { statusCode: 401, message: "Session expired — call the login tool again" };
+      }
       response = await doRequest(this.sessions.get(mcpSessionId) as McpUserSession);
     }
 
     return response;
+  }
+
+  /**
+   * Called only once the refresh token itself has been rejected (its 48h
+   * lifetime elapsed, or it was revoked). Falls back to the username/password
+   * saved at the last successful `login` (decrypted from disk if this is a
+   * fresh process) and re-authenticates from scratch, so the 30m/48h token
+   * cycle doesn't force a human back into the loop until the saved password
+   * itself stops working — at which point the caller is asked to log in again.
+   */
+  private async attemptAutoRelogin(mcpSessionId: string): Promise<boolean> {
+    const credentials = this.sessions.getCredentials(mcpSessionId);
+    if (!credentials) return false;
+
+    logger.info(`[Auth] refresh token expired — attempting automatic re-login for "${credentials.username}"`);
+    const response = await fetch(`${ToolsKeys.API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
+    if (!response.ok) {
+      logger.warn(`[Auth] automatic re-login failed for "${credentials.username}" — saved password no longer works`);
+      return false;
+    }
+
+    const { accessToken, refreshToken } = extractTokens(response);
+    if (!accessToken || !refreshToken) return false;
+
+    this.sessions.set(mcpSessionId, { username: credentials.username, accessToken, refreshToken }, credentials.password);
+    this.announcedSessions.add(mcpSessionId);
+    this.reloginNotices.add(mcpSessionId);
+    logger.info(`[Auth] automatic re-login succeeded for "${credentials.username}"`);
+    return true;
   }
 
   private async refresh(mcpSessionId: string): Promise<boolean> {

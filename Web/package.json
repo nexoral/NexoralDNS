@@ -1,6 +1,6 @@
 {
   "name": "NexoralDNS",
-  "version": "7.16.57-stable",
+  "version": "7.17.58-stable",
   "description": "This is the main core DNS Server for NexoralDNS Service, it was main responsible for handling DNS queries and responses.",
   "main": "./lib/cluster/Cluster.js",
   "scripts": {
