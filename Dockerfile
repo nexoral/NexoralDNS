@@ -4,12 +4,25 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 COPY . .
 
-# Build all components
-RUN cd server && npm ci && npm run build && npm prune --production && \
-    cd ../client && npm ci && npm run build && npm prune --production && \
-    cd ../DHCP && npm ci && npm run build && npm prune --production && \
-    cd ../Web && npm ci && npm run build && npm prune --production && \
-    cd ../tools && npm ci && npm run build && npm prune --production
+# Configure npm for network resilience
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000
+
+# Build server
+RUN cd server && npm ci --no-audit --no-fund && npm run build && npm prune --production
+
+# Build client
+RUN cd client && npm ci --no-audit --no-fund && npm run build && npm prune --production
+
+# Build DHCP
+RUN cd DHCP && npm ci --no-audit --no-fund && npm run build && npm prune --production
+
+# Build Web
+RUN cd Web && npm ci --no-audit --no-fund && npm run build && npm prune --production
+
+# Build tools
+RUN cd tools && npm ci --no-audit --no-fund && npm run build && npm prune --production
 
 # Runtime stage
 FROM ubuntu:24.04
