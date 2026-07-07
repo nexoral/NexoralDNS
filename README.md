@@ -121,6 +121,7 @@ NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your n
 - **🛡️ Anti-Ads Mode:** Block 200+ advertising and tracking domains - eliminate ads, protect privacy, and speed up browsing
 - **🤖 Anti-AI Mode:** Block major AI chatbot, coding assistant, and generative-AI domains (ChatGPT, Claude, Gemini, Copilot, and more) - ideal for schools, exams, and workplaces
 - **👥 Users & Roles (RBAC):** Create custom roles from a fixed permission catalog, add admin-managed users with a temporary password, and enforce a forced password change on first login
+- **🤖 MCP Tool Server:** Let an LLM (via any MCP-compatible client) manage domains and DNS records on your behalf, using the same login and permission scope as the dashboard
 - **👨‍💻 Developer-Friendly:** Perfect for development environments
  - **📊 Real-time Analytics:** Monitor DNS queries as they happen
  - **☁️ Cloud Integration:** Sync settings across multiple installations
@@ -175,6 +176,26 @@ sudo docker compose up -d
 - **Enable Anti-Porn Mode** with one click to automatically block 100+ adult content websites for specific devices, groups, or your entire network (Access Control → Anti-Porn Mode).
 - **Enable Anti-Ads Mode** with one click to automatically block 200+ advertising and tracking domains including Google Ads, Facebook tracking, and more - improve privacy and browsing speed (Access Control → Anti-Ads Mode).
 - **Enable Anti-AI Mode** to automatically block major AI chatbot, AI coding assistant, and generative-AI tool domains (ChatGPT, Claude, Gemini, Copilot, Perplexity, Character.AI, Midjourney, and more) - useful for schools, exam environments, and workplaces that need to restrict AI tool access (Access Control → Anti-AI Mode).
+
+---
+
+## 🤖 MCP Tool Server (LLM Integration)
+
+NexoralDNS ships a [Model Context Protocol](https://modelcontextprotocol.io) server (`tools/`) that lets any MCP-compatible LLM client manage the entire dashboard by calling the same authenticated REST API the dashboard uses — no separate authorization model, no elevated access.
+
+- **Endpoint:** `http://<your-LAN-IP>:4774/mcp` (Streamable HTTP transport, LAN-only like everything else)
+- **Login required:** call the `login` tool with your dashboard username/password before any other tool — the account's existing role/permissions decide exactly what that MCP session is allowed to do (e.g. a Guest account still can't create DNS records)
+- **Health-gated:** every tool call first checks `server/`'s `/api/health` (cached briefly to stay cheap) — if MongoDB/Redis/RabbitMQ or the API itself is down, you get a clear "server is not healthy" error instead of a confusing connection failure. `check_server_health` and `get_server_info` work even without logging in, so you can diagnose that first.
+- **56 tools covering the full REST surface:**
+  - **Auth:** `login`, `logout`, `change_password`, `verify_session`
+  - **Domains & DNS:** `list_domains`, `create_domain`, `delete_domain`, `list_dns_records`, `create_dns_record`, `update_dns_record`, `delete_dns_record`
+  - **Users & Roles:** `list_users`, `get_user`, `create_user`, `update_user`, `reset_user_password`, `delete_user`, `list_permissions`, `list_roles`, `get_role`, `create_role`, `update_role`, `delete_role`
+  - **Access Control:** policies (`create/list/get/update/toggle/delete_access_policy`, `invalidate_access_control_cache`), domain groups and IP groups (`create/list/get/update/delete_domain_group`, `create/list/get/update/delete_ip_group`)
+  - **DHCP:** `list_connected_ips`, `refresh_connected_ips`
+  - **Settings:** `toggle_dns_service`, `get_default_ttl`, `update_default_ttl`, `get_cache_stats`, `delete_all_dns_cache`, `delete_specific_cache_key`
+  - **Analytics & Logs:** `get_dashboard_analytics`, `get_logs`, `request_log_export`, `get_log_export_status`, `download_log_export`
+  - **Meta (no login needed):** `get_server_info`, `check_server_health`
+- **Run it:** `cd tools && npm install && npm run build && npm start` (or via PM2/`ecosystem.config.js`, alongside the other services)
 
 ---
 

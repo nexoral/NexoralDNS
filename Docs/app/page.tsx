@@ -15,6 +15,13 @@ const svcCmds = [
   { title: 'Remove',icon: '✕', flag: 'bash -s remove',badgeBg: 'rgba(255,96,113,.12)', badgeFg: '#ff8a96', border: 'rgba(255,96,113,.16)',  desc: 'Completely uninstall NexoralDNS and all data.', subcommand: 'remove', foot: 'Removes all services, containers, images, and data.' },
 ];
 
+const mcpAgents = [
+  { icon: '🟣', name: 'Claude Code' },
+  { icon: '🔷', name: 'Codex CLI' },
+  { icon: '⚫', name: 'Copilot CLI' },
+  { icon: '♊', name: 'Antigravity' },
+];
+
 const transports = [
   { icon: '📡', port: 'UDP :53',  tag: 'Classic', bg: 'rgba(130,165,220,.06)', border: 'rgba(130,165,220,.16)', tagBg: 'rgba(130,165,220,.14)', tagFg: '#93a1b5' },
   { icon: '🔗', port: 'TCP :53',  tag: 'New',     bg: 'rgba(91,140,255,.08)',  border: 'rgba(91,140,255,.32)',  tagBg: 'rgba(91,140,255,.2)',   tagFg: '#9db8ff' },
@@ -45,6 +52,7 @@ const explore = [
   { icon: '⚡', title: 'Installation',    path: '/docs/installation',    href: '/docs/installation' },
   { icon: '🖥️', title: 'Dashboard',       path: '/docs/dashboard',       href: '/docs/dashboard' },
   { icon: '🔌', title: 'API Reference',   path: '/docs/api',             href: '/docs/api' },
+  { icon: '🤖', title: 'MCP Server',      path: '/docs/mcp-server',      href: '/docs/mcp-server' },
   { icon: '✨', title: 'Features',        path: '/docs/features',        href: '/docs/features' },
   { icon: '❓', title: 'FAQ',             path: '/docs/faq',             href: '/docs/faq' },
   { icon: '🔧', title: 'Troubleshooting', path: '/docs/troubleshooting', href: '/docs/troubleshooting' },
@@ -188,7 +196,7 @@ export default async function Home() {
           ))}
         </section>
 
-        {/* ── WHAT'S NEW ───────────────────────────────────────────────── */}
+        {/* ── WHAT'S NEW: MCP ──────────────────────────────────────────── */}
         <section style={{ marginTop: 80, textAlign: 'center' }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 9,
@@ -199,6 +207,53 @@ export default async function Home() {
           }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#a78bfa', display: 'block' }} className="nd-pulse" />
             WHAT&apos;S NEW · v{version}
+          </div>
+
+          <h2 style={{ margin: '20px 0 12px', fontSize: 40, letterSpacing: '-.025em', fontWeight: 700, background: 'linear-gradient(100deg,#5b8cff,#34e1d4 40%,#a78bfa 80%)', backgroundSize: '220% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', animation: 'ndShimmer 8s linear infinite' }}>
+            Control your DNS from any AI agent
+          </h2>
+          <p style={{ maxWidth: 660, margin: '0 auto', fontSize: 16, lineHeight: 1.6, color: '#93a1b5' }}>
+            A new MCP tool server lets Claude Code, Codex, Copilot, Antigravity and other AI agents manage domains and DNS records for you — from any device on your local network, using the exact same login and permissions as the dashboard.
+          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
+            {mcpAgents.map((a, i) => (
+              <div key={i} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 9,
+                padding: '9px 16px', borderRadius: 999,
+                background: 'rgba(167,139,250,.08)', border: '1px solid rgba(167,139,250,.24)',
+              }}>
+                <span style={{ fontSize: 15 }}>{a.icon}</span>
+                <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 12.5, color: '#dbe4ef', fontWeight: 500 }}>{a.name}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 30, display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <Link href="/docs/mcp-server" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '11px 20px', borderRadius: 11,
+              background: 'linear-gradient(135deg,#a78bfa,#5b8cff)',
+              color: '#06121a', fontWeight: 600, fontSize: 14, textDecoration: 'none',
+            }}>Set up MCP server</Link>
+          </div>
+
+          <p style={{ margin: '22px auto 0', maxWidth: 640, fontSize: 12.5, color: '#7c8aa0', lineHeight: 1.55 }}>
+            🔒 LAN-only, same as the rest of NexoralDNS — the MCP server never talks to the public internet.
+          </p>
+        </section>
+
+        {/* ── PROTOCOL SUPPORT ─────────────────────────────────────────── */}
+        <section style={{ marginTop: 80, textAlign: 'center' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+            padding: '6px 14px', borderRadius: 999,
+            background: 'linear-gradient(100deg,rgba(91,140,255,.14),rgba(52,225,212,.14))',
+            border: '1px solid rgba(52,225,212,.28)',
+            fontFamily: 'var(--font-geist-mono)', fontSize: 11.5, letterSpacing: '.08em', color: '#6ee9df',
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34e1d4', display: 'block' }} />
+            PROTOCOL SUPPORT
           </div>
 
           <h2 style={{ margin: '20px 0 12px', fontSize: 40, letterSpacing: '-.025em', fontWeight: 700, background: 'linear-gradient(100deg,#5b8cff,#34e1d4 40%,#a78bfa 80%)', backgroundSize: '220% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', animation: 'ndShimmer 8s linear infinite' }}>
