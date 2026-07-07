@@ -1,4 +1,3 @@
-import logger from '../../utilities/logger';
 import tls from "node:tls";
 import net from "node:net";
 import fs from "node:fs";
@@ -6,9 +5,12 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import dgram from "node:dgram";
+import logger from "../../utilities/logger";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
-import MongoConnector from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
+import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 import getLocalIP from "../../utilities/GetWLANIP.utls";
 
 const CERT_DIR  = process.env.DOT_CERT_DIR ?? "/etc/nexoral/cert";
@@ -41,11 +43,25 @@ function generateSelfSigned(): { cert: Buffer; key: Buffer } {
 }
 
 /**
+ * Atomically writes a buffer to `dest` via a temp file on the same directory +
+ * rename, so a concurrent reader/killed process never sees a partial file.
+ */
+function atomicWrite(dest: string, data: Buffer, mode: number): void {
+  const tmp = `${dest}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, data, { mode });
+  fs.renameSync(tmp, dest);
+}
+
+/**
  * Returns TLS cert + key from disk if they exist, otherwise auto-generates a
  * self-signed certificate via openssl and persists it for future restarts.
  * If persisting fails (e.g. /etc not writable), the in-memory buffers are used.
+ *
+ * Exported so the cluster primary can generate the cert ONCE before forking —
+ * otherwise every worker races to generate + write, which can persist a
+ * mismatched cert/key pair (worker A's cert with worker B's key).
  */
-function loadOrGenerateCerts(): { cert: Buffer; key: Buffer } {
+export function loadOrGenerateCerts(): { cert: Buffer; key: Buffer } {
   if (fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE)) {
     return { cert: fs.readFileSync(CERT_FILE), key: fs.readFileSync(KEY_FILE) };
   }
@@ -56,8 +72,8 @@ function loadOrGenerateCerts(): { cert: Buffer; key: Buffer } {
   // Persist to disk so the same cert survives restarts (avoids re-trust prompts).
   try {
     fs.mkdirSync(CERT_DIR, { recursive: true });
-    fs.writeFileSync(CERT_FILE, cert, { mode: 0o644 });
-    fs.writeFileSync(KEY_FILE, key, { mode: 0o600 });
+    atomicWrite(CERT_FILE, cert, 0o644);
+    atomicWrite(KEY_FILE, key, 0o600);
     logger.info(`DoT: Self-signed TLS cert saved to ${CERT_DIR}`);
   } catch {
     logger.warn("DoT: Cannot persist TLS certs to disk — using in-memory only.");
@@ -94,7 +110,7 @@ export default class DNS_DoT {
       minVersion: "TLSv1.2",
     });
 
-    this.rulesService = new StartRulesService();
+    this.rulesService = container.get<StartRulesService>('StartRulesService');
   }
 
   /**
@@ -108,8 +124,14 @@ export default class DNS_DoT {
       );
     });
 
-    MongoConnector().catch((error) => {
-      logger.error("DNS_DoT: Failed to connect to MongoDB:", error);
+    // Initialize MongoDB via DI container
+    const mongoConnManager = container.get<MongoConnectionManager>('MongoConnectionManager');
+    const mongoCollManager = container.get<MongoCollectionManager>('MongoCollectionManager');
+    Promise.all([
+      mongoConnManager.connect(),
+      mongoCollManager.initialize(),
+    ]).catch((error) => {
+      logger.error("DNS_DoT: Failed to connect to MongoDB:", error as any);
     });
 
     this.server.listen(853, getLocalIP("any"));

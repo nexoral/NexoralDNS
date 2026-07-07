@@ -5,7 +5,7 @@ import { FastifyInstance, FastifyPluginOptions } from "fastify";
 import DnsController from "../../Controller/DNS/DNS.controller";
 
 // middleware
-import authGuard from "../../Middlewares/authGuard.middleware";
+import { authGuard } from "../../Middlewares/authGuard.middleware";
 import PermissionGuard from "../../Middlewares/permissionGuard.middleware";
 
 export interface DnsOptions extends FastifyPluginOptions { }
@@ -38,7 +38,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
         },
       },
     },
-    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(19)],
+    preHandler: [PermissionGuard.canAccess(19)],
     handler: DnsController.create
   });
 
@@ -60,7 +60,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
         },
       },
     },
-    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(20)],
+    preHandler: [PermissionGuard.canAccess(22)],
     handler: DnsController.list
   });
 
@@ -91,7 +91,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
         },
       },
     },
-    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(21)],
+    preHandler: [PermissionGuard.canAccess(21)],
     handler: DnsController.update
   });
 
@@ -114,7 +114,7 @@ export default async function dnsRouter(fastify: FastifyInstance, _options: DnsO
         },
       },
     },
-    preHandler: [authGuard.isAuthenticated, PermissionGuard.canAccess(22)],
+    preHandler: [PermissionGuard.canAccess(20)],
     handler: DnsController.delete
   });
 }

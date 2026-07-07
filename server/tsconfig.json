@@ -2,9 +2,9 @@
   "compilerOptions": {
     "outDir": "./lib", // Specify an output directory for all emitted files
     "target": "ES6", // Specify ECMAScript target version
-    "module": "node16", // Specify module code generation (emits CommonJS — package.json has no "type": "module")
+    "module": "node16", // Specify module code generation (emits CommonJS - package.json has no "type": "module")
     "declaration": true, // Generate declaration files
-    "moduleResolution": "node16", // Modern resolution (replaces deprecated node10)
+    "moduleResolution": "node16", // Specify module resolution strategy
     "checkJs": false, // Disable checking of JavaScript files
     "allowJs": true, // Allow JavaScript files to be included
     "sourceMap": true, // Generate source maps

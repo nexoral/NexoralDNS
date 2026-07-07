@@ -5,6 +5,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import RolesService, { RoleData } from "../../Services/Roles/Roles.service";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
+import container from "../../container/appContainer";
 
 const requestHelper = new RequestControllerHelper();
 
@@ -13,10 +14,10 @@ export default class RolesController {
 
   public static async getPermissions(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const Responser = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to fetch permissions");
-    const rolesService = new RolesService(reply);
+    const rolesService = container.get<RolesService>('RolesService');
 
     try {
-      return rolesService.getPermissions();
+      return rolesService.getPermissions(reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -27,13 +28,13 @@ export default class RolesController {
     const requestKey = `create-role:${request.user._id}:${roleData.name}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Failed to create role");
-    const rolesService = new RolesService(reply);
+    const rolesService = container.get<RolesService>('RolesService');
 
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await rolesService.createRole(roleData);
+          await rolesService.createRole(roleData, reply);
         } catch (error) {
           return Responser.send(error);
         }
@@ -45,13 +46,13 @@ export default class RolesController {
 
   public static async getRoles(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const Responser = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to fetch roles");
-    const rolesService = new RolesService(reply);
+    const rolesService = container.get<RolesService>('RolesService');
 
     try {
       const requestQuery = request.query as { skip?: string; limit?: string };
       const skip = parseFloat(requestQuery.skip || "0") || 0;
       const limit = parseFloat(requestQuery.limit || "50") || 50;
-      return rolesService.getRoles(skip, limit);
+      return rolesService.getRoles(skip, limit, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -59,11 +60,11 @@ export default class RolesController {
 
   public static async getRoleById(request: authGuardFastifyRequest, reply: FastifyReply): Promise<void> {
     const Responser = new BuildResponse(reply, StatusCodes.NOT_FOUND, "Failed to fetch role");
-    const rolesService = new RolesService(reply);
+    const rolesService = container.get<RolesService>('RolesService');
 
     try {
       const { roleId } = request.params as { roleId: string };
-      return rolesService.getRoleById(roleId);
+      return rolesService.getRoleById(roleId, reply);
     } catch (error) {
       return Responser.send(error);
     }
@@ -75,13 +76,13 @@ export default class RolesController {
     const requestKey = `update-role:${request.user._id}:${roleId}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.BAD_REQUEST, "Failed to update role");
-    const rolesService = new RolesService(reply);
+    const rolesService = container.get<RolesService>('RolesService');
 
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await rolesService.updateRole(roleId, updateData);
+          await rolesService.updateRole(roleId, updateData, reply);
         } catch (error) {
           return Responser.send(error);
         }
@@ -96,13 +97,13 @@ export default class RolesController {
     const requestKey = `delete-role:${request.user._id}:${roleId}`;
 
     const Responser = new BuildResponse(reply, StatusCodes.NOT_FOUND, "Failed to delete role");
-    const rolesService = new RolesService(reply);
+    const rolesService = container.get<RolesService>('RolesService');
 
     await requestHelper.executeWithDeduplication(
       requestKey,
       async () => {
         try {
-          await rolesService.deleteRole(roleId);
+          await rolesService.deleteRole(roleId, reply);
         } catch (error) {
           return Responser.send(error);
         }

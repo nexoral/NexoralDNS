@@ -1,12 +1,13 @@
 import logger from '../../utilities/logger';
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 import { ObjectId } from "mongodb";
 import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
-import RedisCache from "../../Redis/Redis.cache";
+import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export interface DomainEntry {
   domain: string;
@@ -31,24 +32,21 @@ export interface AccessControlPolicyData {
 }
 
 export default class AccessControlPolicyService {
-  private readonly fastifyReply: FastifyReply;
 
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
   /**
    * Create a new access control policy
    * @param {AccessControlPolicyData} policyData - The policy data
    * @returns {Promise<void>}
    */
-  public async createPolicy(policyData: AccessControlPolicyData): Promise<void> {
+  public async createPolicy(policyData: AccessControlPolicyData, reply: FastifyReply): Promise<void> {
     logger.info("Creating new access control policy:", policyData.policyName);
 
     // Validate policy name
     if (!policyData.policyName || policyData.policyName.trim() === "") {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid policy name"
       );
@@ -61,7 +59,7 @@ export default class AccessControlPolicyService {
     const validPolicyTypes = ["user_domain", "user_internet", "domain_all", "domain_user", "group_based"];
     if (!validPolicyTypes.includes(policyData.policyType)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid policy type"
       );
@@ -74,7 +72,7 @@ export default class AccessControlPolicyService {
     const validTargetTypes = ["single_ip", "multiple_ips", "ip_group", "multiple_ip_groups", "all"];
     if (!validTargetTypes.includes(policyData.targetType)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid target type"
       );
@@ -86,7 +84,7 @@ export default class AccessControlPolicyService {
     // Validate target IP if targetType is single_ip
     if (policyData.targetType === "single_ip" && (!policyData.targetIP || policyData.targetIP.trim() === "")) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Target IP is required"
       );
@@ -98,7 +96,7 @@ export default class AccessControlPolicyService {
     // Validate target IPs if targetType is multiple_ips
     if (policyData.targetType === "multiple_ips" && (!policyData.targetIPs || policyData.targetIPs.length === 0)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Target IPs are required"
       );
@@ -110,7 +108,7 @@ export default class AccessControlPolicyService {
     // Validate target IP group if targetType is ip_group
     if (policyData.targetType === "ip_group" && !policyData.targetIPGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Target IP group is required"
       );
@@ -122,7 +120,7 @@ export default class AccessControlPolicyService {
     // Validate target IP groups if targetType is multiple_ip_groups
     if (policyData.targetType === "multiple_ip_groups" && (!policyData.targetIPGroups || policyData.targetIPGroups.length === 0)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Target IP groups are required"
       );
@@ -135,7 +133,7 @@ export default class AccessControlPolicyService {
     const validBlockTypes = ["specific_domains", "domain_group", "multiple_domain_groups", "full_internet"];
     if (!validBlockTypes.includes(policyData.blockType)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid block type"
       );
@@ -147,7 +145,7 @@ export default class AccessControlPolicyService {
     // Validate domains if blockType is specific_domains
     if (policyData.blockType === "specific_domains" && (!policyData.domains || policyData.domains.length === 0)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Domains are required"
       );
@@ -159,7 +157,7 @@ export default class AccessControlPolicyService {
     // Validate domain group if blockType is domain_group
     if (policyData.blockType === "domain_group" && !policyData.domainGroup) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Domain group is required"
       );
@@ -171,7 +169,7 @@ export default class AccessControlPolicyService {
     // Validate domain groups if blockType is multiple_domain_groups
     if (policyData.blockType === "multiple_domain_groups" && (!policyData.domainGroups || policyData.domainGroups.length === 0)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Domain groups are required"
       );
@@ -180,7 +178,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -189,7 +187,7 @@ export default class AccessControlPolicyService {
     const existingPolicy = await dbClient.findOne({ policyName: policyData.policyName });
     if (existingPolicy) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.CONFLICT,
         "Policy already exists"
       );
@@ -197,6 +195,10 @@ export default class AccessControlPolicyService {
         error: `A policy with the name "${policyData.policyName}" already exists`
       });
     }
+
+    // Trim all IP fields to prevent whitespace mismatches
+    if (policyData.targetIP) policyData.targetIP = policyData.targetIP.trim();
+    if (policyData.targetIPs) policyData.targetIPs = policyData.targetIPs.map(ip => ip.trim());
 
     // Convert string IDs to ObjectIds for references
     const newPolicy: any = {
@@ -209,7 +211,7 @@ export default class AccessControlPolicyService {
     if (newPolicy.targetIPGroup) {
       if (!ObjectId.isValid(newPolicy.targetIPGroup)) {
         const ErrorResponse = new BuildResponse(
-          this.fastifyReply,
+          reply,
           StatusCodes.BAD_REQUEST,
           "Invalid IP group ID"
         );
@@ -225,7 +227,7 @@ export default class AccessControlPolicyService {
       for (const id of newPolicy.targetIPGroups) {
         if (!ObjectId.isValid(id)) {
           const ErrorResponse = new BuildResponse(
-            this.fastifyReply,
+            reply,
             StatusCodes.BAD_REQUEST,
             "Invalid IP group IDs"
           );
@@ -241,7 +243,7 @@ export default class AccessControlPolicyService {
     if (newPolicy.domainGroup) {
       if (!ObjectId.isValid(newPolicy.domainGroup)) {
         const ErrorResponse = new BuildResponse(
-          this.fastifyReply,
+          reply,
           StatusCodes.BAD_REQUEST,
           "Invalid domain group ID"
         );
@@ -257,7 +259,7 @@ export default class AccessControlPolicyService {
       for (const id of newPolicy.domainGroups) {
         if (!ObjectId.isValid(id)) {
           const ErrorResponse = new BuildResponse(
-            this.fastifyReply,
+            reply,
             StatusCodes.BAD_REQUEST,
             "Invalid domain group IDs"
           );
@@ -282,7 +284,7 @@ export default class AccessControlPolicyService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.CREATED,
       "Access control policy created successfully"
     );
@@ -301,10 +303,10 @@ export default class AccessControlPolicyService {
    * @param {number} limit - Maximum number of documents to return
    * @returns {Promise<void>}
    */
-  public async getPolicies(filter: string = "all", skip: number = 0, limit: number = 50): Promise<void> {
+  public async getPolicies(filter: string = "all", skip: number = 0, limit: number = 50, reply: FastifyReply): Promise<void> {
     logger.info(`Fetching access control policies with filter: ${filter}, skip: ${skip}, limit: ${limit}`);
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -333,7 +335,7 @@ export default class AccessControlPolicyService {
       .toArray();
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Access control policies fetched successfully"
     );
@@ -353,12 +355,12 @@ export default class AccessControlPolicyService {
    * @param {string} policyId - The policy ID
    * @returns {Promise<void>}
    */
-  public async getPolicyById(policyId: string): Promise<void> {
+  public async getPolicyById(policyId: string, reply: FastifyReply): Promise<void> {
     logger.info(`Fetching access control policy with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid policy ID"
       );
@@ -367,7 +369,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -376,7 +378,7 @@ export default class AccessControlPolicyService {
 
     if (!policy) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Policy not found"
       );
@@ -386,7 +388,7 @@ export default class AccessControlPolicyService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Access control policy fetched successfully"
     );
@@ -403,12 +405,12 @@ export default class AccessControlPolicyService {
    * @param {Partial<AccessControlPolicyData>} updateData - The data to update
    * @returns {Promise<void>}
    */
-  public async updatePolicy(policyId: string, updateData: Partial<AccessControlPolicyData>): Promise<void> {
+  public async updatePolicy(policyId: string, updateData: Partial<AccessControlPolicyData>, reply: FastifyReply): Promise<void> {
     logger.info(`Updating access control policy with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid policy ID"
       );
@@ -417,7 +419,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -425,7 +427,7 @@ export default class AccessControlPolicyService {
     const existingPolicy = await dbClient.findOne({ _id: new ObjectId(policyId) });
     if (!existingPolicy) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Policy not found"
       );
@@ -439,7 +441,7 @@ export default class AccessControlPolicyService {
       const duplicatePolicy = await dbClient.findOne({ policyName: updateData.policyName });
       if (duplicatePolicy) {
         const ErrorResponse = new BuildResponse(
-          this.fastifyReply,
+          reply,
           StatusCodes.CONFLICT,
           "Policy name already exists"
         );
@@ -448,6 +450,10 @@ export default class AccessControlPolicyService {
         });
       }
     }
+
+    // Trim all IP fields to prevent whitespace mismatches
+    if (updateData.targetIP) updateData.targetIP = updateData.targetIP.trim();
+    if (updateData.targetIPs) updateData.targetIPs = updateData.targetIPs.map(ip => ip.trim());
 
     // Update the policy
     const updatedFields = {
@@ -471,7 +477,7 @@ export default class AccessControlPolicyService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Access control policy updated successfully"
     );
@@ -487,12 +493,12 @@ export default class AccessControlPolicyService {
    * @param {string} policyId - The policy ID
    * @returns {Promise<void>}
    */
-  public async togglePolicyStatus(policyId: string): Promise<void> {
+  public async togglePolicyStatus(policyId: string, reply: FastifyReply): Promise<void> {
     logger.info(`Toggling access control policy status with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid policy ID"
       );
@@ -501,7 +507,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -509,7 +515,7 @@ export default class AccessControlPolicyService {
     const existingPolicy = await dbClient.findOne({ _id: new ObjectId(policyId) });
     if (!existingPolicy) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Policy not found"
       );
@@ -534,7 +540,7 @@ export default class AccessControlPolicyService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Policy status toggled successfully"
     );
@@ -551,12 +557,12 @@ export default class AccessControlPolicyService {
    * @param {string} policyId - The policy ID
    * @returns {Promise<void>}
    */
-  public async deletePolicy(policyId: string): Promise<void> {
+  public async deletePolicy(policyId: string, reply: FastifyReply): Promise<void> {
     logger.info(`Deleting access control policy with ID: ${policyId}`);
 
     if (!ObjectId.isValid(policyId)) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.BAD_REQUEST,
         "Invalid policy ID"
       );
@@ -565,7 +571,7 @@ export default class AccessControlPolicyService {
       });
     }
 
-    const dbClient = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
+    const dbClient = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ACCESS_CONTROL_POLICIES);
     if (!dbClient) {
       throw new Error("Database connection error.");
     }
@@ -573,7 +579,7 @@ export default class AccessControlPolicyService {
     const existingPolicy = await dbClient.findOne({ _id: new ObjectId(policyId) });
     if (!existingPolicy) {
       const ErrorResponse = new BuildResponse(
-        this.fastifyReply,
+        reply,
         StatusCodes.NOT_FOUND,
         "Policy not found"
       );
@@ -593,7 +599,7 @@ export default class AccessControlPolicyService {
     }
 
     const Responser = new BuildResponse(
-      this.fastifyReply,
+      reply,
       StatusCodes.OK,
       "Access control policy deleted successfully"
     );
@@ -605,15 +611,15 @@ export default class AccessControlPolicyService {
   }
 
   /**
-   * Force-reload ACL policies from MongoDB to Redis and invalidate all caches.
-   * Ensures the DNS engine picks up the latest policy changes immediately.
+   * Force-reload ACL policies from MongoDB to Redis and invalidate all caches
+   * This ensures the DNS engine picks up the latest policy changes immediately
    */
   public async invalidateCache(): Promise<{ lastUpdated: number; stats: Record<string, unknown> | null }> {
     await forceReloadACLPolicies();
 
-    const redisClient = await RedisCache.getClient();
-    const raw = await redisClient.get('acl:metadata');
-    const stats = raw ? JSON.parse(raw) : null;
+    const redisService = container.get<RedisCacheService>('RedisCacheService');
+    const raw = await redisService.get('acl:metadata');
+    const stats = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
 
     return { lastUpdated: Date.now(), stats };
   }

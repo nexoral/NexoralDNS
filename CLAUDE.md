@@ -129,6 +129,43 @@ for (const domain of domains) {
 }
 ```
 
+## SOLID Principles & Dependency Injection (MANDATORY)
+
+All class-based code in `server/` and `Web/` MUST follow SOLID and use the DI container. Do NOT reintroduce class-level singletons (`getInstance()`) or `new XService()` in application code.
+
+### SOLID
+- **S**ingle Responsibility: one reason to change per class. Split god-classes into focused collaborators (see `Redis/`, `RabbitMQ/` managers).
+- **O**pen/Closed: extend via new collaborators, don't rewrite existing ones.
+- **L**iskov: collaborators implementing an interface must be substitutable.
+- **I**nterface Segregation: keep interfaces small and focused (e.g. `ITokenExtractor`, `ISessionStore`).
+- **D**ependency Inversion: depend on the DI container / abstractions, never construct concrete infra directly.
+
+### DI Container Rules
+1. **Register every service** in `appContainer.ts` as a singleton:
+   ```typescript
+   container.register('UsersService', () => new UsersService(), true);
+   ```
+2. **Services are stateless singletons**: empty `constructor() { }`, NO per-request fields (no stored `fastifyReply`).
+3. **Pass request data as method parameters**, not constructor args:
+   ```typescript
+   // ✅ Controller resolves singleton, passes reply + data to the method
+   const service = container.get<UsersService>('UsersService');
+   await service.createUser(data, reply);
+
+   // ❌ NEVER instantiate directly or store reply on the instance
+   const service = new UsersService(reply);
+   ```
+4. **Fetch infra fresh on each call** (resilient to reconnects) — never cache a collection/client in a class field:
+   ```typescript
+   const usersCol = container.get<MongoCollectionManager>('MongoCollectionManager')
+     .getCollection(DB_DEFAULT_CONFIGS.Collections.USERS);
+   ```
+5. **DI keys are strings** and invisible to `tsc` — the key in `container.get('X')` MUST exactly match the `register('X', ...)` key. After any DI change, diff registered vs used keys.
+6. **Singletons take no per-call args** — `container.get(key, arg)` throws for singletons. Request data goes to methods.
+
+### Correctly NOT in DI (leave as-is)
+Per-request wrappers and pure utilities: `BuildResponse`, `Bcrypt`, `DNSPacketCodec`, `RequestControllerHelper`, `authGuard`/`PermissionGuard` (static middleware), socket IO handlers.
+
 ## Documentation Requirements
 
 **Update when features change**:

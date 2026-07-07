@@ -1,27 +1,25 @@
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
-import RedisCache from "../../Redis/Redis.cache";
 
 import CacheKeys from "../../Redis/CacheKeys.cache";
 import { getDashboardDataStats } from "../../CronJob/Jobs/DashboardAnalytics.cron";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
+import container from "../../container/appContainer";
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
+import { RedisCacheService } from "../../Redis/Redis.cache";
 
 
 export default class DashboardService {
-  private readonly fastifyReply: FastifyReply
-  constructor(reply: FastifyReply) {
-    this.fastifyReply = reply;
-  }
+  constructor() { }
 
 
   // This methood is for fetch dashboard data
-  public async getDashboardData(): Promise<void> {
-    const Res = new BuildResponse(this.fastifyReply, StatusCodes.OK, "Dashboard Data retrieved successfully");
+  public async getDashboardData(reply: FastifyReply): Promise<void> {
+    const Res = new BuildResponse(reply, StatusCodes.OK, "Dashboard Data retrieved successfully");
 
     // Get base stats from cache (computed by cron every ~5 min)
-    const baseStats: any = await RedisCache.get(CacheKeys.DashboardAnaliticalData);
+    const baseStats: any = await container.get<RedisCacheService>('RedisCacheService').get(CacheKeys.DashboardAnaliticalData);
 
     // If no base stats, compute full stats (first run or cache expired)
     if (!baseStats || !baseStats.computedAt) {
@@ -40,9 +38,9 @@ export default class DashboardService {
 
   // Calculate delta stats for data since last base computation
   private async getDeltaStats(since: number): Promise<any> {
-    const Analytics = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
-    const Domains = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
-    const DNSRecords = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+    const Analytics = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
+    const Domains = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DOMAINS);
+    const DNSRecords = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
 
     if (!Analytics) {
       return { count: 0, success: 0, failed: 0, forwarded: 0, latestLogs: [], newDomains: 0, newActiveDomains: 0, newRecords: 0 };

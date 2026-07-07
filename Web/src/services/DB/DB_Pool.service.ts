@@ -1,12 +1,11 @@
 // Service to manage database connections and collections
+import container from '../../container/appContainer';
+import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
-import { getCollectionClient } from "../../Database/mongodb.db";
 
 
 // Service to handle domain-related database operations
 export class DomainDBPoolService {
-  private DNSRecordsCollection = getCollectionClient(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
-
   constructor() { }
 
   // get domain matched with the name
@@ -15,6 +14,9 @@ export class DomainDBPoolService {
     let depth = 0;
     const visited = new Set<string>();
 
+    // Fetch collection fresh on each call for reconnection resilience
+    const DNSRecordsCollection = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.DNS_RECORDS);
+
     while (depth < maxDepth) {
       if (visited.has(currentName)) {
         throw new Error(`Circular CNAME reference detected for ${domainName}`);
@@ -22,13 +24,13 @@ export class DomainDBPoolService {
       visited.add(currentName);
 
       // Try exact match first
-      const record = await this.DNSRecordsCollection?.findOne({ name: currentName });
+      const record = await DNSRecordsCollection?.findOne({ name: currentName });
 
       if (!record) {
         return null; // Domain not found
       }
 
-      if (record.type === 'A') {
+      if (record.type === 'A' || record.type === 'AAAA') {
         record.name = domainName;
         return record;
       }
@@ -39,6 +41,7 @@ export class DomainDBPoolService {
         continue;
       }
 
+      record.name = domainName;
       return record;
     }
 
