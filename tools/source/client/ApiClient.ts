@@ -161,10 +161,13 @@ class ApiClient {
     const doRequest = async (activeSession: McpUserSession): Promise<Response> =>
       fetch(`${ToolsKeys.API_BASE_URL}${path}`, {
         method: init.method,
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: cookieHeader(activeSession),
-        },
+        // Only send Content-Type: application/json when there's an actual body —
+        // server/'s custom content-type parser calls JSON.parse on whatever bytes
+        // arrive whenever this header is present, so sending it on a bodyless
+        // DELETE/PATCH call fails with "Unexpected end of JSON input" on an empty string.
+        headers: init.body !== undefined
+          ? { "Content-Type": "application/json", Cookie: cookieHeader(activeSession) }
+          : { Cookie: cookieHeader(activeSession) },
         body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
       });
 
