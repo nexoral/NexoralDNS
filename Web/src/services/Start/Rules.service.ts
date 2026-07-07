@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import logger from "../../utilities/logger";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
-import dgram from "dgram";
+import dgram from "node:dgram";
 import { DomainDBPoolService } from "../DB/DB_Pool.service";
 import { GlobalDNSforwarderService } from "../Forwarder/GlobalDNSforwarder.service";
 

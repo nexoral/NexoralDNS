@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import dgram from 'dgram';
+import dgram from 'node:dgram';
 import { IDNSIOHandler } from './IDNSIOHandler';
 import { DNSPacketCodec } from './DNSPacketCodec';
 

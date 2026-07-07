@@ -2,7 +2,7 @@
 import logger from "../../utilities/logger";
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
-import dgram from "dgram";
+import dgram from "node:dgram";
 
 // Cache Settings
 import container from "../../container/appContainer";

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import dgram from "dgram";
+import dgram from "node:dgram";
 import logger from "../../utilities/logger"
 
 // RabbitMQ
@@ -45,7 +45,7 @@ class MultiplexedSocketPool {
     this.size = Math.max(1, size);
   }
 
-  async initialize(): Promise<void> {
+  initialize(): void {
     for (let i = 0; i < this.size; i++) {
       const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
       socket.on('error', () => { /* per-query timeouts surface failures */ });
@@ -116,7 +116,7 @@ class MultiplexedSocketPool {
     return this.pending.reduce((sum, m) => sum + m.size, 0);
   }
 
-  async close(): Promise<void> {
+  close(): void {
     for (const socket of this.sockets) {
       try { socket.close(); } catch { /* empty */ }
     }
@@ -255,9 +255,7 @@ export class GlobalDNSforwarderService {
 
   constructor() {
     this.socketPool = new MultiplexedSocketPool(this.SOCKET_POOL_SIZE);
-    this.socketPool.initialize().catch((err) => {
-      logger.error('Failed to initialize dgram socket pool:', err as any);
-    });
+    this.socketPool.initialize();
     this.breakers = new Map(
       GlobalDNS.map(srv => [srv.ip, new CircuitBreaker(srv.ip, srv.name)])
     );

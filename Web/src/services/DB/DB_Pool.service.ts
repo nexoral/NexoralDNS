@@ -30,7 +30,7 @@ export class DomainDBPoolService {
         return null; // Domain not found
       }
 
-      if (record.type === 'A') {
+      if (record.type === 'A' || record.type === 'AAAA') {
         record.name = domainName;
         return record;
       }
@@ -41,6 +41,7 @@ export class DomainDBPoolService {
         continue;
       }
 
+      record.name = domainName;
       return record;
     }
 
