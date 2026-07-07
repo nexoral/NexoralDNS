@@ -1,0 +1,25 @@
+{
+  "name": "nexoral dns mcp tools",
+  "version": "1.0.0",
+  "description": "MCP (Model Context Protocol) tool server — lets an LLM perform DNS operations by calling the existing authenticated NexoralDNS REST API on behalf of a logged-in user",
+  "keywords": [
+    "mcp"
+  ],
+  "license": "MIT",
+  "author": "Ankan Saha",
+  "type": "commonjs",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node lib/index.js",
+    "dev": "npm run build && node lib/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2"
+  }
+}

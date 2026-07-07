@@ -16,10 +16,11 @@
 13. [Operational Resilience](#operational-resilience)
 14. [Known Gaps & Non-Goals](#known-gaps--non-goals)
 15. [Testing](#testing)
-16. [Deployment](#deployment)
-17. [Security Considerations](#security-considerations)
-18. [Future Optimizations](#future-optimizations)
-19. [Support & Maintenance](#support--maintenance)
+16. [MCP Tool Server (tools/)](#mcp-tool-server-tools)
+17. [Deployment](#deployment)
+18. [Security Considerations](#security-considerations)
+19. [Future Optimizations](#future-optimizations)
+20. [Support & Maintenance](#support--maintenance)
 
 ---
 
@@ -571,6 +572,7 @@ Honest list, current as of this document's last update — not aspirational:
 4. **Bare-metal deployment doesn't get the UDP buffer fix.** `Scripts/docker-entrypoint.sh` raises `net.core.rmem_max`/`wmem_max` for the Docker path; `Scripts/install.sh` (the bare-metal LAN install path) does not yet do the equivalent.
 5. **No domain rerouting/rewriting** and **no per-user plan gating** in the DNS query path, despite both being mentioned as product features elsewhere (`CLAUDE.md`, `FEATURES.md`) — see the note in [System Overview](#system-overview).
 6. **MongoDB connection pool sizing assumes co-location isn't extreme.** The CPU-scaled `maxPoolSize` targets ~200 aggregate connections for `Web/`'s cluster and another ~200 for `server/`'s cluster independently — the two don't coordinate with each other, so total real connection load against one MongoDB instance is the sum of both, not a jointly-tuned number.
+7. **`tools/` (MCP server) sessions are in-memory only, single-process.** Restarting it logs out every connected MCP client, and it cannot be horizontally scaled behind a load balancer without moving `McpSessionStore` to Redis (deferred — see [MCP Tool Server](#mcp-tool-server-tools)).
 
 ---
 
@@ -590,6 +592,29 @@ dnsperf -d Test/dnsperf.txt -s <server-ip> -p 53 -c 100 -l 60
 
 ---
 
+## MCP Tool Server (`tools/`)
+
+A fifth, independent process that lets an LLM (any [Model Context Protocol](https://modelcontextprotocol.io) client) perform domain/DNS operations on a user's behalf. It is a **thin protocol translator, not a new authorization layer**:
+
+- Speaks MCP over the Streamable HTTP transport (`@modelcontextprotocol/sdk`), bound `0.0.0.0:4774`, `POST/GET/DELETE /mcp` — mirrors `server/`'s `0.0.0.0:4773` LAN-wide binding pattern.
+- Every tool call is translated into a real HTTP request against `server/`'s existing REST API over loopback (`http://127.0.0.1:4773/api/...`). It has no Mongo/Redis/RabbitMQ connection and no DI container of its own — there is no business logic here to inject, so `authGuard`/`PermissionGuard` in `server/` remain the only place authorization decisions are made.
+- **Auth flow**: the `login` tool calls `POST /api/auth/login` and extracts the access/refresh tokens from the response's `Set-Cookie` headers (`response.headers.getSetCookie()`) — `server/`'s login/refresh endpoints never return tokens in the JSON body. Tokens are cached in-memory, keyed by the MCP transport's session ID (`McpSessionStore`), and replayed as a literal `Cookie` header (not `Authorization: Bearer`) on every subsequent call, because `Logout.service`'s controller reads `request.cookies` directly rather than through the header-fallback `TokenExtractor`. A 401 triggers one silent `POST /api/auth/refresh-token` + retry.
+- Raw tokens are never returned to the model — tool results only ever contain `{success, username}` or the passthrough REST response body.
+- **Health gate**: `ApiClient.healthGateError()` calls `GET /api/health` (cached 3s, `AbortSignal.timeout(3000)`) before every `login`/`request` call — a down MongoDB/Redis/RabbitMQ/API surfaces as a clear "server is not healthy" tool error instead of a raw fetch failure. `check_server_health` and `get_server_info` call `/api/health`/`/api/info` directly and bypass the gate (and require no session), so they keep working as a diagnostic even when everything else is refusing to run.
+- **DNS-rebinding mitigation**: since there's no framework in front of the raw `node:http` server, the `Host` header is checked against a set discovered at startup (`localhost`, `127.0.0.1`, and every non-internal IPv4 address from `os.networkInterfaces()`, each paired with port 4774) before any request reaches the transport — done as explicit application code rather than the SDK's own (deprecated) `allowedHosts` option, per the SDK's current guidance to implement this as external middleware.
+- **Directory**: `tools/source/{core,client,session,tools}` — `ApiClient` (HTTP + token/refresh/health-gate bookkeeping), `McpSessionStore` (per-MCP-session token map), `tools/register*Tools.ts` (one file per REST route group, mirroring `server/source/Router/*`).
+- **Full tool coverage (53 tools)** — one file per route group, same thin-proxy pattern throughout:
+  - `registerAuthTools`: `login`, `logout`, `change_password`, `verify_session`
+  - `registerDomainTools` / `registerDnsTools`: domain and DNS record CRUD
+  - `registerUserTools` / `registerRoleTools`: user and role/permission management
+  - `registerAccessControlTools`: policies, domain groups, IP groups (largest group — mirrors `AccessControl.route.ts` 1:1)
+  - `registerDhcpTools`, `registerSettingsTools`, `registerAnalyticsTools`: DHCP, cache/TTL settings, dashboard analytics + log export
+  - `registerPublicTools`: `get_server_info`, `check_server_health` — the only tools that skip both the login check and (for health) the gate itself
+  - `download_log_export` is the one special case in `ApiClient`: the REST endpoint's success response is a raw text file, not the JSON envelope every other route uses, so it's parsed by content-type rather than through the shared `parseEnvelope` helper, and truncated past 200k characters to avoid flooding the model's context.
+- **Known limitation**: MCP sessions live only in this process's memory — restarting `tools/` logs out every connected MCP client (no DB/Redis persistence by design, since this module owns no data of its own).
+
+---
+
 ## Deployment
 
 LAN-only — see `CLAUDE.md`. Two supported paths:
@@ -603,7 +628,7 @@ LAN-only — see `CLAUDE.md`. Two supported paths:
 - Installs Node, PM2, and the four services directly on the host
 - Does **not** currently raise the OS-level UDP buffer ceiling (see [Known Gaps](#known-gaps--non-goals))
 
-Both paths run four PM2-managed processes per `ecosystem.config.js`: `server` (Fastify API), `client` (Next.js dashboard), `dhcp` (DHCP server), `web` (this DNS engine) — each restarting independently (`restart_delay: 5000`, `max_restarts: 3`) on crash.
+Both paths run five PM2-managed processes per `ecosystem.config.js`: `server` (Fastify API), `client` (Next.js dashboard), `dhcp` (DHCP server), `web` (this DNS engine), `tools` (MCP tool server, see [MCP Tool Server](#mcp-tool-server-tools)) — each restarting independently (`restart_delay: 5000`, `max_restarts: 3`) on crash.
 
 ---
 

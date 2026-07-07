@@ -49,6 +49,19 @@ module.exports = {
       error_file: '/var/log/web.err.log',
       restart_delay: 5000,
       max_restarts: 3
+    },
+    // tools (MCP tool server) — runs from /tools, calls server's REST API over loopback
+    {
+      name: 'tools',
+      script: 'npm',
+      args: 'run start',
+      cwd: '/app/tools',
+      env: { NODE_ENV: 'production' },
+      out_file: '/var/log/tools.log',
+      error_file: '/var/log/tools.err.log',
+      restart_delay: 5000,
+      max_restarts: 3,
+      user: 'nobody'
     }
   ]
 };

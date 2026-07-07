@@ -8,7 +8,8 @@ COPY . .
 RUN cd server && npm ci && npm run build && npm prune --production && \
     cd ../client && npm ci && npm run build && npm prune --production && \
     cd ../DHCP && npm ci && npm run build && npm prune --production && \
-    cd ../Web && npm ci && npm run build && npm prune --production
+    cd ../Web && npm ci && npm run build && npm prune --production && \
+    cd ../tools && npm ci && npm run build && npm prune --production
 
 # Runtime stage
 FROM ubuntu:24.04
@@ -42,6 +43,10 @@ COPY --from=builder /app/Web/lib ./Web/lib
 COPY --from=builder /app/Web/node_modules ./Web/node_modules
 COPY --from=builder /app/Web/package.json ./Web/
 
+COPY --from=builder /app/tools/lib ./tools/lib
+COPY --from=builder /app/tools/node_modules ./tools/node_modules
+COPY --from=builder /app/tools/package.json ./tools/
+
 COPY --from=builder /app/Scripts ./Scripts
 COPY --from=builder /app/ecosystem.config.js ./
 
@@ -51,6 +56,6 @@ RUN setcap cap_net_raw+ep /bin/ping && \
     chmod +x ./Scripts/docker-entrypoint.sh
 
 ENV NODE_ENV=production
-EXPOSE 53/udp 53/tcp 4000 4773
+EXPOSE 53/udp 53/tcp 4000 4773 4774
 
 CMD ["./Scripts/docker-entrypoint.sh"]
