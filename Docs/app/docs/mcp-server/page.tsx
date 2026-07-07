@@ -29,7 +29,7 @@ const blocks: Block[] = [
   { type: 'h', title: 'Health-gated, always', eyebrow: 'Reliability' },
   { type: 'p', text: 'Every tool call checks GET /api/health first (cached ~3s to stay cheap). If MongoDB, Redis, RabbitMQ, or the API itself is down, you get a clear "server is not healthy" error instead of a confusing connection failure. check_server_health and get_server_info work without logging in at all, so they double as a first diagnostic step.' },
 
-  { type: 'h', title: '55 tools across 8 groups', eyebrow: 'Reference' },
+  { type: 'h', title: '56 tools across 8 groups', eyebrow: 'Reference' },
   { type: 'table', head: ['Group', 'Tools', 'Covers'], grid: '1.1fr .5fr 2.4fr', rows: [
     { key: 'Auth', cells: ['4', 'login, logout, change_password, verify_session'] },
     { key: 'Domains & DNS', cells: ['7', 'Domain and DNS record (A/CNAME/AAAA) CRUD'] },
@@ -38,7 +38,7 @@ const blocks: Block[] = [
     { key: 'DHCP', cells: ['2', 'List / refresh connected LAN IP addresses'] },
     { key: 'Settings', cells: ['6', 'DNS service toggle, default TTL, cache management'] },
     { key: 'Analytics & Logs', cells: ['5', 'Dashboard stats, query logs, async log export'] },
-    { key: 'Meta (no login)', cells: ['2', 'get_server_info, check_server_health'] },
+    { key: 'Meta', cells: ['3', 'get_server_info & check_server_health (no login) — get_service_info (login required)'] },
   ]},
 
   { type: 'divider' },

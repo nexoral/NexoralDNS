@@ -603,7 +603,7 @@ A fifth, independent process that lets an LLM (any [Model Context Protocol](http
 - **Health gate**: `ApiClient.healthGateError()` calls `GET /api/health` (cached 3s, `AbortSignal.timeout(3000)`) before every `login`/`request` call — a down MongoDB/Redis/RabbitMQ/API surfaces as a clear "server is not healthy" tool error instead of a raw fetch failure. `check_server_health` and `get_server_info` call `/api/health`/`/api/info` directly and bypass the gate (and require no session), so they keep working as a diagnostic even when everything else is refusing to run.
 - **DNS-rebinding mitigation**: since there's no framework in front of the raw `node:http` server, the `Host` header is checked against a set discovered at startup (`localhost`, `127.0.0.1`, and every non-internal IPv4 address from `os.networkInterfaces()`, each paired with port 4774) before any request reaches the transport — done as explicit application code rather than the SDK's own (deprecated) `allowedHosts` option, per the SDK's current guidance to implement this as external middleware.
 - **Directory**: `tools/source/{core,client,session,tools}` — `ApiClient` (HTTP + token/refresh/health-gate bookkeeping), `McpSessionStore` (per-MCP-session token map), `tools/register*Tools.ts` (one file per REST route group, mirroring `server/source/Router/*`).
-- **Full tool coverage (55 tools)** — one file per route group, same thin-proxy pattern throughout:
+- **Full tool coverage (56 tools)** — one file per route group, same thin-proxy pattern throughout:
   - `registerAuthTools`: `login`, `logout`, `change_password`, `verify_session`
   - `registerDomainTools` / `registerDnsTools`: domain and DNS record CRUD
   - `registerUserTools` / `registerRoleTools`: user and role/permission management

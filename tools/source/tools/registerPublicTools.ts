@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { textResult } from "./toolResult";
+import { textResult, fromApiResult, requireSessionId } from "./toolResult";
 
-/** Tools that hit `server/`'s public, unauthenticated endpoints — no login required. */
+/** Tools that hit `server/`'s info/health/service endpoints. */
 export default function registerPublicTools(server: McpServer): void {
   server.registerTool(
     "get_server_info",
@@ -31,5 +31,17 @@ export default function registerPublicTools(server: McpServer): void {
       const result = await apiClient.checkHealth();
       return textResult(JSON.stringify({ message: result.message, data: result.data }, null, 2), !result.ok);
     },
+  );
+
+  server.registerTool(
+    "get_service_info",
+    {
+      title: "Get service info",
+      description:
+        "Get runtime service information (server IP, DNS port, service status, version, web interface details). " +
+        "Unlike get_server_info and check_server_health, this one requires login.",
+      inputSchema: {},
+    },
+    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/service-info")),
   );
 }
