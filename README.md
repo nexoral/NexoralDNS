@@ -186,7 +186,7 @@ NexoralDNS ships a [Model Context Protocol](https://modelcontextprotocol.io) ser
 - **Endpoint:** `http://<your-LAN-IP>:4774/mcp` (Streamable HTTP transport, LAN-only like everything else)
 - **Login required:** call the `login` tool with your dashboard username/password before any other tool — the account's existing role/permissions decide exactly what that MCP session is allowed to do (e.g. a Guest account still can't create DNS records)
 - **Health-gated:** every tool call first checks `server/`'s `/api/health` (cached briefly to stay cheap) — if MongoDB/Redis/RabbitMQ or the API itself is down, you get a clear "server is not healthy" error instead of a confusing connection failure. `check_server_health` and `get_server_info` work even without logging in, so you can diagnose that first.
-- **53 tools covering the full REST surface:**
+- **55 tools covering the full REST surface:**
   - **Auth:** `login`, `logout`, `change_password`, `verify_session`
   - **Domains & DNS:** `list_domains`, `create_domain`, `delete_domain`, `list_dns_records`, `create_dns_record`, `update_dns_record`, `delete_dns_record`
   - **Users & Roles:** `list_users`, `get_user`, `create_user`, `update_user`, `reset_user_password`, `delete_user`, `list_permissions`, `list_roles`, `get_role`, `create_role`, `update_role`, `delete_role`

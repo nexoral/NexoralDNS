@@ -32,6 +32,12 @@ const navigation: NavSection[] = [
     ],
   },
   {
+    section: 'Integrations',
+    items: [
+      { title: 'MCP Server', href: '/docs/mcp-server' },
+    ],
+  },
+  {
     section: 'Help',
     items: [
       { title: 'FAQ', href: '/docs/faq' },

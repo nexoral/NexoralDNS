@@ -2,6 +2,7 @@ import { ToolsKeys } from "../core/key";
 import sessionStoreSingleton, { ISessionStore, McpUserSession } from "../session/McpSessionStore";
 import HealthMonitor, { IHealthMonitor, HealthPayload } from "./HealthMonitor";
 import { ApiResult, parseEnvelope } from "./types";
+import logger from "../utilities/logger";
 
 const MAX_DOWNLOAD_CHARS = 200_000;
 
@@ -60,7 +61,10 @@ class ApiClient {
 
   public async login(mcpSessionId: string, username: string, password: string): Promise<ApiResult<{ user: { username: string } }>> {
     const healthIssue = await this.health.ensureHealthy();
-    if (healthIssue) return { ok: false, statusCode: 503, message: healthIssue, data: null };
+    if (healthIssue) {
+      logger.warn(`[Auth] login blocked by health gate (session ${mcpSessionId})`, healthIssue);
+      return { ok: false, statusCode: 503, message: healthIssue, data: null };
+    }
 
     const response = await fetch(`${ToolsKeys.API_BASE_URL}/auth/login`, {
       method: "POST",
@@ -69,14 +73,19 @@ class ApiClient {
     });
 
     const result = await parseEnvelope<{ user: { username: string } }>(response);
-    if (!response.ok) return result;
+    if (!response.ok) {
+      logger.warn(`[Auth] login failed for "${username}" (session ${mcpSessionId}): ${result.message}`);
+      return result;
+    }
 
     const { accessToken, refreshToken } = extractTokens(response);
     if (!accessToken || !refreshToken) {
+      logger.error(`[Auth] login succeeded for "${username}" but no session tokens were issued`);
       return { ok: false, statusCode: 500, message: "Login succeeded but no session tokens were issued", data: null };
     }
 
     this.sessions.set(mcpSessionId, { username, accessToken, refreshToken });
+    logger.info(`[Auth] "${username}" logged in (session ${mcpSessionId})`);
     return result;
   }
 
@@ -87,6 +96,7 @@ class ApiClient {
         method: "POST",
         headers: { Cookie: cookieHeader(session) },
       }).catch(() => undefined);
+      logger.info(`[Auth] "${session.username}" logged out (session ${mcpSessionId})`);
     }
     this.sessions.clear(mcpSessionId);
   }
