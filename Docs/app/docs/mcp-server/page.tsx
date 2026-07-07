@@ -42,7 +42,9 @@ const blocks: Block[] = [
   ]},
 
   { type: 'divider' },
-  { type: 'h', title: 'Connecting AI agents', eyebrow: 'Integrations', sub: 'Every client below points at the same endpoint — http://localhost:4774/mcp (swap in your machine\'s LAN IP if the agent runs elsewhere on the network). Verified against each tool\'s current docs.' },
+  { type: 'h', title: 'Connecting AI agents', eyebrow: 'Integrations', sub: 'Every client below uses http://localhost:4774/mcp — that only works if the agent runs on the same machine as tools/. Verified against each tool\'s current docs.' },
+  { type: 'callout', tone: 'info', title: 'Connecting from a different device? Find your server\'s own LAN IP first', text: 'There is no fixed IP — every install is on a different network. On the machine running tools/, run hostname -I (or ip -4 addr show) and use whatever address it prints instead of localhost. No extra setup needed: the Host-header allowlist already auto-discovers every LAN IP assigned to that machine at startup, so replacing localhost with it just works.' },
+  { type: 'code', code: 'claude mcp add --transport http nexoraldns http://<your-server-LAN-IP>:4774/mcp', label: 'run on the OTHER device, from step 1 above', prompt: false },
   { type: 'callout', tone: 'danger', title: 'Change the default password — highly recommended', text: 'Every "say this" prompt below uses admin / admin, the seed default for a fresh install. Leaving it unchanged means anyone who can reach 4774 or 4773 on your LAN can log in with a widely-known password. Change it immediately — right from your agent, after logging in:' },
   { type: 'code', code: CHANGE_PASSWORD_PROMPT, label: 'say this, right after logging in', prompt: false },
   { type: 'p', text: 'Then swap your new username and password into every "say this" prompt below.' },
