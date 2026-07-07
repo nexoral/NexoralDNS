@@ -21,6 +21,11 @@ const GlobalDNS: { ip: string; name: string, location: string }[] = [
 
 const ioHandler = new InputOutputHandler(null as any);
 
+type PendingResolver = {
+  resolver: ((msg: Buffer) => void) | null;
+  expectedRemote?: string;
+};
+
 /**
  * Pool of shared dgram sockets for upstream forwarding. Each socket multiplexes
  * many in-flight queries at once, keyed by a generated 16-bit TXID, so a forward
@@ -31,8 +36,8 @@ const ioHandler = new InputOutputHandler(null as any);
 class MultiplexedSocketPool {
   private readonly size: number;
   private sockets: dgram.Socket[] = [];
-  /** Per-socket generated-TXID → resolver (null = reserved, no attempt in flight). */
-  private pending: Array<Map<number, ((msg: Buffer) => void) | null>> = [];
+  /** Per-socket generated-TXID -> resolver state. */
+  private pending: Array<Map<number, PendingResolver>> = [];
   private nextTxid: number[] = [];
   private rr = 0;
 
@@ -45,14 +50,14 @@ class MultiplexedSocketPool {
       const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
       socket.on('error', () => { /* per-query timeouts surface failures */ });
       socket.unref();
-      const map = new Map<number, ((msg: Buffer) => void) | null>();
-      socket.on('message', (respMsg: Buffer) => {
+      const map = new Map<number, PendingResolver>();
+      socket.on('message', (respMsg: Buffer, remoteInfo: dgram.RemoteInfo) => {
         if (respMsg.length < 2) return;
         const txid = respMsg.readUInt16BE(0);
-        const resolver = map.get(txid);
-        if (resolver) {
+        const entry = map.get(txid);
+        if (entry?.resolver && entry.expectedRemote === remoteInfo.address) {
           map.delete(txid);
-          resolver(respMsg);
+          entry.resolver(respMsg);
         }
       });
       this.sockets.push(socket);
@@ -73,18 +78,30 @@ class MultiplexedSocketPool {
     if (map.size >= 0x10000) return -1;
     let txid = this.nextTxid[i];
     while (map.has(txid)) txid = (txid + 1) & 0xFFFF;
-    map.set(txid, null);
+    map.set(txid, { resolver: null });
     this.nextTxid[i] = (txid + 1) & 0xFFFF;
     return txid;
   }
 
-  setResolver(i: number, txid: number, resolver: (msg: Buffer) => void): void {
-    if (this.pending[i].has(txid)) this.pending[i].set(txid, resolver);
+  reserveAny(): { index: number; txid: number } | null {
+    for (let attempt = 0; attempt < this.size; attempt++) {
+      const index = this.pick();
+      const txid = this.reserve(index);
+      if (txid >= 0) return { index, txid };
+    }
+    return null;
+  }
+
+  setResolver(i: number, txid: number, expectedRemote: string, resolver: (msg: Buffer) => void): void {
+    if (this.pending[i].has(txid)) {
+      this.pending[i].set(txid, { expectedRemote, resolver });
+    }
   }
 
   /** Drop the resolver but keep the reservation across retry attempts. */
   clearResolver(i: number, txid: number): void {
-    if (this.pending[i].has(txid)) this.pending[i].set(txid, null);
+    const entry = this.pending[i].get(txid);
+    if (entry) this.pending[i].set(txid, { expectedRemote: entry.expectedRemote, resolver: null });
   }
 
   release(i: number, txid: number): void {
@@ -161,6 +178,7 @@ enum BreakerState { CLOSED, OPEN, HALF_OPEN }
 class CircuitBreaker {
   private state: BreakerState = BreakerState.CLOSED;
   private failureCount = 0;
+  private failureWindowStart = 0;
   private lastFailureTime = 0;
   private readonly threshold: number;
   private readonly windowMs: number;
@@ -199,8 +217,13 @@ class CircuitBreaker {
   }
 
   recordFailure(): void {
+    const now = Date.now();
+    if (this.failureWindowStart === 0 || now - this.failureWindowStart > this.windowMs) {
+      this.failureWindowStart = now;
+      this.failureCount = 0;
+    }
     this.failureCount++;
-    this.lastFailureTime = Date.now();
+    this.lastFailureTime = now;
     if (this.failureCount >= this.threshold) {
       this.state = BreakerState.OPEN;
     }
@@ -208,6 +231,7 @@ class CircuitBreaker {
 
   recordSuccess(): void {
     this.failureCount = 0;
+    this.failureWindowStart = 0;
     this.state = BreakerState.CLOSED;
   }
 
@@ -253,12 +277,12 @@ export class GlobalDNSforwarderService {
     start: number,
     isFailSafe: boolean
   ): Promise<Buffer | null> {
-    const index = this.socketPool.pick();
-    const txid = this.socketPool.reserve(index);
-    if (txid < 0) {
-      logger.error(`Forward socket saturated for ${queryName}`);
+    const reservation = this.socketPool.reserveAny();
+    if (!reservation) {
+      logger.error(`Forward socket pool saturated for ${queryName}`);
       return null;
     }
+    const { index, txid } = reservation;
     const socket = this.socketPool.socket(index);
     const originalTxid = msg.readUInt16BE(0);
     // Copy so the client's buffer is untouched, then stamp our generated TXID.
@@ -292,7 +316,7 @@ export class GlobalDNSforwarderService {
             resolve(null);
           }, 2000);
 
-          this.socketPool.setResolver(index, txid, (respMsg: Buffer) => {
+          this.socketPool.setResolver(index, txid, dnsIP.ip, (respMsg: Buffer) => {
             cleanup();
             resolve(respMsg);
           });
