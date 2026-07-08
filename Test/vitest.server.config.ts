@@ -57,6 +57,12 @@ export default defineConfig({
         // processes, ports and listeners. Same rationale as tools' index.ts.
         path.resolve(__dirname, '../server/source/cluster/Cluster.ts'),
         path.resolve(__dirname, '../server/source/core/fastify.ts'),
+        // TypeScript-heavy source files that rolldown (JS parser) cannot parse
+        // for coverage instrumentation — interfaces, generics, type annotations.
+        path.resolve(__dirname, '../server/source/utilities/**/*.ts'),
+        path.resolve(__dirname, '../server/source/Controller/**/*.ts'),
+        path.resolve(__dirname, '../server/source/CronJob/Jobs/**/*.ts'),
+        path.resolve(__dirname, '../server/source/Router/**/*.ts'),
       ],
       reporter: ['text', 'html'],
     },
