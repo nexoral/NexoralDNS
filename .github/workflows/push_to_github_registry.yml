@@ -17,6 +17,7 @@ jobs:
       test_web: ${{ steps.changes.outputs.test_web }}
       test_server: ${{ steps.changes.outputs.test_server }}
       test_tools: ${{ steps.changes.outputs.test_tools }}
+      test_only_changed: ${{ steps.changes.outputs.test_only_changed }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -84,7 +85,8 @@ jobs:
           #   - server/ only   -> npm run test:server   (suite is a future stub)
           #   - tools/ only    -> npm run test:tools    (suite is a future stub)
           #   - any 2 of them  -> run each changed module's suite
-          #   - all 3 modules, OR anything under Test/ -> npm run test (full)
+          #   - all 3 modules  -> npm run test (full)
+          #   - Test/ only     -> npm run test (full) BUT skip docker build & release
           web_changed=false
           server_changed=false
           tools_changed=false
@@ -94,13 +96,23 @@ jobs:
           if echo "$CHANGED_FILES" | grep -qE '^tools/';  then tools_changed=true;  fi
           if echo "$CHANGED_FILES" | grep -qE '^Test/';   then test_changed=true;   fi
 
+          # Check if ONLY Test/ changed (no Web/, server/, tools/ changes)
+          test_only_changed=false
+          if [ "$test_changed" = "true" ] && [ "$web_changed" = "false" ] && [ "$server_changed" = "false" ] && [ "$tools_changed" = "false" ]; then
+            test_only_changed=true
+          fi
+
           run_tests=false
           test_all=false
-          if [ "$test_changed" = "true" ] || { [ "$web_changed" = "true" ] && [ "$server_changed" = "true" ] && [ "$tools_changed" = "true" ]; }; then
-            # Test harness itself changed, or all three modules changed at once.
+          if [ "$test_only_changed" = "true" ] || [ "$test_changed" = "true" ] || { [ "$web_changed" = "true" ] && [ "$server_changed" = "true" ] && [ "$tools_changed" = "true" ]; }; then
+            # Test harness itself changed, or all three modules changed at once, or Test/ only.
             run_tests=true
             test_all=true
-            echo "::notice title=Tests::Running the full suite (npm run test)."
+            if [ "$test_only_changed" = "true" ]; then
+              echo "::notice title=Tests::Test/ folder changed — running full suite (npm run test). Docker build & release will be skipped."
+            else
+              echo "::notice title=Tests::Running the full suite (npm run test)."
+            fi
           elif [ "$web_changed" = "true" ] || [ "$server_changed" = "true" ] || [ "$tools_changed" = "true" ]; then
             run_tests=true
             echo "::notice title=Tests::Running per-module suites (web=$web_changed server=$server_changed tools=$tools_changed)."
@@ -113,14 +125,20 @@ jobs:
           echo "test_web=$web_changed"    >> "$GITHUB_OUTPUT"
           echo "test_server=$server_changed" >> "$GITHUB_OUTPUT"
           echo "test_tools=$tools_changed"   >> "$GITHUB_OUTPUT"
+          echo "test_only_changed=$test_only_changed" >> "$GITHUB_OUTPUT"
 
-          # Scripts/install.sh, Scripts/versionControl.sh, and Scripts/cli/* are host-side installer
+# Scripts/install.sh, Scripts/versionControl.sh, and Scripts/cli/* are host-side installer
           # scripts never executed inside the container (only Scripts/docker-entrypoint.sh is), so
           # they're excluded here.
           NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|Scripts/install\.sh$|Scripts/versionControl\.sh$|Scripts/cli/|.*\.md$)' || true)
-          if [ -z "$NON_DOCS_CHANGES" ]; then
+          if [ -z "$NON_DOCS_CHANGES" ] || [ "$test_only_changed" = "true" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             skip_docker="true"
+            if [ "$test_only_changed" = "true" ]; then
+              echo "::notice title=Docker build skipped::Only Test/ folder changed — running tests but skipping Docker build & release."
+            else
+              echo "::notice title=Docker build skipped::No changed files detected."
+            fi
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
@@ -235,6 +253,7 @@ jobs:
       !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.skip != 'true' &&
+      needs.detect-changes.outputs.test_only_changed != 'true' &&
       (needs.test-environment.result == 'success' || needs.test-environment.result == 'skipped')
     runs-on: ubuntu-latest
 
@@ -294,7 +313,7 @@ jobs:
 
   release-packages:
     needs: detect-changes
-    if: needs.detect-changes.outputs.skip_release != 'true'
+    if: needs.detect-changes.outputs.skip_release != 'true' && needs.detect-changes.outputs.test_only_changed != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
