@@ -7,14 +7,16 @@ export default defineConfig({
       '@tools': path.resolve(__dirname, '../tools'),
       '@shared': path.resolve(__dirname, 'shared'),
       // tools/source/tools/register*.ts build their zod input schemas at import
-      // time, so `zod` must resolve at runtime. It lives only in tools/node_modules
-      // (not a Test/ devDep), so point the tools suite at that real copy — zod is
-      // exercised for real here (not mocked), so version drift is irrelevant.
-      // Every OTHER runtime import in the covered files is either a Node built-in,
-      // `pino` (a Test/ devDep), or `@modelcontextprotocol/sdk` — and the SDK is
-      // only ever imported for its TYPES, which the TS transform strips, so it is
-      // never needed at runtime and deliberately not aliased.
-      zod: path.resolve(__dirname, '../tools/node_modules/zod'),
+      // time, so `zod` must resolve at runtime. In CI only Test/ deps are
+      // installed (`cd Test && npm ci`) — tools/node_modules does NOT exist — so
+      // `zod` is a Test/ devDep and pinned here to Test's own copy, keeping the
+      // suite fully self-contained (same principle as the pino/redis/... aliases
+      // in vitest.web.config.ts). Every OTHER runtime import in the covered files
+      // is either a Node built-in, `pino` (a Test/ devDep), or
+      // `@modelcontextprotocol/sdk` — and the SDK is only ever imported for its
+      // TYPES, which the TS transform strips, so it is never needed at runtime
+      // and deliberately not aliased.
+      zod: path.resolve(__dirname, 'node_modules/zod'),
       // logger.ts imports bare `pino`, which would resolve against tools/node_modules,
       // while `vi.mock('pino')` in a Test/ file resolves against Test/node_modules —
       // two module ids means the mock silently never matches. Pin both to Test's own
