@@ -205,7 +205,7 @@ jobs:
       # `coverage:*` commands run the same tests as `test:*` AND emit a coverage
       # report, so they are used in place of the plain test runs (running both
       # would execute each suite twice). A coverage run still fails the job if any
-      # test fails. Server has no coverage suite yet, so it keeps `test:server`.
+      # test fails; a low coverage % does not fail the job (report-only).
       - name: Run full test suite with coverage (all modules)
         if: needs.detect-changes.outputs.test_all == 'true'
         working-directory: Test
@@ -216,10 +216,10 @@ jobs:
         working-directory: Test
         run: npm run coverage:web
 
-      - name: Run server test suite
+      - name: Run server test suite with coverage
         if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_server == 'true'
         working-directory: Test
-        run: npm run test:server
+        run: npm run coverage:server
 
       - name: Run tools test suite with coverage
         if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_tools == 'true'

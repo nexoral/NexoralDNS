@@ -9,16 +9,19 @@
     "test:server": "vitest run --config vitest.server.config.ts",
     "test:tools": "vitest run --config vitest.tools.config.ts",
     "test:web:watch": "vitest --config vitest.web.config.ts",
+    "test:server:watch": "vitest --config vitest.server.config.ts",
     "test:tools:watch": "vitest --config vitest.tools.config.ts",
     "coverage:web": "vitest run --config vitest.web.config.ts --coverage",
+    "coverage:server": "vitest run --config vitest.server.config.ts --coverage",
     "coverage:tools": "vitest run --config vitest.tools.config.ts --coverage",
-    "coverage": "npm run coverage:web && npm run test:server && npm run coverage:tools"
+    "coverage": "npm run coverage:web && npm run coverage:server && npm run coverage:tools"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.8",
     "@types/node": "^24.13.2",
     "@vitest/coverage-v8": "^4.1.10",
     "amqplib": "^0.10.9",
+    "bcryptjs": "^3.0.3",
     "mongodb": "^5.9.2",
     "outers": "^8.6.9",
     "pino": "^10.3.1",
