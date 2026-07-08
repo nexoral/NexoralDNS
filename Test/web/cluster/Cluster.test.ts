@@ -93,4 +93,4 @@ describe('Cluster module', () => {
     expect(clusterMock.fork).not.toHaveBeenCalled();
     expect(loadOrGenerateCertsMock).not.toHaveBeenCalled();
   });
-});
+})
