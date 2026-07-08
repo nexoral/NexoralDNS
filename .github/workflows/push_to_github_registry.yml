@@ -202,25 +202,29 @@ jobs:
         working-directory: Test
         run: npm ci
 
-      - name: Run full test suite (all modules)
+      # `coverage:*` commands run the same tests as `test:*` AND emit a coverage
+      # report, so they are used in place of the plain test runs (running both
+      # would execute each suite twice). A coverage run still fails the job if any
+      # test fails. Server has no coverage suite yet, so it keeps `test:server`.
+      - name: Run full test suite with coverage (all modules)
         if: needs.detect-changes.outputs.test_all == 'true'
         working-directory: Test
-        run: npm run test
+        run: npm run coverage
 
-      - name: Run Web test suite
+      - name: Run Web test suite with coverage
         if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_web == 'true'
         working-directory: Test
-        run: npm run test:web
+        run: npm run coverage:web
 
       - name: Run server test suite
         if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_server == 'true'
         working-directory: Test
         run: npm run test:server
 
-      - name: Run tools test suite
+      - name: Run tools test suite with coverage
         if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_tools == 'true'
         working-directory: Test
-        run: npm run test:tools
+        run: npm run coverage:tools
 
   build-and-push:
     # Gated on the test suite: the image is only built/pushed once tests pass.

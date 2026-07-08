@@ -11,7 +11,8 @@
     "test:web:watch": "vitest --config vitest.web.config.ts",
     "test:tools:watch": "vitest --config vitest.tools.config.ts",
     "coverage:web": "vitest run --config vitest.web.config.ts --coverage",
-    "coverage:tools": "vitest run --config vitest.tools.config.ts --coverage"
+    "coverage:tools": "vitest run --config vitest.tools.config.ts --coverage",
+    "coverage": "npm run coverage:web && npm run test:server && npm run coverage:tools"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.8",
