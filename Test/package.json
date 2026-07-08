@@ -1,0 +1,26 @@
+{
+  "name": "nexoraldns-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vitest test suites for NexoralDNS (Web, server, tools). Fully mocked infra (Mongo/Redis/RabbitMQ) — CI/CD-ready, needs no real services.",
+  "scripts": {
+    "test": "npm run test:web && npm run test:server && npm run test:tools",
+    "test:web": "vitest run --config vitest.web.config.ts",
+    "test:server": "vitest run --config vitest.server.config.ts",
+    "test:tools": "vitest run --config vitest.tools.config.ts",
+    "test:web:watch": "vitest --config vitest.web.config.ts",
+    "coverage:web": "vitest run --config vitest.web.config.ts --coverage"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/node": "^24.13.2",
+    "@vitest/coverage-v8": "^4.1.10",
+    "amqplib": "^0.10.9",
+    "mongodb": "^5.9.2",
+    "outers": "^8.6.9",
+    "pino": "^10.3.1",
+    "redis": "^5.9.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}
