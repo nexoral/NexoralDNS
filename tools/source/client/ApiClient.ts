@@ -42,7 +42,7 @@ function cookieHeader(session: McpUserSession): string {
  * can be swapped for a fake in isolation, without a full DI container, which
  * would be overkill for a module with no Mongo/Redis/RabbitMQ of its own.
  */
-class ApiClient {
+export class ApiClient {
   /**
    * Transport connections (MCP session IDs) that have already been told which
    * account they're using. Sessions now persist to disk across reconnects and

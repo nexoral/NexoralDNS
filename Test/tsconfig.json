@@ -21,6 +21,9 @@
       "@web/*": [
         "../Web/src/*"
       ],
+      "@tools/*": [
+        "../tools/*"
+      ],
       "@testUtils/*": [
         "./web/_testUtils/*"
       ],
