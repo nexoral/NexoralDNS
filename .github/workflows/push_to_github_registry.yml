@@ -127,7 +127,7 @@ jobs:
           echo "test_tools=$tools_changed"   >> "$GITHUB_OUTPUT"
           echo "test_only_changed=$test_only_changed" >> "$GITHUB_OUTPUT"
 
-# Scripts/install.sh, Scripts/versionControl.sh, and Scripts/cli/* are host-side installer
+          # Scripts/install.sh, Scripts/versionControl.sh, and Scripts/cli/* are host-side installer
           # scripts never executed inside the container (only Scripts/docker-entrypoint.sh is), so
           # they're excluded here.
           NON_DOCS_CHANGES=$(echo "$CHANGED_FILES" | grep -vE '^(Docs/|\.github/|\.claude/|Scripts/install\.sh$|Scripts/versionControl\.sh$|Scripts/cli/|.*\.md$)' || true)
