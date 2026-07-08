@@ -45,7 +45,17 @@ export default defineConfig({
       // `include` (with these globs) is what pulls in uncovered files too.
       allowExternal: true,
       include: [path.resolve(__dirname, '../Web/src/**/*.ts')],
-      exclude: [path.resolve(__dirname, '../Web/src/**/*.d.ts')],
+      // `.d.ts` plus type-only source files. A file that declares ONLY
+      // interfaces/types (e.g. IDNSIOHandler.ts) emits zero runtime JS, so no
+      // test ever imports it. v8 then treats it as an "uncovered" file and hands
+      // the raw `.ts` to rolldown WITHOUT the TS transform — `export interface`
+      // is not valid JS, so it throws "Unexpected token" and aborts the report.
+      // Excluding is correct, not a workaround: pure type files have 0
+      // executable statements, so there is literally nothing to cover.
+      exclude: [
+        path.resolve(__dirname, '../Web/src/**/*.d.ts'),
+        path.resolve(__dirname, '../Web/src/utilities/IDNSIOHandler.ts'),
+      ],
       reporter: ['text', 'html'],
     },
   },

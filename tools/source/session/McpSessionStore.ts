@@ -60,7 +60,7 @@ interface PersistedSession extends McpUserSession {
  * session file, not protection against an attacker with full access to this
  * machine, since the key necessarily lives locally too for unattended decryption.
  */
-class McpSessionStore implements ISessionStore {
+export class McpSessionStore implements ISessionStore {
   private current: McpUserSession | undefined;
   private currentPassword: string | undefined;
 
