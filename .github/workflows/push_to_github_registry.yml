@@ -223,8 +223,15 @@ jobs:
         run: npm run test:tools
 
   build-and-push:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.skip != 'true'
+    # Gated on the test suite: the image is only built/pushed once tests pass.
+    # test-environment is skipped when no testable folder changed (e.g. a
+    # Dockerfile-only change), so we allow success OR skipped but block failure.
+    needs: [detect-changes, test-environment]
+    if: >-
+      !cancelled() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.skip != 'true' &&
+      (needs.test-environment.result == 'success' || needs.test-environment.result == 'skipped')
     runs-on: ubuntu-latest
 
     steps:

@@ -60,4 +60,4 @@ export class MongoCollectionManager {
       return undefined;
     }
   }
-}
+};
