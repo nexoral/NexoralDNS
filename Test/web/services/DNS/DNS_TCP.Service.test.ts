@@ -11,7 +11,10 @@ const { mockContainer, createServerMock, getLocalIPMock } = vi.hoisted(() => ({
 
 vi.mock('node:net', () => ({ default: { createServer: createServerMock } }));
 vi.mock('@web/container/appContainer', () => ({ default: mockContainer }));
-vi.mock('@web/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 vi.mock('@web/utilities/GetWLANIP.utls', () => ({ default: getLocalIPMock }));
 
 async function importFresh() {

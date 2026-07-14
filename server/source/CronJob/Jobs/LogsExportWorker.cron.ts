@@ -1,8 +1,7 @@
-import logger from '../../utilities/logger';
 import fs from "fs";
 import path from "path";
 import { ObjectId } from "mongodb";
-import { QueueKeys, RabbitMQService } from "nexoraldns-shared";
+import { logger, QueueKeys, RabbitMQService } from 'nexoraldns-shared';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { buildLogsQuery } from "../../helper/buildLogsQuery.helper";

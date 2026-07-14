@@ -1,10 +1,9 @@
 import net from "node:net";
 import dgram from "node:dgram";
-import logger from "../../utilities/logger";
 import StartRulesService from "../Start/Rules.service";
 import TCPInputOutputHandler from "../../utilities/TCPInputOutputHandler";
 import container from "../../container/appContainer";
-import { MongoConnectionManager } from "nexoraldns-shared";
+import { logger, MongoConnectionManager } from 'nexoraldns-shared';
 import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 import getLocalIP from "../../utilities/GetWLANIP.utls";
 

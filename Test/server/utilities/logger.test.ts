@@ -1,55 +1,74 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { infoSpy, errorSpy, warnSpy } = vi.hoisted(() => ({
-  infoSpy: vi.fn(), errorSpy: vi.fn(), warnSpy: vi.fn(),
+const { pinoInstance } = vi.hoisted(() => ({
+  pinoInstance: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
 }));
 
 vi.mock('pino', () => {
-  const pino: any = vi.fn(() => ({ info: infoSpy, error: errorSpy, warn: warnSpy }));
-  pino.stdTimeFunctions = { isoTime: () => ',"time":"iso"' };
-  return { default: pino };
+  const pinoFactory = vi.fn(() => pinoInstance);
+  return {
+    default: Object.assign(pinoFactory, {
+      stdTimeFunctions: { isoTime: vi.fn() },
+    }),
+  };
 });
 
-import logger from '@server/source/utilities/logger';
-
 describe('logger', () => {
-  beforeEach(() => { infoSpy.mockClear(); errorSpy.mockClear(); warnSpy.mockClear(); });
-
-  it('info/warn log the bare message when no args are given', () => {
-    logger.info('hello');
-    logger.warn('careful');
-    expect(infoSpy).toHaveBeenCalledWith('hello');
-    expect(warnSpy).toHaveBeenCalledWith('careful');
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('info/warn wrap extra args under { args }', () => {
-    logger.info('m', { a: 1 }, 'b');
-    expect(infoSpy).toHaveBeenCalledWith({ args: [{ a: 1 }, 'b'] }, 'm');
+  it('logs a plain string message with no extra args', async () => {
+    const { default: logger } = await import('@nexoralShared/utilities/logger');
+    logger.info('hello world');
+    expect(pinoInstance.info).toHaveBeenCalledWith('hello world');
   });
 
-  it('coerces a non-string message to string', () => {
-    logger.warn(99 as unknown as string);
-    expect(warnSpy).toHaveBeenCalledWith('99');
+  it('coerces a non-string message via String()', async () => {
+    const { default: logger } = await import('@nexoralShared/utilities/logger');
+    logger.info(42 as unknown as string);
+    expect(pinoInstance.info).toHaveBeenCalledWith('42');
   });
 
-  it('error logs the bare message with no args', () => {
-    logger.error('failed');
-    expect(errorSpy).toHaveBeenCalledWith('failed');
+  it('wraps extra args under an "args" key for info/warn', async () => {
+    const { default: logger } = await import('@nexoralShared/utilities/logger');
+    logger.info('query', { domain: 'a.com' });
+    expect(pinoInstance.info).toHaveBeenCalledWith({ args: [{ domain: 'a.com' }] }, 'query');
+
+    logger.warn('cache issue', 'detail-1', 'detail-2');
+    expect(pinoInstance.warn).toHaveBeenCalledWith({ args: ['detail-1', 'detail-2'] }, 'cache issue');
   });
 
-  it('error serialises an Error to a plain { message, stack, name }', () => {
-    const err = new Error('boom');
-    logger.error('op failed', err);
-    expect(errorSpy).toHaveBeenCalledWith({ err: { message: 'boom', stack: err.stack, name: 'Error' } }, 'op failed');
+  it('wraps the first extra arg under an "err" key for error (only the first arg)', async () => {
+    const { default: logger } = await import('@nexoralShared/utilities/logger');
+    logger.error('failed', 'first', 'second-ignored');
+    expect(pinoInstance.error).toHaveBeenCalledWith({ err: 'first' }, 'failed');
   });
 
-  it('toPlain stringifies a Buffer arg', () => {
-    logger.info('buf', Buffer.from('abc'));
-    expect(infoSpy).toHaveBeenCalledWith({ args: ['abc'] }, 'buf');
+  it('serializes an Error instance into {message, stack, name}', async () => {
+    const { default: logger } = await import('@nexoralShared/utilities/logger');
+    const err = new TypeError('boom');
+    logger.error('operation failed', err);
+    expect(pinoInstance.error).toHaveBeenCalledWith(
+      { err: { message: 'boom', stack: err.stack, name: 'TypeError' } },
+      'operation failed'
+    );
   });
 
-  it('toPlain passes plain values through unchanged', () => {
-    logger.warn('nums', 1, true, null);
-    expect(warnSpy).toHaveBeenCalledWith({ args: [1, true, null] }, 'nums');
+  it('stringifies a Buffer argument instead of dumping raw bytes', async () => {
+    const { default: logger } = await import('@nexoralShared/utilities/logger');
+    logger.warn('raw packet', Buffer.from('hello'));
+    expect(pinoInstance.warn).toHaveBeenCalledWith({ args: ['hello'] }, 'raw packet');
+  });
+
+  it('leaves non-Error, non-Buffer args untouched', async () => {
+    const { default: logger } = await import('@nexoralShared/utilities/logger');
+    const payload = { queryName: 'a.com', duration: 12 };
+    logger.info('analytics', payload);
+    expect(pinoInstance.info).toHaveBeenCalledWith({ args: [payload] }, 'analytics');
   });
 });

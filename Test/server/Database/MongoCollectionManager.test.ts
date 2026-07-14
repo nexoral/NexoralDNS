@@ -3,7 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // cluster.isPrimary gates index/default-data setup — controlled per test.
 const { clusterState } = vi.hoisted(() => ({ clusterState: { isPrimary: false } }));
 vi.mock('cluster', () => ({ default: clusterState }));
-vi.mock('@server/source/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 
 import { MongoCollectionManager } from '@server/source/Database/MongoCollectionManager';
 import type { MongoConnectionManager } from '@nexoralShared/Database/MongoConnectionManager';

@@ -1,4 +1,4 @@
-import logger from '../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 /**
  * @fileoverview Initialize AI Content Domain Group on Server Startup
  * @module utilities/InitializeAIContentGroup

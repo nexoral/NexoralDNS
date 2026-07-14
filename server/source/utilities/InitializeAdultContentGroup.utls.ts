@@ -1,4 +1,4 @@
-import logger from '../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 /**
  * @fileoverview Utility to initialize/seed the adult content domain group
  * @module Utils/InitializeAdultContentGroup

@@ -1,4 +1,4 @@
-import logger from '../../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 import fs from "fs";
 import path from "path";
 import { Retry, Console } from "outers";

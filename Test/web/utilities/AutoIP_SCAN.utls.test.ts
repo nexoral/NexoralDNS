@@ -9,7 +9,10 @@ const { retrySecondsMock, createDnsListenerSocketMock } = vi.hoisted(() => ({
 
 vi.mock('outers', () => ({ Retry: { Seconds: retrySecondsMock } }));
 vi.mock('@web/utilities/dnsSocket.utls', () => ({ createDnsListenerSocket: createDnsListenerSocketMock }));
-vi.mock('@web/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 
 function iface(address: string, internal = false) {
   return { address, family: 'IPv4' as const, internal, netmask: '', mac: '', cidr: null } as os.NetworkInterfaceInfo;

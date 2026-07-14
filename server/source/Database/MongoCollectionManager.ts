@@ -1,7 +1,6 @@
-import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Collection, Document } from 'mongodb';
-import { MongoConnectionManager } from 'nexoraldns-shared';
+import { logger, MongoConnectionManager } from 'nexoraldns-shared';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import cluster from 'cluster';
 import Bcrypt from '../helper/bcrypt.helper';

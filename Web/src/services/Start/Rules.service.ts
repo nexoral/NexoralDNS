@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import logger from "../../utilities/logger";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "node:dgram";
 import { DomainDBPoolService } from "../DB/DB_Pool.service";
@@ -8,7 +7,7 @@ import { GlobalDNSforwarderService } from "../Forwarder/GlobalDNSforwarder.servi
 
 // Rules Services
 import ServiceStatusChecker, { ServiceStatusResult } from "./ServiceStatusChecker.service";
-import { CacheKeys, QueueKeys, DNS_QUERY_STATUS_KEYS, RabbitMQService } from "nexoraldns-shared";
+import { logger, CacheKeys, QueueKeys, DNS_QUERY_STATUS_KEYS, RabbitMQService } from 'nexoraldns-shared';
 
 import container from "../../container/appContainer";
 import { RedisCacheService } from "../../Redis/Redis.cache";

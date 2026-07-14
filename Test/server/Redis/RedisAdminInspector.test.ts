@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createFakeRedisClient } from '../_testUtils/fakeRedis';
 
-vi.mock('@server/source/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 
 import { RedisAdminInspector } from '@server/source/Redis/RedisAdminInspector';
 import type { RedisConnectionManager } from '@nexoralShared/Redis/RedisConnectionManager';

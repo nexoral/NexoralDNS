@@ -1,10 +1,9 @@
-import logger from '../utilities/logger';
 import cluster from "cluster";
 import os from "os";
 import FastifyServer from "../core/fastify";
 import startCronJob from "../CronJob/CronJob";
 import container from "../container/appContainer";
-import { MongoConnectionManager } from "nexoraldns-shared";
+import { logger, MongoConnectionManager } from 'nexoraldns-shared';
 import { MongoCollectionManager } from "../Database/MongoCollectionManager";
 import { getJWTSecret } from "../helper/jwt.helper";
 

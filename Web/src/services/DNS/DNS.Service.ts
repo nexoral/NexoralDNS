@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "node:dgram";
-import logger from "../../utilities/logger"
 import StartRulesService from "../Start/Rules.service";
 
 // Utility to get local IP address
@@ -11,7 +10,7 @@ import IP_SCAN from "../../utilities/AutoIP_SCAN.utls";
 import InputOutputHandler from "../../utilities/IO.utls";
 import { createDnsListenerSocket } from "../../utilities/dnsSocket.utls";
 import container from "../../container/appContainer";
-import { MongoConnectionManager } from "nexoraldns-shared";
+import { logger, MongoConnectionManager } from 'nexoraldns-shared';
 import { MongoCollectionManager } from "../../Database/MongoCollectionManager";
 
 

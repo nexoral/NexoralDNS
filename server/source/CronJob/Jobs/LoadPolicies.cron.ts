@@ -1,10 +1,9 @@
-import logger from '../../utilities/logger';
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { ACLKeys } from "nexoraldns-shared";
+import { logger, ACLKeys } from 'nexoraldns-shared';
 
 // Redis key scheme is defined in ACLKeys (shared/). Exact/wild sets are split
 // so AclBlockingService can do an O(1) exact-match check before scanning wildcards.

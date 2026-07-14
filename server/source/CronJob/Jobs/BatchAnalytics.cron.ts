@@ -1,5 +1,4 @@
-import logger from '../../utilities/logger';
-import { QueueKeys, RabbitMQService } from "nexoraldns-shared";
+import { logger, QueueKeys, RabbitMQService } from 'nexoraldns-shared';
 
 // mongoDB
 import { DB_DEFAULT_CONFIGS } from "../../core/key";

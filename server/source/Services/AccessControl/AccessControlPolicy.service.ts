@@ -1,4 +1,3 @@
-import logger from '../../utilities/logger';
 import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
@@ -8,7 +7,7 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { ObjectId } from "mongodb";
 import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { ACLKeys } from "nexoraldns-shared";
+import { logger, ACLKeys } from 'nexoraldns-shared';
 
 export interface DomainEntry {
   domain: string;
