@@ -1,4 +1,3 @@
-import logger from '../../utilities/logger';
 import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
@@ -8,6 +7,7 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { ObjectId } from "mongodb";
 import { forceReloadACLPolicies } from "../../CronJob/Jobs/LoadPolicies.cron";
 import { RedisCacheService } from "../../Redis/Redis.cache";
+import { logger, ACLKeys } from 'nexoraldns-shared';
 
 export interface DomainEntry {
   domain: string;
@@ -618,7 +618,7 @@ export default class AccessControlPolicyService {
     await forceReloadACLPolicies();
 
     const redisService = container.get<RedisCacheService>('RedisCacheService');
-    const raw = await redisService.get('acl:metadata');
+    const raw = await redisService.get(ACLKeys.METADATA);
     const stats = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
 
     return { lastUpdated: Date.now(), stats };

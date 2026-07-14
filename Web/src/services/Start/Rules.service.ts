@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import logger from "../../utilities/logger";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "node:dgram";
 import { DomainDBPoolService } from "../DB/DB_Pool.service";
@@ -8,13 +7,10 @@ import { GlobalDNSforwarderService } from "../Forwarder/GlobalDNSforwarder.servi
 
 // Rules Services
 import ServiceStatusChecker, { ServiceStatusResult } from "./ServiceStatusChecker.service";
-import CacheKeys, { QueueKeys } from "../../Redis/CacheKeys.cache";
+import { logger, CacheKeys, QueueKeys, DNS_QUERY_STATUS_KEYS, RabbitMQService } from 'nexoraldns-shared';
 
-// RabbitMQ
-import { DNS_QUERY_STATUS_KEYS } from "../../Redis/CacheKeys.cache";
 import container from "../../container/appContainer";
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import BlockList from "../Rules/BlockList.service";
 
 export default class StartRulesService {

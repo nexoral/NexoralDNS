@@ -1,4 +1,3 @@
-import logger from '../../utilities/logger';
 
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
@@ -11,7 +10,7 @@ import { ObjectId } from "mongodb";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { logger, CacheKeys } from 'nexoraldns-shared';
 
 export default class DefaultTTLService {
 

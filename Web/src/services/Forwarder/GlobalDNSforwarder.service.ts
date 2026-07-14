@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import dgram from "node:dgram";
-import logger from "../../utilities/logger"
 
-// RabbitMQ
-import CacheKeys, { DNS_QUERY_STATUS_KEYS, QueueKeys } from "../../Redis/CacheKeys.cache";
+import { logger, CacheKeys, DNS_QUERY_STATUS_KEYS, QueueKeys, RabbitMQService } from 'nexoraldns-shared';
 import container from "../../container/appContainer";
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import InputOutputHandler from "../../utilities/IO.utls";
 
 // Worst case per query: servers.length x 2s timeout, so keep this list short.

@@ -11,7 +11,10 @@ const { mockContainer, createDnsListenerSocketMock, getLocalIPMock, ipScanCtorMo
 }));
 
 vi.mock('@web/container/appContainer', () => ({ default: mockContainer }));
-vi.mock('@web/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 vi.mock('@web/utilities/dnsSocket.utls', () => ({ createDnsListenerSocket: createDnsListenerSocketMock }));
 vi.mock('@web/utilities/GetWLANIP.utls', () => ({ default: getLocalIPMock }));
 vi.mock('@web/utilities/AutoIP_SCAN.utls', () => ({

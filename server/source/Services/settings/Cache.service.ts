@@ -1,7 +1,7 @@
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { CacheKeys } from "nexoraldns-shared";
 import container from "../../container/appContainer";
 import { RedisCacheService } from "../../Redis/Redis.cache";
 

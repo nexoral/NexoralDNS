@@ -1,14 +1,12 @@
-import logger from '../../utilities/logger';
 import fs from "fs";
 import path from "path";
 import { ObjectId } from "mongodb";
-import { QueueKeys } from "../../Redis/CacheKeys.cache";
+import { logger, QueueKeys, RabbitMQService } from 'nexoraldns-shared';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { buildLogsQuery } from "../../helper/buildLogsQuery.helper";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { LogExportJobMessage, LogExportMetadata } from "../../Services/Logs/LogsExport.service";
 
 const EXPORTS_DIR = path.join(__dirname, "..", "..", "..", "exports");

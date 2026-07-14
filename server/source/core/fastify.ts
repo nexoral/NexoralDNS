@@ -1,4 +1,3 @@
-import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
@@ -7,7 +6,7 @@ import rateLimit from "@fastify/rate-limit";
 import { CORS_CONFIG, ServerKeys } from "./key";
 import mainRouter from "../Router/Router";
 import container from "../container/appContainer";
-import { MongoConnectionManager } from "../Database/MongoConnectionManager";
+import { logger, MongoConnectionManager } from 'nexoraldns-shared';
 import { MongoCollectionManager } from "../Database/MongoCollectionManager";
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';

@@ -16,7 +16,10 @@ const { clusterMock, handlerMock, loadOrGenerateCertsMock, loggerMock } = vi.hoi
 vi.mock('cluster', () => ({ default: clusterMock }));
 vi.mock('@web/Config/DNS', () => ({ default: handlerMock }));
 vi.mock('@web/services/DNS/DNS_DoT.Service', () => ({ loadOrGenerateCerts: loadOrGenerateCertsMock }));
-vi.mock('@web/utilities/logger', () => ({ default: loggerMock }));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: loggerMock };
+});
 
 function cpus(n: number) {
   return new Array(n).fill({}) as os.CpuInfo[];

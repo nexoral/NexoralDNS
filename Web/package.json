@@ -1,11 +1,12 @@
 {
   "name": "NexoralDNS",
-  "version": "7.17.60-stable",
+  "version": "8.18.61-stable",
   "description": "This is the main core DNS Server for NexoralDNS Service, it was main responsible for handling DNS queries and responses.",
   "main": "./lib/cluster/Cluster.js",
   "scripts": {
     "start": "node ./lib/cluster/Cluster.js",
     "dev": "sudo node ./lib/Config/DNS.js",
+    "prebuild": "cd ../shared && npm install && npm run build",
     "build": "tsc",
     "lint": "eslint . --ext .ts,.tsx"
   },
@@ -22,10 +23,10 @@
     "typescript-eslint": "^8.43.0"
   },
   "dependencies": {
-    "@types/amqplib": "^0.10.8",
-    "amqplib": "^0.10.9",
+    "mongodb": "^6.20.0",
+    "nexoraldns-shared": "file:../shared",
     "outers": "^8.6.9",
     "pino": "^10.3.1",
-    "redis": "^5.9.0"
+    "redis": "^5.10.0"
   }
 }

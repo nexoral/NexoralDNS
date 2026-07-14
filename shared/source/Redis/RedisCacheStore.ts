@@ -1,5 +1,5 @@
-import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import logger from '../utilities/logger';
 import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class RedisCacheStore {
@@ -10,13 +10,14 @@ export class RedisCacheStore {
       const client = await this.connectionManager.getClient();
       const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
 
-      if (ttl) {
-        await client.setEx(key, ttl, serializedValue);
-      } else {
-        await client.set(key, serializedValue);
-      }
+      // ttl <= 0 (e.g. DefaultTTL=0 for "instant" policy toggle) floors to 1s
+      // rather than skipping the write or caching forever — persisting without
+      // expiry would serve stale records indefinitely and defeat invalidation,
+      // while never caching at all defeats the point of a cache entirely.
+      const effectiveTtl = ttl > 0 ? ttl : 1;
+      await client.setEx(key, effectiveTtl, serializedValue);
     } catch (error) {
-      logger.warn(`⚠️  Failed to set key ${key}:`, error);
+      logger.warn(`⚠️  Failed to set key ${key}:`, error as any);
     }
   }
 
@@ -33,7 +34,7 @@ export class RedisCacheStore {
         return cached as T;
       }
     } catch (error) {
-      logger.warn(`⚠️  Failed to get key ${key}:`, error);
+      logger.warn(`⚠️  Failed to get key ${key}:`, error as any);
       return null;
     }
   }
@@ -44,7 +45,7 @@ export class RedisCacheStore {
       const result = await client.del(key);
       return result > 0;
     } catch (error) {
-      logger.warn(`⚠️  Failed to delete key ${key}:`, error);
+      logger.warn(`⚠️  Failed to delete key ${key}:`, error as any);
       return false;
     }
   }
@@ -55,7 +56,7 @@ export class RedisCacheStore {
       const result = await client.exists(key);
       return result > 0;
     } catch (error) {
-      logger.warn(`⚠️  Failed to check existence of key ${key}:`, error);
+      logger.warn(`⚠️  Failed to check existence of key ${key}:`, error as any);
       return false;
     }
   }
@@ -73,13 +74,13 @@ export class RedisCacheStore {
 
       if (keys.length > 0) {
         await client.del(keys);
-        logger.info(`Invalidated ${keys.length} cache entries matching pattern: ${pattern}`);
+        logger.info(`🗑️  Invalidated ${keys.length} cache entries matching pattern: ${pattern}`);
         return keys.length;
       }
 
       return 0;
     } catch (error) {
-      logger.warn(`Failed to invalidate pattern ${pattern}:`, error as any);
+      logger.warn(`⚠️  Failed to invalidate pattern ${pattern}:`, error as any);
       return 0;
     }
   }
@@ -89,7 +90,7 @@ export class RedisCacheStore {
       const client = await this.connectionManager.getClient();
       return await client.ttl(key);
     } catch (error) {
-      logger.warn(`⚠️  Failed to get TTL for key ${key}:`, error);
+      logger.warn(`⚠️  Failed to get TTL for key ${key}:`, error as any);
       return -1;
     }
   }
@@ -100,7 +101,7 @@ export class RedisCacheStore {
       const result = await client.expire(key, seconds);
       return result;
     } catch (error) {
-      logger.warn(`⚠️  Failed to set expiration for key ${key}:`, error);
+      logger.warn(`⚠️  Failed to set expiration for key ${key}:`, error as any);
       return 0;
     }
   }
@@ -111,7 +112,7 @@ export class RedisCacheStore {
       await client.flushAll();
       logger.info('✅ All cache cleared!');
     } catch (error) {
-      logger.error('❌ Failed to clear cache:', error);
+      logger.error('❌ Failed to clear cache:', error as any);
     }
   }
 
@@ -138,7 +139,7 @@ export class RedisCacheStore {
         hit_rate: this.calculateHitRate(stats.keyspace_hits, stats.keyspace_misses)
       };
     } catch (error) {
-      logger.error('❌ Failed to get cache stats:', error);
+      logger.error('❌ Failed to get cache stats:', error as any);
       return null;
     }
   }

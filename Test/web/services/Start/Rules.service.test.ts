@@ -7,9 +7,10 @@ import type { IDNSIOHandler } from '@web/utilities/IDNSIOHandler';
 const { mockContainer } = vi.hoisted(() => ({ mockContainer: { get: vi.fn(), has: vi.fn(), register: vi.fn(), clear: vi.fn() } }));
 
 vi.mock('@web/container/appContainer', () => ({ default: mockContainer }));
-vi.mock('@web/utilities/logger', () => ({
-  default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
-}));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 
 const RINFO: dgram.RemoteInfo = { address: '10.0.0.9', port: 5353, family: 'IPv4', size: 0 };
 

@@ -4,9 +4,10 @@ import { createMockContainer } from '@testUtils/mockContainer';
 const { mockContainer } = vi.hoisted(() => ({ mockContainer: { get: vi.fn(), has: vi.fn(), register: vi.fn(), clear: vi.fn() } }));
 
 vi.mock('@web/container/appContainer', () => ({ default: mockContainer }));
-vi.mock('@web/utilities/logger', () => ({
-  default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
-}));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 
 async function importFresh(collMgr: { getCollection: ReturnType<typeof vi.fn> }) {
   vi.resetModules();
@@ -92,5 +93,25 @@ describe('DomainDBPoolService.getDnsRecordByDomainName', () => {
     await service.getDnsRecordByDomainName('x');
     await service.getDnsRecordByDomainName('x');
     expect(collMgr.getCollection).toHaveBeenCalledTimes(2);
+  });
+
+  it('caches individual hops so a repeat lookup within the TTL skips findOne', async () => {
+    const collMgr = fakeCollectionManager(async ({ name }) => (name === 'x' ? { name: 'x', type: 'A', value: '1.1.1.1', ttl: 1 } : null));
+    const service = await importFresh(collMgr);
+    await service.getDnsRecordByDomainName('x');
+    await service.getDnsRecordByDomainName('x');
+    expect(collMgr.findOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not leak a mutated name between two chains that share a cached hop', async () => {
+    // hopCache stores records by reference - the final clone must not mutate them
+    const records: Record<string, unknown> = {
+      shared: { name: 'shared', type: 'A', value: '1.2.3.4', ttl: 60 },
+      first: { name: 'first', type: 'CNAME', value: 'shared' },
+      second: { name: 'second', type: 'CNAME', value: 'shared' },
+    };
+    const service = await importFresh(fakeCollectionManager(async ({ name }) => records[name] ?? null));
+    expect(await service.getDnsRecordByDomainName('first')).toEqual({ name: 'first', type: 'A', value: '1.2.3.4', ttl: 60 });
+    expect(await service.getDnsRecordByDomainName('second')).toEqual({ name: 'second', type: 'A', value: '1.2.3.4', ttl: 60 });
   });
 });

@@ -2,7 +2,7 @@ import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";
 
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { CacheKeys } from "nexoraldns-shared";
 import { getDashboardDataStats } from "../../CronJob/Jobs/DashboardAnalytics.cron";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";

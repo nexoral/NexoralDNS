@@ -1,11 +1,9 @@
-import logger from '../../utilities/logger';
-import { QueueKeys } from "../../Redis/CacheKeys.cache";
+import { logger, QueueKeys, RabbitMQService } from 'nexoraldns-shared';
 
 // mongoDB
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { RedisCacheService } from "../../Redis/Redis.cache";
 
 export default async function BatchProcessAnalytics() {

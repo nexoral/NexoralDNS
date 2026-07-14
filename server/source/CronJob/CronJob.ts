@@ -1,4 +1,4 @@
-import logger from '../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 // Import Functions
 import { IpConnectionCronJob } from "./Jobs/Connected_IP_fetcher.cron";
 import BatchProcessAnalytics from "./Jobs/BatchAnalytics.cron";

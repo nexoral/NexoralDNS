@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { AclBlockingService } from '@web/Redis/AclBlockingService';
 import { createFakeRedisClient } from '@testUtils/fakeRedis';
-import type { RedisConnectionManager } from '@web/Redis/RedisConnectionManager';
+import type { RedisConnectionManager } from '@nexoralShared/Redis/RedisConnectionManager';
 
-vi.mock('@web/utilities/logger', () => ({
-  default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
-}));
+vi.mock('nexoraldns-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nexoraldns-shared')>();
+  return { ...actual, logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } };
+});
 
 function setup() {
   const client = createFakeRedisClient();

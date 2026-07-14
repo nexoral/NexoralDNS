@@ -1,8 +1,15 @@
-import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, RedisClientType } from 'redis';
+import logger from '../utilities/logger';
 
-export class RedisConnectionManager {
+// A new cache backend can implement this without touching RedisConnectionManager
+export interface ICacheConnectionManager {
+  connect(): Promise<unknown>;
+  getClient(): Promise<unknown>;
+  close(): Promise<void>;
+}
+
+export class RedisConnectionManager implements ICacheConnectionManager {
   private client: RedisClientType | null = null;
   private isConnecting = false;
   private reconnectAttempts = 0;
@@ -40,7 +47,7 @@ export class RedisConnectionManager {
       return this.client;
 
     } catch (error) {
-      logger.error("❌ Failed to connect to Redis:", error);
+      logger.error("❌ Failed to connect to Redis:", error as any);
       throw error;
     } finally {
       this.isConnecting = false;
@@ -85,7 +92,7 @@ export class RedisConnectionManager {
     });
 
     this.client.on('error', (err) => {
-      logger.error('❌ Redis error:', err);
+      logger.error('❌ Redis error:', err as any);
       this.reconnectAttempts++;
     });
 

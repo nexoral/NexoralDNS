@@ -1,7 +1,7 @@
 import { Socket } from "node:dgram";
 import os from "os";
 import { Retry } from "outers";
-import logger from './logger';
+import { logger } from 'nexoraldns-shared';
 import { createDnsListenerSocket } from './dnsSocket.utls';
 
 export default class IP_SCAN {

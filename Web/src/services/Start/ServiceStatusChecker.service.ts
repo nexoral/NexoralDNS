@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import logger from "../../utilities/logger";
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 import { IDNSIOHandler } from "../../utilities/IDNSIOHandler";
 import dgram from "node:dgram";
@@ -8,7 +7,7 @@ import dgram from "node:dgram";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { logger, CacheKeys } from 'nexoraldns-shared';
 
 export type ServiceStatusResult = {
   serviceStatus: boolean,

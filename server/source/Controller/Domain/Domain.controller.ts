@@ -1,4 +1,4 @@
-import logger from '../../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 

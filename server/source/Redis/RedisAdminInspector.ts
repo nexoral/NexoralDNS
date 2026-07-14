@@ -1,6 +1,5 @@
-import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RedisConnectionManager } from './RedisConnectionManager';
+import { logger, RedisConnectionManager } from 'nexoraldns-shared';
 
 export class RedisAdminInspector {
   constructor(private connectionManager: RedisConnectionManager) {}

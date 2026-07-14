@@ -1,4 +1,4 @@
-import logger from '../../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 import container from '../../container/appContainer';
 import { RedisCacheService } from '../../Redis/Redis.cache';
 

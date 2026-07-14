@@ -1,6 +1,6 @@
-import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, RedisClientType } from 'redis';
+import logger from '../utilities/logger';
 import { RedisConnectionManager } from './RedisConnectionManager';
 
 export class RedisPubSub {
@@ -24,7 +24,7 @@ export class RedisPubSub {
         this.subscriberClient = createClient(redisConfig.options);
 
         this.subscriberClient.on('error', (err) => {
-          logger.error('❌ Subscriber connection error:', err);
+          logger.error('❌ Subscriber connection error:', err as any);
           this.subscriberClient = null;
         });
 
@@ -43,7 +43,7 @@ export class RedisPubSub {
       logger.info(`👂 Subscribed to channel: ${channel}`);
 
     } catch (error) {
-      logger.error(`❌ Failed to subscribe to channel ${channel}:`, error);
+      logger.error(`❌ Failed to subscribe to channel ${channel}:`, error as any);
       this.subscriberClient = null;
       throw error;
     }
@@ -54,7 +54,7 @@ export class RedisPubSub {
       const client = await this.connectionManager.getClient();
       return await client.publish(channel, message);
     } catch (error) {
-      logger.error(`❌ Failed to publish to channel ${channel}:`, error);
+      logger.error(`❌ Failed to publish to channel ${channel}:`, error as any);
       return 0;
     }
   }

@@ -1,6 +1,5 @@
 import container from "../../container/appContainer";
-import { MongoConnectionManager } from "../../Database/MongoConnectionManager";
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
+import { MongoConnectionManager, RabbitMQService } from "nexoraldns-shared";
 import { RedisCacheService } from "../../Redis/Redis.cache";
 
 /**

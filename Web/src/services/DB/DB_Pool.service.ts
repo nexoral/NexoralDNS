@@ -1,14 +1,24 @@
-// Service to manage database connections and collections
 import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { DB_DEFAULT_CONFIGS } from "../../Config/key";
 
+type DNSRecordsCollection = ReturnType<MongoCollectionManager['getCollection']>;
 
-// Service to handle domain-related database operations
+interface DnsRecord {
+  name: string;
+  type: string;
+  value: string;
+  ttl?: number;
+}
+
 export class DomainDBPoolService {
+  // Caches individual hops (not the final chain, which Rules.service.ts already
+  // caches in Redis) so a hop shared across chains isn't re-fetched from Mongo.
+  private static readonly hopCache = new Map<string, { record: DnsRecord; expiresAt: number }>();
+  private static readonly HOP_CACHE_TTL_MS = 3000;
+
   constructor() { }
 
-  // get domain matched with the name
   public async getDnsRecordByDomainName(domainName: string, maxDepth: number = 10) {
     let currentName = domainName;
     let depth = 0;
@@ -23,16 +33,14 @@ export class DomainDBPoolService {
       }
       visited.add(currentName);
 
-      // Try exact match first
-      const record = await DNSRecordsCollection?.findOne({ name: currentName });
+      const record = await this.lookupHop(DNSRecordsCollection, currentName);
 
       if (!record) {
-        return null; // Domain not found
+        return null;
       }
 
       if (record.type === 'A' || record.type === 'AAAA') {
-        record.name = domainName;
-        return record;
+        return { ...record, name: domainName };
       }
 
       if (record.type === 'CNAME') {
@@ -41,10 +49,22 @@ export class DomainDBPoolService {
         continue;
       }
 
-      record.name = domainName;
-      return record;
+      return { ...record, name: domainName };
     }
 
     throw new Error(`Maximum CNAME depth exceeded for ${domainName}`);
+  }
+
+  private async lookupHop(collection: DNSRecordsCollection, name: string): Promise<DnsRecord | null> {
+    const cached = DomainDBPoolService.hopCache.get(name);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.record;
+    }
+
+    const record = await collection?.findOne({ name }) as DnsRecord | null | undefined;
+    if (record) {
+      DomainDBPoolService.hopCache.set(name, { record, expiresAt: Date.now() + DomainDBPoolService.HOP_CACHE_TTL_MS });
+    }
+    return record ?? null;
   }
 }

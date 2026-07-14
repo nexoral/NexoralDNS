@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "outDir": "./lib",
+    "target": "ES6",
+    "module": "node16",
+    "declaration": true,
+    "moduleResolution": "node16",
+    "checkJs": false,
+    "allowJs": true,
+    "sourceMap": true,
+    "strict": true,
+    "removeComments": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": [
+      "ES6"
+    ],
+    "rootDir": "./source"
+  },
+  "include": [
+    "source/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

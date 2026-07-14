@@ -1,4 +1,4 @@
-import logger from '../../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { exec } from "child_process";

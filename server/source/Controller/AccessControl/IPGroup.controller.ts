@@ -1,4 +1,4 @@
-import logger from '../../utilities/logger';
+import { logger } from 'nexoraldns-shared';
 import { FastifyReply } from "fastify";
 import { StatusCodes } from "outers";
 import BuildResponse from "../../helper/responseBuilder.helper";

@@ -3,10 +3,9 @@ import { StatusCodes } from "outers";
 import fs from "fs";
 import crypto from "crypto";
 import BuildResponse from "../../helper/responseBuilder.helper";
-import { QueueKeys } from "../../Redis/CacheKeys.cache";
+import { QueueKeys, RabbitMQService } from "nexoraldns-shared";
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import container from "../../container/appContainer";
-import { RabbitMQService } from "../../RabbitMQ/Rabbitmq.config";
 import { LogsQueryFilters } from "../../helper/buildLogsQuery.helper";
 
 export type LogExportFormat = "txt";

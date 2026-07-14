@@ -7,6 +7,10 @@ export default defineConfig({
       '@web': path.resolve(__dirname, '../Web/src'),
       '@testUtils': path.resolve(__dirname, 'web/_testUtils'),
       '@shared': path.resolve(__dirname, 'shared'),
+      // Points straight at the shared/ package's TS source (same principle as
+      // @server/@web) so the suite never needs shared/ built or installed.
+      // Not named @shared - that alias already means Test/shared/setup/.
+      '@nexoralShared': path.resolve(__dirname, '../shared/source'),
       // Web/src imports these as bare specifiers and would resolve them against
       // Web/node_modules, while a `vi.mock('pino', ...)` in a Test/ file resolves
       // against Test/node_modules — two different module ids means the mock would

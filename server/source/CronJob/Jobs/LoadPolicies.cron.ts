@@ -1,21 +1,12 @@
-import logger from '../../utilities/logger';
 import { Retry } from "outers";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
+import { logger, ACLKeys } from 'nexoraldns-shared';
 
-/**
- * Redis Data Structure for Access Control Policies:
- *
- * 1. acl:ip:{IP_ADDRESS} -> Set of blocked domains
- *    Example: acl:ip:192.168.1.100 -> ["facebook.com", "instagram.com", "*.social.com"]
- *
- * 2. acl:all_users -> Set of blocked domains for all users
- *    Example: acl:all_users -> ["malware.com", "phishing.com"]
- *
- * 3. acl:metadata -> JSON with policy count, last updated timestamp
- */
+// Redis key scheme is defined in ACLKeys (shared/). Exact/wild sets are split
+// so AclBlockingService can do an O(1) exact-match check before scanning wildcards.
 
 interface DomainEntry {
   domain: string;
@@ -225,24 +216,24 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
   }
 
   if (allUsersExact.size > 0) {
-    pipeline.sAdd('acl:all_users:exact', Array.from(allUsersExact));
-    pipeline.expire('acl:all_users:exact', ONE_DAY);
+    pipeline.sAdd(ACLKeys.EXACT_GLOBAL, Array.from(allUsersExact));
+    pipeline.expire(ACLKeys.EXACT_GLOBAL, ONE_DAY);
   }
   if (allUsersWild.size > 0) {
-    pipeline.sAdd('acl:all_users:wild', Array.from(allUsersWild));
-    pipeline.expire('acl:all_users:wild', ONE_DAY);
+    pipeline.sAdd(ACLKeys.WILD_GLOBAL, Array.from(allUsersWild));
+    pipeline.expire(ACLKeys.WILD_GLOBAL, ONE_DAY);
   }
 
   for (const ip of trackedIPs) {
     const exact = ipToExact.get(ip);
     const wild = ipToWild.get(ip);
     if (exact && exact.size > 0) {
-      const key = `acl:ip:${ip}:exact`;
+      const key = ACLKeys.exactIp(ip);
       pipeline.sAdd(key, Array.from(exact));
       pipeline.expire(key, ONE_DAY);
     }
     if (wild && wild.size > 0) {
-      const key = `acl:ip:${ip}:wild`;
+      const key = ACLKeys.wildIp(ip);
       pipeline.sAdd(key, Array.from(wild));
       pipeline.expire(key, ONE_DAY);
     }
@@ -256,7 +247,7 @@ export async function loadAccessControlPoliciesToRedis(): Promise<void> {
     lastUpdated: Date.now(),
     loadDuration: Date.now() - startTime
   };
-  pipeline.set('acl:metadata', JSON.stringify(metadata), { EX: ONE_DAY });
+  pipeline.set(ACLKeys.METADATA, JSON.stringify(metadata), { EX: ONE_DAY });
 
   await pipeline.exec();
 

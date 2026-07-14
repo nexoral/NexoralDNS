@@ -1,71 +1,78 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { RabbitMQPublisher } from '@nexoralShared/RabbitMQ/RabbitMQPublisher';
 import { FakeAmqpChannel } from '../_testUtils/fakeAmqp';
+import type { RabbitMQConnectionManager } from '@nexoralShared/RabbitMQ/RabbitMQConnectionManager';
+import type { RabbitMQQueueManager } from '@nexoralShared/RabbitMQ/RabbitMQQueueManager';
 
-vi.mock('@server/source/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
-
-import { RabbitMQPublisher } from '@server/source/RabbitMQ/RabbitMQPublisher';
-import type { RabbitMQConnectionManager } from '@server/source/RabbitMQ/RabbitMQConnectionManager';
-import type { RabbitMQQueueManager } from '@server/source/RabbitMQ/RabbitMQQueueManager';
+vi.mock('@nexoralShared/utilities/logger', () => ({
+  default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
+}));
 
 function setup() {
   const channel = new FakeAmqpChannel();
-  const connectionManager = { connect: vi.fn().mockResolvedValue(channel) } as unknown as RabbitMQConnectionManager;
-  const queueManager = { ensureQueue: vi.fn().mockResolvedValue(undefined) } as unknown as RabbitMQQueueManager;
-  return { publisher: new RabbitMQPublisher(connectionManager, queueManager), channel, queueManager };
+  const conn = { connect: vi.fn().mockResolvedValue(channel) };
+  const queueManager = { ensureQueue: vi.fn().mockResolvedValue(undefined) };
+  const publisher = new RabbitMQPublisher(
+    conn as unknown as RabbitMQConnectionManager,
+    queueManager as unknown as RabbitMQQueueManager
+  );
+  return { channel, conn, queueManager, publisher };
 }
 
-beforeEach(() => vi.clearAllMocks());
-
 describe('RabbitMQPublisher.publish', () => {
-  it('ensures the queue and sends a JSON buffer with default options', async () => {
-    const { publisher, channel, queueManager } = setup();
-    const ok = await publisher.publish('q1', { a: 1 });
-
+  it('serializes the message and sends it with default persistent=true, priority=5', async () => {
+    const { channel, publisher, queueManager } = setup();
+    expect(await publisher.publish('q1', { a: 1 })).toBe(true);
     expect(queueManager.ensureQueue).toHaveBeenCalledWith('q1');
-    expect(channel.sendToQueue).toHaveBeenCalledWith(
-      'q1',
-      Buffer.from(JSON.stringify({ a: 1 })),
-      { persistent: true, priority: 5, expiration: undefined },
-    );
-    expect(ok).toBe(true);
+    const [queue, buf, opts] = channel.sendToQueue.mock.calls[0];
+    expect(queue).toBe('q1');
+    expect(JSON.parse((buf as Buffer).toString())).toEqual({ a: 1 });
+    expect(opts).toEqual({ persistent: true, priority: 5, expiration: undefined });
   });
 
-  it('honours custom persistence/priority/expiration options', async () => {
-    const { publisher, channel } = setup();
+  it('honors explicit persistent/priority/expiration options', async () => {
+    const { channel, publisher } = setup();
     await publisher.publish('q1', { a: 1 }, { persistent: false, priority: 9, expiration: '1000' });
-    expect(channel.sendToQueue).toHaveBeenCalledWith(expect.anything(), expect.anything(), { persistent: false, priority: 9, expiration: '1000' });
+    expect(channel.sendToQueue.mock.calls[0][2]).toEqual({ persistent: false, priority: 9, expiration: '1000' });
   });
 
-  it('returns false when the broker buffer is full (sendToQueue false)', async () => {
-    const { publisher, channel } = setup();
+  it('returns false when channel.sendToQueue() reports the queue is full', async () => {
+    const { channel, publisher } = setup();
     channel.sendToQueue.mockReturnValue(false);
     expect(await publisher.publish('q1', {})).toBe(false);
   });
 
-  it('returns false on error', async () => {
-    const { publisher, channel } = setup();
-    channel.sendToQueue.mockImplementation(() => { throw new Error('x'); });
+  it('returns false when connect() throws', async () => {
+    const { publisher, conn } = setup();
+    conn.connect.mockRejectedValueOnce(new Error('down'));
     expect(await publisher.publish('q1', {})).toBe(false);
   });
 });
 
 describe('RabbitMQPublisher.publishBatch', () => {
-  it('publishes every message and returns the success count', async () => {
-    const { publisher, channel } = setup();
-    const count = await publisher.publishBatch('q1', [{ a: 1 }, { b: 2 }, { c: 3 }]);
-    expect(count).toBe(3);
+  it('sends every message and returns the success count', async () => {
+    const { channel, publisher } = setup();
+    expect(await publisher.publishBatch('q1', [{ a: 1 }, { a: 2 }, { a: 3 }])).toBe(3);
     expect(channel.sendToQueue).toHaveBeenCalledTimes(3);
   });
 
-  it('counts only the messages the broker accepted', async () => {
-    const { publisher, channel } = setup();
+  it('counts only the sends that returned true', async () => {
+    const { channel, publisher } = setup();
     channel.sendToQueue.mockReturnValueOnce(true).mockReturnValueOnce(false).mockReturnValueOnce(true);
     expect(await publisher.publishBatch('q1', [{}, {}, {}])).toBe(2);
   });
 
-  it('returns the count so far on error', async () => {
-    const { publisher, channel } = setup();
-    channel.sendToQueue.mockReturnValueOnce(true).mockImplementationOnce(() => { throw new Error('x'); });
+  it('returns 0 (not throwing) when connect() fails before any message is sent', async () => {
+    const { publisher, conn } = setup();
+    conn.connect.mockRejectedValueOnce(new Error('down'));
+    expect(await publisher.publishBatch('q1', [{}, {}])).toBe(0);
+  });
+
+  it('returns the partial success count when sendToQueue throws mid-batch', async () => {
+    const { channel, publisher } = setup();
+    channel.sendToQueue.mockReturnValueOnce(true).mockImplementationOnce(() => {
+      throw new Error('channel closed');
+    });
     expect(await publisher.publishBatch('q1', [{}, {}, {}])).toBe(1);
   });
 });

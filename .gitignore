@@ -138,11 +138,12 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 
-# Build output (tsc outDir for server/, Web/, DHCP/, tools/ — NOT Docs/lib, which is hand-written source)
+# Build output (tsc outDir for server/, Web/, DHCP/, tools/, shared/ — NOT Docs/lib, which is hand-written source)
 /server/lib/
 /Web/lib/
 /DHCP/lib/
 /tools/lib/
+/shared/lib/
 dist/
 
 # Generated log export files (temporary, cleaned up on download / hourly sweep)
