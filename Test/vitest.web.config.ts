@@ -11,6 +11,10 @@ export default defineConfig({
       // @server/@web) so the suite never needs shared/ built or installed.
       // Not named @shared - that alias already means Test/shared/setup/.
       '@nexoralShared': path.resolve(__dirname, '../shared/source'),
+      // Web/src imports the shared package by its real bare specifier (not
+      // @nexoralShared), so that also needs pinning straight to source -
+      // otherwise it resolves via real node_modules, which don't exist in CI.
+      'nexoraldns-shared': path.resolve(__dirname, '../shared/source/index.ts'),
       // Web/src imports these as bare specifiers and would resolve them against
       // Web/node_modules, while a `vi.mock('pino', ...)` in a Test/ file resolves
       // against Test/node_modules — two different module ids means the mock would
