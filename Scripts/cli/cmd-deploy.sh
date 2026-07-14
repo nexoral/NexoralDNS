@@ -71,14 +71,16 @@ fi
 COMPOSE_FILE="$DOWNLOAD_DIR/docker-compose.yml"
 if [ -f "$COMPOSE_FILE" ]; then
   print_warning "Existing docker-compose.yml found. Stopping current services..."
-  cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
+  cd "$DOWNLOAD_DIR" && docker compose down > /dev/null 2>&1
   print_status "Removing existing docker-compose.yml..."
-  sudo rm -rf "$COMPOSE_FILE"
+  rm -rf "$COMPOSE_FILE"
 fi
 
 print_status "Downloading latest docker-compose.yml from GitHub..."
 DOWNLOAD_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/docker-compose.yml"
-if curl -L "$DOWNLOAD_URL" -o "$COMPOSE_FILE" > /dev/null 2>&1; then
+# -f: treat an HTTP error (e.g. 404 from a moved/renamed file) as a failure
+# instead of writing the error page to disk and reporting success anyway.
+if curl -fL "$DOWNLOAD_URL" -o "$COMPOSE_FILE" > /dev/null 2>&1; then
   print_success "docker-compose.yml downloaded successfully"
 else
   print_error "Failed to download docker-compose.yml"
@@ -104,24 +106,35 @@ if [ -f "$COMPOSE_FILE" ]; then
       if [ $comparison_result -eq 0 ]; then
         print_success "Versions are identical. Starting services..."
         run_docker_compose_with_pull "up -d" "Starting Docker containers (this may take a few minutes on first run)..."
+        deploy_result=$?
       elif [ $comparison_result -eq 1 ] && [[ "$remote_version" == *"-stable" ]]; then
         print_warning "New stable version available! Updating..."
         print_status "Removing old Docker image..."
         sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
         echo "$remote_version" > "$VERSION_FILE"
         run_docker_compose_with_pull "up -d" "Starting updated services (downloading new image, please wait)..."
+        deploy_result=$?
       else
         print_status "Local version is current. Starting services..."
         run_docker_compose "up -d" "Starting Docker containers..."
+        deploy_result=$?
       fi
     else
       print_status "First time installation. Creating version file..."
       echo "$remote_version" > "$VERSION_FILE"
-  run_docker_compose_with_pull "up -d" "Starting services (downloading images, this may take several minutes)..."
+      run_docker_compose_with_pull "up -d" "Starting services (downloading images, this may take several minutes)..."
+      deploy_result=$?
     fi
   else
-  print_warning "Could not fetch version information. Starting services with current setup..."
-  run_docker_compose "up -d" "Starting Docker containers..."
+    print_warning "Could not fetch version information. Starting services with current setup..."
+    run_docker_compose "up -d" "Starting Docker containers..."
+    deploy_result=$?
+  fi
+
+  if [ "$deploy_result" -ne 0 ]; then
+    print_error "Failed to start NexoralDNS services — see the docker compose output above."
+    print_status "/etc/resolv.conf was left unchanged since the DNS service is not actually running."
+    exit 1
   fi
 
   echo ""

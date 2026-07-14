@@ -19,8 +19,11 @@ cmd_stop() {
 
     if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
         print_status "Stopping NexoralDNS services..."
-        cd "$DOWNLOAD_DIR" && sudo docker compose down > /dev/null 2>&1
-        print_success "All NexoralDNS services have been stopped successfully!"
+        if cd "$DOWNLOAD_DIR" && docker compose down; then
+          print_success "All NexoralDNS services have been stopped successfully!"
+        else
+          print_warning "docker compose down reported an error — some containers may still be running."
+        fi
     ensure_systemd_resolved_running
     # 127.0.0.53 is systemd-resolved's stub resolver address.
     set_resolv_nameserver "127.0.0.53"
