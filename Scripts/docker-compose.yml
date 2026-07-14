@@ -16,7 +16,7 @@ services:
       - nexoral_network # 👈 keep Mongo in bridge network for safety/port isolation
 
   redis:
-    image: redis:latest
+    image: redis:alpine
     container_name: redis
     restart: always
     healthcheck:
