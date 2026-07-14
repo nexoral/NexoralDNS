@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import CacheKeys, { getACLKeyForIP, QueueKeys, DNS_QUERY_STATUS_KEYS } from '@nexoralShared/Redis/CacheKeys.cache';
+import CacheKeys, { ACLKeys, QueueKeys, DNS_QUERY_STATUS_KEYS } from '@nexoralShared/Redis/CacheKeys.cache';
 
 describe('CacheKeys / QueueKeys / DNS_QUERY_STATUS_KEYS', () => {
   it('exposes the stable Redis cache key names', () => {
@@ -7,12 +7,14 @@ describe('CacheKeys / QueueKeys / DNS_QUERY_STATUS_KEYS', () => {
     expect(CacheKeys.Domain_DNS_Record).toBe('Domain_DNS_Record');
     expect(CacheKeys.DnsQueryDetailsStore).toBe('DNS_QUERY');
     expect(CacheKeys.DashboardAnaliticalData).toBe('DashboardAnaliticalDataStats');
-    expect(CacheKeys.ACL_All_Users).toBe('acl:all_users');
-    expect(CacheKeys.ACL_Metadata).toBe('acl:metadata');
   });
 
-  it('getACLKeyForIP namespaces per IP', () => {
-    expect(getACLKeyForIP('10.0.0.1')).toBe('acl:ip:10.0.0.1');
+  it('ACLKeys builds the exact/wild split key scheme', () => {
+    expect(ACLKeys.exactIp('10.0.0.1')).toBe('acl:ip:10.0.0.1:exact');
+    expect(ACLKeys.wildIp('10.0.0.1')).toBe('acl:ip:10.0.0.1:wild');
+    expect(ACLKeys.EXACT_GLOBAL).toBe('acl:all_users:exact');
+    expect(ACLKeys.WILD_GLOBAL).toBe('acl:all_users:wild');
+    expect(ACLKeys.METADATA).toBe('acl:metadata');
   });
 
   it('exposes every queue name', () => {

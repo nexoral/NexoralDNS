@@ -1,24 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import logger from '../utilities/logger';
-import { RedisConnectionManager } from 'nexoraldns-shared';
+import { RedisConnectionManager, ACLKeys } from 'nexoraldns-shared';
 
 export class AclBlockingService {
   constructor(private connectionManager: RedisConnectionManager) {}
-
-  // ACL storage is split into two sets per scope so exact matches are O(1):
-  //   acl:ip:{ip}:exact / acl:all_users:exact   -> plain domain strings (SISMEMBER)
-  //   acl:ip:{ip}:wild  / acl:all_users:wild    -> JSON wildcard entries (scanned)
-  private exactIpKey(ip: string): string { return `acl:ip:${ip}:exact`; }
-  private wildIpKey(ip: string): string { return `acl:ip:${ip}:wild`; }
-  private readonly EXACT_GLOBAL_KEY = 'acl:all_users:exact';
-  private readonly WILD_GLOBAL_KEY = 'acl:all_users:wild';
 
   async getBlockedDomainsForIP(ip: string): Promise<string[]> {
     try {
       const client = await this.connectionManager.getClient();
       const [exact, wild] = await Promise.all([
-        client.sMembers(this.exactIpKey(ip)),
-        client.sMembers(this.wildIpKey(ip)),
+        client.sMembers(ACLKeys.exactIp(ip)),
+        client.sMembers(ACLKeys.wildIp(ip)),
       ]);
       return [...(exact || []), ...(wild || [])];
     } catch (error) {
@@ -31,8 +23,8 @@ export class AclBlockingService {
     try {
       const client = await this.connectionManager.getClient();
       const [exact, wild] = await Promise.all([
-        client.sMembers(this.EXACT_GLOBAL_KEY),
-        client.sMembers(this.WILD_GLOBAL_KEY),
+        client.sMembers(ACLKeys.EXACT_GLOBAL),
+        client.sMembers(ACLKeys.WILD_GLOBAL),
       ]);
       return [...(exact || []), ...(wild || [])];
     } catch (error) {
@@ -44,7 +36,7 @@ export class AclBlockingService {
   async getACLMetadata(): Promise<any> {
     try {
       const client = await this.connectionManager.getClient();
-      const metadata = await client.get('acl:metadata');
+      const metadata = await client.get(ACLKeys.METADATA);
       return metadata ? JSON.parse(metadata) : null;
     } catch (error) {
       logger.warn(`⚠️  Failed to get ACL metadata:`, error as any);
@@ -58,15 +50,15 @@ export class AclBlockingService {
 
       // Fast path: O(1) exact-match membership tests (no full-set fetch/scan).
       const [ipExact, globalExact] = await Promise.all([
-        client.sIsMember(this.exactIpKey(ip), domain),
-        client.sIsMember(this.EXACT_GLOBAL_KEY, domain),
+        client.sIsMember(ACLKeys.exactIp(ip), domain),
+        client.sIsMember(ACLKeys.EXACT_GLOBAL, domain),
       ]);
       if (ipExact || globalExact) return true;
 
       // Slow path: only the (typically small) wildcard sets are scanned.
       const [ipWild, globalWild] = await Promise.all([
-        client.sMembers(this.wildIpKey(ip)),
-        client.sMembers(this.WILD_GLOBAL_KEY),
+        client.sMembers(ACLKeys.wildIp(ip)),
+        client.sMembers(ACLKeys.WILD_GLOBAL),
       ]);
 
       for (const entry of [...(ipWild || []), ...(globalWild || [])]) {

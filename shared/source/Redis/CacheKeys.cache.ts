@@ -2,19 +2,19 @@ enum CacheKeys {
   Service_Status = "dns-server-status",
   Domain_DNS_Record = "Domain_DNS_Record",
   DnsQueryDetailsStore = "DNS_QUERY",
-  DashboardAnaliticalData = "DashboardAnaliticalDataStats",
-  ACL_All_Users = "acl:all_users",
-  ACL_Metadata = "acl:metadata"
+  DashboardAnaliticalData = "DashboardAnaliticalDataStats"
 }
 
-/**
- * Helper for a single-key ACL representation. Not used by AclBlockingService's
- * exact/wild split scheme (acl:ip:{ip}:exact / acl:ip:{ip}:wild) — kept for
- * backward compatibility with existing exports, currently unreferenced.
- * @param ip IP address
- * @returns Redis key for IP-specific blocked domains
- */
-export const getACLKeyForIP = (ip: string): string => `acl:ip:${ip}`;
+// Single source of truth for the ACL key scheme. Writer (LoadPolicies.cron.ts)
+// and readers (AclBlockingService.ts, AccessControlPolicy.service.ts) must
+// agree on these exactly — they previously each hardcoded their own copy.
+export const ACLKeys = {
+  exactIp: (ip: string): string => `acl:ip:${ip}:exact`,
+  wildIp: (ip: string): string => `acl:ip:${ip}:wild`,
+  EXACT_GLOBAL: 'acl:all_users:exact',
+  WILD_GLOBAL: 'acl:all_users:wild',
+  METADATA: 'acl:metadata',
+} as const;
 
 export enum QueueKeys {
   DNS_Analytics = "DNS_analytics",
