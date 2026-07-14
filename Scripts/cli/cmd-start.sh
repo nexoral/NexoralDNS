@@ -25,7 +25,11 @@ cmd_start() {
     if [ -d "$DOWNLOAD_DIR" ] && [ -f "$DOWNLOAD_DIR/docker-compose.yml" ]; then
 
   print_status "Starting NexoralDNS services..."
-  run_docker_compose "up -d" "Starting NexoralDNS services (this may take a few minutes)..."
+  if ! run_docker_compose "up -d" "Starting NexoralDNS services (this may take a few minutes)..."; then
+    print_error "Failed to start NexoralDNS services — see the docker compose output above."
+    print_status "/etc/resolv.conf was left unchanged since the DNS service is not actually running."
+    exit 1
+  fi
   print_success "All NexoralDNS services have been started successfully!"
 
         print_status "Detecting network configuration..."

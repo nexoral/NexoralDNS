@@ -67,9 +67,10 @@ check_system_compatibility() {
 
   print_success "✓ RAM check passed: ${TOTAL_RAM_GB}GB available"
 
-  # resolve_real_home, not $HOME directly: checks space where NexoralDNS will
-  # actually install, which can differ from $HOME under sudo.
-  AVAILABLE_STORAGE_KB=$(df "$(resolve_real_home)" | awk 'NR==2 {print $4}')
+  # Docker images/volumes live under /var/lib/docker and config under
+  # /etc/nexoraldns - both are virtually always on the root filesystem,
+  # regardless of where the invoking user's home happens to be mounted.
+  AVAILABLE_STORAGE_KB=$(df / | awk 'NR==2 {print $4}')
   AVAILABLE_STORAGE_GB=$((AVAILABLE_STORAGE_KB / 1024 / 1024))
   MIN_STORAGE_GB=10
 

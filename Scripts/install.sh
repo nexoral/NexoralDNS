@@ -13,6 +13,18 @@
 # update, pack, deploy) lives in Scripts/cli/*.sh — see that directory.
 # ============================================================================
 
+# Every subcommand touches root-only resources (Docker, UFW, systemd,
+# /etc/resolv.conf, /etc/nexoraldns) via a mix of bare and sudo-prefixed
+# commands. Requiring root for the whole process up front — instead of
+# per-command sudo — means every write happens under one consistent identity,
+# so a directory/file created by one run can never be left in a state a later
+# unprivileged run can't touch.
+if [ "$(id -u)" -ne 0 ]; then
+  echo "[ERROR] NexoralDNS must be run as root. Please re-run with sudo:" >&2
+  echo "  sudo $0 $*" >&2
+  exit 1
+fi
+
 # Installed location for CLI modules shipped by the .deb package.
 NEXORALDNS_CLI_DIR="/usr/share/nexoraldns/cli"
 

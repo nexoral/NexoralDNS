@@ -44,38 +44,71 @@ pull_image_with_progress() {
   return "${PIPESTATUS[0]}"
 }
 
-# Pulls before system services are stopped, so DNS keeps working during the pull.
+# Pulls before system services are stopped, so DNS keeps working during the
+# pull. Image list comes from docker-compose.yml itself (docker compose
+# config --images), never hardcoded — a hardcoded list previously drifted
+# from the compose file's actual redis:alpine tag (this had pinned
+# redis:latest), leaving the real image unpulled. Returns nonzero if any
+# image failed, so the caller knows it is NOT safe to disable the host's
+# DNS resolver yet.
 pull_required_images() {
-  local entries=(
-    "mongo:latest|MongoDB|Configuring"
-    "redis:latest|Redis|Configuring"
-    "rabbitmq:management|RabbitMQ|Configuring"
-    "ghcr.io/nexoral/nexoraldns:latest|NexoralDNS|Installing"
-  )
-  local entry img label verb
   print_status "Pulling required Docker images before stopping DNS..."
-  for entry in "${entries[@]}"; do
-    IFS='|' read -r img label verb <<< "$entry"
-    if pull_image_with_progress "$img" "${verb} ${label}"; then
-      if [ "$verb" = "Installing" ]; then
-        print_success "${label} installed."
-      else
-        print_success "${label} configured."
-      fi
+
+  local images image label failed=0
+  images=$(cd "$DOWNLOAD_DIR" && docker compose config --images 2>/dev/null)
+  if [ -z "$images" ]; then
+    print_error "Could not read the image list from docker-compose.yml."
+    return 1
+  fi
+
+  while IFS= read -r image; do
+    [ -z "$image" ] && continue
+    label="$(basename "${image%%:*}")"
+    label="$(tr '[:lower:]' '[:upper:]' <<< "${label:0:1}")${label:1}"
+    if pull_image_with_progress "$image" "Pulling ${label}"; then
+      print_success "${label} image ready."
     else
-      print_warning "Failed to configure ${label} (continue anyway)"
+      print_error "Failed to pull ${label} image (${image})."
+      failed=1
     fi
-  done
+  done <<< "$images"
+
+  return "$failed"
+}
+
+# Runs `docker compose $command`, quiet on success. On failure, prints the
+# captured output and returns nonzero — callers must check this and NOT
+# report success or touch /etc/resolv.conf when it fails.
+_run_docker_compose_checked() {
+  local command="$1"
+  local output
+  if ! cd "$DOWNLOAD_DIR"; then
+    print_error "Cannot access $DOWNLOAD_DIR"
+    return 1
+  fi
+  if output=$(docker compose $command 2>&1); then
+    return 0
+  fi
+  print_error "docker compose $command failed:"
+  echo "$output" >&2
+  return 1
 }
 
 run_docker_compose_with_pull() {
   local command="$1"
   local message="$2"
   print_status "$message"
-  pull_required_images
-  # So containers can bind to port 53.
+  if ! pull_required_images; then
+    print_error "One or more required images failed to download — aborting before touching DNS."
+    return 1
+  fi
+  # Only safe to disable the host's resolver once every image compose needs
+  # is confirmed present locally, so `docker compose up` never has to pull
+  # anything itself. Doing this before that guarantee is exactly what broke
+  # DNS mid-deploy: systemd-resolved got disabled first, then `up -d` still
+  # needed an unpulled image and had no resolver left to reach the registry.
   disable_systemd_resolved_if_enabled
-  cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
+  _run_docker_compose_checked "$command"
 }
 
 run_docker_compose() {
@@ -85,5 +118,5 @@ run_docker_compose() {
   if [[ "$command" == *"up -d"* ]]; then
     disable_systemd_resolved_if_enabled
   fi
-  cd "$DOWNLOAD_DIR" && sudo docker compose $command > /dev/null 2>&1
+  _run_docker_compose_checked "$command"
 }

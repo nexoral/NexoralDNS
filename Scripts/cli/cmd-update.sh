@@ -48,7 +48,11 @@ cmd_update() {
     print_status "Removing old NexoralDNS image..."
     sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
     echo "$remote_version" > "$VERSION_FILE"
-    run_docker_compose_with_pull "up -d" "Updating services (downloading new image, please wait)..."
+    if ! run_docker_compose_with_pull "up -d" "Updating services (downloading new image, please wait)..."; then
+      print_error "Failed to start the updated NexoralDNS services — see the docker compose output above."
+      print_status "/etc/resolv.conf was left unchanged since the DNS service is not actually running."
+      exit 1
+    fi
     print_success "Update complete."
 
         print_status "Detecting network configuration..."

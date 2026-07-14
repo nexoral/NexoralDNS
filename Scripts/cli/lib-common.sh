@@ -232,6 +232,20 @@ resolve_real_home() {
   printf '%s\n' "$real_home"
 }
 
+NEXORALDNS_SYSTEM_DIR="/etc/nexoraldns"
+
+# docker-compose.yml + VERSION are system config, not per-user data, and the
+# whole CLI now requires root — a fixed system path means the directory's
+# owner can never drift out from under a later invocation (the bug that
+# caused a previous run's silent download failure).
 resolve_download_dir() {
-  printf '%s/NexoralDNS\n' "$(resolve_real_home)"
+  local old_dir
+  old_dir="$(resolve_real_home)/NexoralDNS"
+
+  # One-time migration for installs from before the storage location moved.
+  if [ ! -d "$NEXORALDNS_SYSTEM_DIR" ] && [ -d "$old_dir" ]; then
+    mv "$old_dir" "$NEXORALDNS_SYSTEM_DIR"
+  fi
+
+  printf '%s\n' "$NEXORALDNS_SYSTEM_DIR"
 }
