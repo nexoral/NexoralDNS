@@ -5,7 +5,7 @@ import logger from '../utilities/logger';
 export class RabbitMQConnectionManager {
   private connection: any = null;
   private channel: Channel | null = null;
-  private isConnecting = false;
+  private connectingPromise: Promise<Channel> | null = null;
   private reconnecting = false;
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 10;
@@ -16,13 +16,20 @@ export class RabbitMQConnectionManager {
       return this.channel;
     }
 
-    if (this.isConnecting) {
-      await this.waitForConnection();
-      return this.channel!;
+    if (this.connectingPromise) {
+      return this.connectingPromise;
     }
 
-    this.isConnecting = true;
+    const promise = this.doConnect();
+    this.connectingPromise = promise;
+    try {
+      return await promise;
+    } finally {
+      this.connectingPromise = null;
+    }
+  }
 
+  private async doConnect(): Promise<Channel> {
     try {
       const rabbitURL = process.env.RABBITMQ_URI || 'amqp://localhost:5672';
 
@@ -46,8 +53,6 @@ export class RabbitMQConnectionManager {
       // Do NOT block the caller on reconnection — detach it to the background.
       this.scheduleReconnect();
       throw error;
-    } finally {
-      this.isConnecting = false;
     }
   }
 
@@ -95,21 +100,6 @@ export class RabbitMQConnectionManager {
 
     logger.error(`❌ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`);
     this.reconnecting = false;
-  }
-
-  private async waitForConnection(): Promise<void> {
-    const maxWait = 30000;
-    const checkInterval = 100;
-    let waited = 0;
-
-    while (this.isConnecting && waited < maxWait) {
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
-      waited += checkInterval;
-    }
-
-    if (waited >= maxWait) {
-      throw new Error('Timeout waiting for RabbitMQ connection');
-    }
   }
 
   async close(): Promise<void> {

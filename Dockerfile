@@ -2,37 +2,39 @@
 FROM node:24-alpine AS builder
 
 WORKDIR /app
-COPY . .
 
-# Configure npm for network resilience
 RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000
 
-# server/, Web/, shared/, DHCP/ are an npm workspace; install once at the root
+COPY package.json package-lock.json ./
+COPY server/package.json ./server/package.json
+COPY Web/package.json ./Web/package.json
+# full copy, not just package.json: its prepare script needs real source to compile
+COPY shared ./shared
+COPY DHCP/package.json ./DHCP/package.json
+
 RUN npm ci --no-audit --no-fund
 
-# Build server
+COPY client/package.json client/package-lock.json ./client/
+RUN cd client && npm ci --no-audit --no-fund
+
+COPY tools/package.json tools/package-lock.json ./tools/
+RUN cd tools && npm ci --no-audit --no-fund
+
+COPY . .
+
 RUN cd server && npm run build && npm prune --production
-
-# Build client
-RUN cd client && npm ci --no-audit --no-fund && npm run build && npm prune --production
-
-# Build DHCP
+RUN cd client && npm run build && npm prune --production
 RUN cd DHCP && npm run build && npm prune --production
-
-# Build Web
 RUN cd Web && npm run build && npm prune --production
-
-# Build tools
-RUN cd tools && npm ci --no-audit --no-fund && npm run build && npm prune --production
+RUN cd tools && npm run build && npm prune --production
 
 # Runtime stage
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Node.js and minimal runtime dependencies
 RUN apt-get update && apt-get install -y curl sudo libcap2-bin dnsutils iputils-ping iproute2 && \
     curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y nodejs && \
@@ -41,7 +43,6 @@ RUN apt-get update && apt-get install -y curl sudo libcap2-bin dnsutils iputils-
 
 WORKDIR /app
 
-# Copy built artifacts and production dependencies
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/shared/lib ./shared/lib
 COPY --from=builder /app/shared/package.json ./shared/
@@ -67,7 +68,6 @@ COPY --from=builder /app/tools/package.json ./tools/
 COPY --from=builder /app/Scripts ./Scripts
 COPY --from=builder /app/ecosystem.config.js ./
 
-# Set capabilities
 RUN setcap cap_net_raw+ep /bin/ping && \
     setcap cap_net_bind_service,cap_dac_override+ep $(which node) && \
     chmod +x ./Scripts/docker-entrypoint.sh

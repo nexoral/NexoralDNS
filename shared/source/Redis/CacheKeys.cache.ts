@@ -5,9 +5,7 @@ enum CacheKeys {
   DashboardAnaliticalData = "DashboardAnaliticalDataStats"
 }
 
-// Single source of truth for the ACL key scheme. Writer (LoadPolicies.cron.ts)
-// and readers (AclBlockingService.ts, AccessControlPolicy.service.ts) must
-// agree on these exactly — they previously each hardcoded their own copy.
+// Single source of truth for the ACL key scheme - writer and readers previously each hardcoded their own copy
 export const ACLKeys = {
   exactIp: (ip: string): string => `acl:ip:${ip}:exact`,
   wildIp: (ip: string): string => `acl:ip:${ip}:wild`,

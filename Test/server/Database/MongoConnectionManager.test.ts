@@ -83,11 +83,12 @@ describe('MongoConnectionManager', () => {
     expect(MongoClientCtor.mock.calls[0][1].maxPoolSize).toBe(50);
   });
 
-  it('clamps maxPoolSize to 20 when many workers would imply a smaller per-worker share', async () => {
-    vi.spyOn(os, 'cpus').mockReturnValue(new Array(64).fill({}) as os.CpuInfo[]); // 48 workers -> 4
+  it('caps the aggregate (perWorker x workers) rather than letting MIN_POOL_PER_WORKER win at high core counts', async () => {
+    // 48 workers x 20 = 960, past the 300 ceiling, so 300/48=6 must win
+    vi.spyOn(os, 'cpus').mockReturnValue(new Array(64).fill({}) as os.CpuInfo[]);
     const MongoConnectionManager = await importFresh();
     await new MongoConnectionManager().connect();
-    expect(MongoClientCtor.mock.calls[0][1].maxPoolSize).toBe(20);
+    expect(MongoClientCtor.mock.calls[0][1].maxPoolSize).toBe(6);
   });
 
   it('rethrows and resets the client to null when MongoClient.connect() rejects', async () => {
@@ -190,8 +191,7 @@ describe('MongoConnectionManager', () => {
     const MongoConnectionManager = await importFresh();
     const manager = new MongoConnectionManager();
     await manager.connect();
-    // connectionLogged guard: shared/'s canonical version (based on server's)
-    // suppresses duplicate log spam from the pool emitting this per-connection.
+    // connectionLogged guard suppresses duplicate log spam
     expect(() => {
       client.emit('connectionCreated');
       client.emit('connectionCreated');

@@ -13,33 +13,32 @@ export class MongoConnectionManager {
   // no dependency on either consumer's config module.
   private readonly DB_NAME = process.env.MONGO_DB_NAME || 'nexoral_db';
 
-  /**
-   * Computes MongoDB connection pool size based on cluster width
-   * Ensures aggregate connections across all workers stay within budget
-   */
   private computePoolSize(): number {
     const TOTAL_CONNECTION_BUDGET = 200;
     const MIN_POOL_PER_WORKER = 20;
     const MAX_POOL_PER_WORKER = 50;
+    // Hard ceiling that always wins over MIN_POOL_PER_WORKER, which would
+    // otherwise override the budget above ~10 workers (48 x 20 = 960).
+    const ABSOLUTE_MAX_AGGREGATE = 300;
 
     const totalUsableCpus = Math.max(1, Math.floor(os.cpus().length * 0.75));
     const perWorker = Math.floor(TOTAL_CONNECTION_BUDGET / totalUsableCpus);
+    const bounded = Math.min(MAX_POOL_PER_WORKER, Math.max(MIN_POOL_PER_WORKER, perWorker));
+    const aggregateCapped = Math.max(1, Math.floor(ABSOLUTE_MAX_AGGREGATE / totalUsableCpus));
 
-    return Math.min(MAX_POOL_PER_WORKER, Math.max(MIN_POOL_PER_WORKER, perWorker));
+    return Math.min(bounded, aggregateCapped);
   }
 
   async connect(): Promise<MongoClient> {
-    // If already connected, return
     if (this.client) {
       try {
         await this.client.db().admin().ping();
         return this.client;
       } catch {
-        // Connection is dead, proceed to reconnect
+        // dead connection, fall through to reconnect
       }
     }
 
-    // If already connecting, wait for it
     if (this.isConnecting) {
       let attempts = 0;
       while (this.isConnecting && attempts < 300) {

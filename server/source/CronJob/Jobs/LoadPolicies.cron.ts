@@ -6,20 +6,8 @@ import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { ACLKeys } from "nexoraldns-shared";
 
-/**
- * Redis Data Structure for Access Control Policies (see ACLKeys in shared/):
- *
- * 1. acl:ip:{IP}:exact / acl:ip:{IP}:wild -> Set of blocked domains for one IP
- *    Example: acl:ip:192.168.1.100:exact -> ["facebook.com", "instagram.com"]
- *             acl:ip:192.168.1.100:wild  -> ["*.social.com"]
- *
- * 2. acl:all_users:exact / acl:all_users:wild -> Set of blocked domains for all users
- *
- * 3. acl:metadata -> JSON with policy count, last updated timestamp
- *
- * Split into exact/wild sets so AclBlockingService can do an O(1) exact-match
- * check before falling back to scanning the (small) wildcard set.
- */
+// Redis key scheme is defined in ACLKeys (shared/). Exact/wild sets are split
+// so AclBlockingService can do an O(1) exact-match check before scanning wildcards.
 
 interface DomainEntry {
   domain: string;

@@ -43,8 +43,7 @@ describe('RabbitMQConnectionManager', () => {
     expect(amqpConnect).toHaveBeenCalledTimes(1);
   });
 
-  it('a second concurrent connect() waits for the in-flight one via waitForConnection() (single amqp.connect)', async () => {
-    vi.useFakeTimers();
+  it('a second concurrent connect() awaits the same in-flight promise (single amqp.connect)', async () => {
     const RabbitMQConnectionManager = await importFresh();
     const manager = new RabbitMQConnectionManager();
 
@@ -52,11 +51,10 @@ describe('RabbitMQConnectionManager', () => {
     amqpConnect.mockImplementation(() => new Promise((res) => { resolveConn = () => res(fake.connection); }));
 
     const first = manager.connect();
-    await Promise.resolve(); // first sets isConnecting=true and awaits amqp.connect
-    const second = manager.connect(); // isConnecting → enters the waitForConnection() poll loop
+    await Promise.resolve(); // first assigns connectingPromise and awaits amqp.connect
+    const second = manager.connect(); // returns the same in-flight promise, no new dial
 
-    resolveConn(); // first's amqp.connect resolves; isConnecting flips false in finally
-    await vi.advanceTimersByTimeAsync(100); // let waitForConnection's 100ms poll observe isConnecting=false
+    resolveConn(); // first's amqp.connect resolves; both callers resolve immediately
 
     const [a, b] = await Promise.all([first, second]);
     expect(a).toBe(fake.channel);
