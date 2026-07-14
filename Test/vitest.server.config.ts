@@ -10,6 +10,10 @@ export default defineConfig({
       // @server/@web) so the suite never needs shared/ built or installed.
       // Not named @shared - that alias already means Test/shared/setup/.
       '@nexoralShared': path.resolve(__dirname, '../shared/source'),
+      // server/source imports the shared package by its real bare specifier
+      // (not @nexoralShared), so that also needs pinning straight to source -
+      // otherwise it resolves via real node_modules, which don't exist in CI.
+      'nexoraldns-shared': path.resolve(__dirname, '../shared/source/index.ts'),
       // server/source imports these as bare specifiers; in CI only Test/ deps are
       // installed (`cd Test && npm ci`) — server/node_modules does NOT exist — so
       // every runtime dependency of a covered file is pinned to Test's own copy,
