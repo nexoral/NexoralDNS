@@ -1,0 +1,26 @@
+{
+  "name": "nexoraldns-shared",
+  "version": "1.0.0",
+  "description": "Shared RabbitMQ, Redis, and MongoDB connection layer consumed by server/ and Web/",
+  "license": "MIT",
+  "author": "Ankan Saha",
+  "private": true,
+  "type": "commonjs",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "test -d lib || tsc"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.9",
+    "mongodb": "^6.20.0",
+    "pino": "^10.3.1",
+    "redis": "^5.10.0"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2"
+  }
+}

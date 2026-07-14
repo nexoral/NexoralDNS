@@ -8,7 +8,7 @@ import dgram from "node:dgram";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { CacheKeys } from "nexoraldns-shared";
 
 export type ServiceStatusResult = {
   serviceStatus: boolean,

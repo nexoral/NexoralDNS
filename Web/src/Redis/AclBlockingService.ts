@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import logger from '../utilities/logger';
-import { RedisConnectionManager } from './RedisConnectionManager';
+import { RedisConnectionManager } from 'nexoraldns-shared';
 
 export class AclBlockingService {
   constructor(private connectionManager: RedisConnectionManager) {}

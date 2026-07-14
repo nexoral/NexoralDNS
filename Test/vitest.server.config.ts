@@ -6,6 +6,10 @@ export default defineConfig({
     alias: {
       '@server': path.resolve(__dirname, '../server'),
       '@shared': path.resolve(__dirname, 'shared'),
+      // Points straight at the shared/ package's TS source (same principle as
+      // @server/@web) so the suite never needs shared/ built or installed.
+      // Not named @shared - that alias already means Test/shared/setup/.
+      '@nexoralShared': path.resolve(__dirname, '../shared/source'),
       // server/source imports these as bare specifiers; in CI only Test/ deps are
       // installed (`cd Test && npm ci`) — server/node_modules does NOT exist — so
       // every runtime dependency of a covered file is pinned to Test's own copy,
@@ -44,7 +48,10 @@ export default defineConfig({
       // outside root as "external" and would drop it, so allowExternal + an
       // explicit include glob are required (same as the web/tools configs).
       allowExternal: true,
-      include: [path.resolve(__dirname, '../server/source/**/*.ts')],
+      include: [
+        path.resolve(__dirname, '../server/source/**/*.ts'),
+        path.resolve(__dirname, '../shared/source/**/*.ts'),
+      ],
       exclude: [
         path.resolve(__dirname, '../server/source/**/*.d.ts'),
         // Type-only module (no runtime code to cover).

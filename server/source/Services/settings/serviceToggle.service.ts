@@ -12,7 +12,7 @@ import { ObjectId } from "mongodb";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { CacheKeys } from "nexoraldns-shared";
 
 
 export default class ServiceToggleService {

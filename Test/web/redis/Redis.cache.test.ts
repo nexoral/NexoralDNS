@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { RedisCacheService } from '@web/Redis/Redis.cache';
-import type { RedisConnectionManager } from '@web/Redis/RedisConnectionManager';
-import type { RedisCacheStore } from '@web/Redis/RedisCacheStore';
-import type { RedisPubSub } from '@web/Redis/RedisPubSub';
+import type { RedisConnectionManager } from '@nexoralShared/Redis/RedisConnectionManager';
+import type { RedisCacheStore } from '@nexoralShared/Redis/RedisCacheStore';
+import type { RedisPubSub } from '@nexoralShared/Redis/RedisPubSub';
 import type { AclBlockingService } from '@web/Redis/AclBlockingService';
 
 /** RedisCacheService is a pure facade over 4 collaborators. */

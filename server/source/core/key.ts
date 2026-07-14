@@ -164,7 +164,7 @@ export const DB_DEFAULT_CONFIGS: DBConfigType = {
       API_KEY: process.env.SERVICE_API_KEY || undefined,
       CLOUD_URL: process.env.CLOUD_URL || undefined,
       Service_Status: "active",
-      DefaultTTL: 10,
+      DefaultTTL: 1,
       Connected_At: null,
       Disconnected_At: null,
       Current_WiFi_SSID: null,

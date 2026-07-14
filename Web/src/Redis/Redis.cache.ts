@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { RedisClientType } from 'redis';
-import { RedisConnectionManager } from './RedisConnectionManager';
-import { RedisCacheStore } from './RedisCacheStore';
-import { RedisPubSub } from './RedisPubSub';
+import { RedisConnectionManager, RedisCacheStore, RedisPubSub } from 'nexoraldns-shared';
 import { AclBlockingService } from './AclBlockingService';
 
 export class RedisCacheService {

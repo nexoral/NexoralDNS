@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { MongoCollectionManager } from '@web/Database/MongoCollectionManager';
-import type { MongoConnectionManager } from '@web/Database/MongoConnectionManager';
+import type { MongoConnectionManager } from '@nexoralShared/Database/MongoConnectionManager';
 
 vi.mock('@web/utilities/logger', () => ({
   default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },

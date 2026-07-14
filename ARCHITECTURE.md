@@ -170,8 +170,8 @@ NexoralDNS is a LAN-only DNS server and management system with:
 │                                    │   │  Rules.service.ts (StartRulesService) │
 │  Own cluster.fork() pool, own     │   │  ServiceStatusChecker.service.ts      │
 │  MongoClient, own RabbitMQ conn   │   │  BlockList.service.ts                 │
-│  (duplicated infra code from      │   │  DB_Pool.service.ts                   │
-│  Web/ — see Known Gaps)           │   │  GlobalDNSforwarder.service.ts        │
+│  (connection classes now live in  │   │  DB_Pool.service.ts                   │
+│  shared/ — see below)              │   │  GlobalDNSforwarder.service.ts        │
 └─────────────┬──────────────────────┘   │                                       │
               │                          │  Own cluster.fork() pool, own        │
               │                          │  MongoClient, own RabbitMQ conn      │
@@ -211,11 +211,13 @@ Web/src/
 ├── Config/
 │   ├── DNS.ts                       # Worker entrypoint: starts UDP+TCP+DoT
 │   └── key.ts                       # DB_DEFAULT_CONFIGS (collections, defaults)
-├── Database/mongodb.db.ts           # Connection pool, CPU-scaled maxPoolSize
+├── Database/MongoCollectionManager.ts  # RBAC-free collection touch, no handle caching (by design)
 ├── Redis/
 │   ├── Redis.cache.ts               # Singleton RedisCacheService (CRUD, pub/sub, ACL)
-│   └── CacheKeys.cache.ts           # CacheKeys / QueueKeys / DNS_QUERY_STATUS_KEYS enums
-├── RabbitMQ/Rabbitmq.config.ts      # Singleton RabbitMQService, memoized assertQueue
+│   └── AclBlockingService.ts        # ACL/domain-blocking lookups (Web-only feature)
+├── (MongoConnectionManager, RedisConnectionManager, RedisCacheStore, RedisPubSub,
+│    CacheKeys/QueueKeys/DNS_QUERY_STATUS_KEYS, RabbitMQService + collaborators —
+│    all now live in shared/source/, consumed via `nexoraldns-shared`. See below.)
 ├── services/
 │   ├── DNS/
 │   │   ├── DNS.Service.ts           # UDP listener (port 53)
@@ -237,15 +239,26 @@ Web/src/
 server/source/
 ├── cluster/Cluster.ts               # Own cluster.fork() bootstrap (same SCHED_RR pattern)
 ├── core/{fastify.ts,key.ts}         # Fastify app (port 4773), config/RBAC seed data
-├── Database/mongodb.db.ts           # Separate connection pool (RBAC seed/index logic)
-├── RabbitMQ/Rabbitmq.config.ts      # Separate RabbitMQService (see Known Gaps)
+├── Database/MongoCollectionManager.ts  # RBAC seed/index logic, caches collection handles
+├── Redis/RedisAdminInspector.ts     # Admin/debug cache inspection (server-only feature)
+├── (MongoConnectionManager, RedisConnectionManager, RedisCacheStore, RedisPubSub,
+│    CacheKeys/QueueKeys/DNS_QUERY_STATUS_KEYS, RabbitMQService + collaborators —
+│    shared with Web/ via the `shared/` package, not duplicated. See below.)
 ├── Router/ · Controller/ · Services/  # DNS records, Users, Roles, ACL policies,
 │                                       # AntiPornMode, AntiAdsMode, DomainGroups,
 │                                       # IPGroups, Analytics, Health
 └── CronJob/Jobs/
     ├── BatchAnalytics.cron.ts       # Consumes DNS_Analytics queue → analytics collection
     └── LogsExportWorker.cron.ts     # Consumes LOGS_EXPORT queue
+
+shared/source/                        # `nexoraldns-shared` — file: dependency of both Web/ and server/
+├── RabbitMQ/                        # RabbitMQConnectionManager, QueueManager, Publisher, Consumer, Rabbitmq.config
+├── Redis/                           # RedisConnectionManager, RedisCacheStore, RedisPubSub, CacheKeys.cache
+├── Database/MongoConnectionManager.ts  # CPU-scaled maxPoolSize, connectionLogged guard
+└── utilities/logger.ts
 ```
+
+`shared/` holds only what was byte-identical or safely mergeable between `Web/` and `server/` — the connection layer. `Redis.cache.ts`/`RedisAdminInspector.ts`/`AclBlockingService.ts`/`MongoCollectionManager.ts` stay per-module: they wrap the shared connection classes but expose module-specific features (server does RBAC/index/seed bootstrap; Web does ACL-blocking lookups in the DNS hot path) and are *not* duplication to collapse further.
 
 ---
 
@@ -259,7 +272,7 @@ server/source/
 | `DomainDBPoolService` | `.../DB/DB_Pool.service.ts` | Resolves a domain to its record, walking CNAME chains up to 10 hops via sequential MongoDB `findOne` calls (each hop depends on the previous — cannot be parallelized) |
 | `GlobalDNSforwarder` | `.../Forwarder/GlobalDNSforwarder.service.ts` | Forwards each query on its own dedicated, short-lived UDP socket (not a shared singleton) to a shuffled 6-IP pool (Cloudflare/Google/Quad9 unfiltered), 2s per-server timeout with fallthrough. Concurrency capped at 256 in-flight forwards via a counting semaphore (`acquireForwardSlot`/`releaseForwardSlot`) — beyond that, requests queue for a slot rather than opening unbounded sockets |
 | `RedisCacheService` | `Web/src/Redis/Redis.cache.ts` | Singleton Redis client: generic CRUD, pub/sub (cache invalidation), ACL-specific reads (`getBlockedDomainsForIP`, `isDomainBlocked`) |
-| `RabbitMQService` | `Web/src/RabbitMQ/Rabbitmq.config.ts` (and a separately-maintained copy in `server/source/RabbitMQ/`) | Singleton AMQP client. Queue declarations are memoized per-process (`ensureQueue`) — asserted once, not on every publish/consume call |
+| `RabbitMQService` | `shared/source/RabbitMQ/Rabbitmq.config.ts` (single copy, consumed by both `Web/` and `server/` via `nexoraldns-shared`) | Singleton AMQP client. Queue declarations are memoized per-process (`ensureQueue`) — asserted once, not on every publish/consume call |
 | `IDNSIOHandler` implementations | `IO.utls.ts` (UDP), `TCPInputOutputHandler.ts` (TCP/TLS) | Pure DNS packet parsing/building shared by all handlers; TCP/TLS variant delegates parsing to the UDP one and only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
 
 ---
@@ -568,7 +581,7 @@ Honest list, current as of this document's last update — not aspirational:
 
 1. **No automated test suite.** `Test/` contains only a `dnsperf` query list and a docker-compose for test infra — no unit or integration tests for either `Web/` or `server/`. This is a real gap against this project's own `CLAUDE.md` testing rule.
 2. **No real-time metrics/observability.** Analytics land in MongoDB via a RabbitMQ batch consumer — queryable after the fact, but no live p50/p95/p99 dashboard. The sub-5ms targets above cannot currently be verified in production without manual querying.
-3. **Duplicated infrastructure code between `Web/` and `server/`.** `mongodb.db.ts` and `Rabbitmq.config.ts` each exist as separate, hand-copied files in both services (they're separate PM2-managed process trees and can't share a live in-memory connection, but the *source* is duplicated, not just the runtime instance). This already caused one real bug — an `assertQueue` argument mismatch between `Web`'s publisher and `server`'s consumer paths — that existed in both copies and had to be found and fixed in both independently. A shared, versioned local package was scoped as the fix but deferred by design choice.
+3. ~~Duplicated infrastructure code between `Web/` and `server/`.~~ **Resolved** — the RabbitMQ, Redis, and MongoDB connection layers now live once in `shared/source/` (the `nexoraldns-shared` package, a `file:` dependency of both). This had already caused one real bug — an `assertQueue` argument mismatch between `Web`'s publisher and `server`'s consumer paths — that existed in both copies and had to be found and fixed in both independently; that class of bug is now structurally impossible for these three layers. `Redis.cache.ts`/`RedisAdminInspector.ts`/`AclBlockingService.ts`/`MongoCollectionManager.ts` remain per-module by design (see Directory Structure) since they wrap the shared connection classes with module-specific behavior, not duplicate them.
 4. **Bare-metal deployment doesn't get the UDP buffer fix.** `Scripts/docker-entrypoint.sh` raises `net.core.rmem_max`/`wmem_max` for the Docker path; `Scripts/install.sh` (the bare-metal LAN install path) does not yet do the equivalent.
 5. **No domain rerouting/rewriting** and **no per-user plan gating** in the DNS query path, despite both being mentioned as product features elsewhere (`CLAUDE.md`, `FEATURES.md`) — see the note in [System Overview](#system-overview).
 6. **MongoDB connection pool sizing assumes co-location isn't extreme.** The CPU-scaled `maxPoolSize` targets ~200 aggregate connections for `Web/`'s cluster and another ~200 for `server/`'s cluster independently — the two don't coordinate with each other, so total real connection load against one MongoDB instance is the sum of both, not a jointly-tuned number.
@@ -647,7 +660,7 @@ Both paths run five PM2-managed processes per `ecosystem.config.js`: `server` (F
 
 Roughly in priority order based on what's actually been found gap-hunting this codebase, not a wishlist:
 
-1. **Extract shared Mongo/RabbitMQ connection code** into a versioned local package (npm workspaces or `file:` dependency) consumed by both `Web/` and `server/`, closing the duplication gap in [Known Gaps](#known-gaps--non-goals)
+1. ~~Extract shared Mongo/RabbitMQ connection code~~ **Done** — see `shared/` in Directory Structure and item 3 in [Known Gaps](#known-gaps--non-goals). Also folded Redis's connection/cache-store/pub-sub/cache-keys layer into the same package while at it.
 2. **Add a test suite** — unit tests for `Rules.service.ts`'s 4-check pipeline, `BlockList.service.ts`'s wildcard matching, `DB_Pool.service.ts`'s CNAME chain resolution and circular-reference detection
 3. **Real load testing** via `dnsperf` against representative target hardware to replace estimated capacity numbers with measured ones
 4. **Real-time metrics** (Prometheus/Grafana or similar) for p50/p95/p99 query latency, cache hit rate, and per-layer timing — currently only available after-the-fact via the `analytics` collection

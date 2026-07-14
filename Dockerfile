@@ -9,17 +9,20 @@ RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000
 
+# server/, Web/, shared/, DHCP/ are an npm workspace; install once at the root
+RUN npm ci --no-audit --no-fund
+
 # Build server
-RUN cd server && npm ci --no-audit --no-fund && npm run build && npm prune --production
+RUN cd server && npm run build && npm prune --production
 
 # Build client
 RUN cd client && npm ci --no-audit --no-fund && npm run build && npm prune --production
 
 # Build DHCP
-RUN cd DHCP && npm ci --no-audit --no-fund && npm run build && npm prune --production
+RUN cd DHCP && npm run build && npm prune --production
 
 # Build Web
-RUN cd Web && npm ci --no-audit --no-fund && npm run build && npm prune --production
+RUN cd Web && npm run build && npm prune --production
 
 # Build tools
 RUN cd tools && npm ci --no-audit --no-fund && npm run build && npm prune --production
@@ -39,8 +42,11 @@ RUN apt-get update && apt-get install -y curl sudo libcap2-bin dnsutils iputils-
 WORKDIR /app
 
 # Copy built artifacts and production dependencies
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/shared/lib ./shared/lib
+COPY --from=builder /app/shared/package.json ./shared/
+
 COPY --from=builder /app/server/lib ./server/lib
-COPY --from=builder /app/server/node_modules ./server/node_modules
 COPY --from=builder /app/server/package.json ./server/
 
 COPY --from=builder /app/client/.next ./client/.next
@@ -49,11 +55,9 @@ COPY --from=builder /app/client/package.json ./client/
 COPY --from=builder /app/client/public ./client/public
 
 COPY --from=builder /app/DHCP/lib ./DHCP/lib
-COPY --from=builder /app/DHCP/node_modules ./DHCP/node_modules
 COPY --from=builder /app/DHCP/package.json ./DHCP/
 
 COPY --from=builder /app/Web/lib ./Web/lib
-COPY --from=builder /app/Web/node_modules ./Web/node_modules
 COPY --from=builder /app/Web/package.json ./Web/
 
 COPY --from=builder /app/tools/lib ./tools/lib

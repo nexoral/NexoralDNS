@@ -6,7 +6,7 @@ vi.mock('cluster', () => ({ default: clusterState }));
 vi.mock('@server/source/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 
 import { MongoCollectionManager } from '@server/source/Database/MongoCollectionManager';
-import type { MongoConnectionManager } from '@server/source/Database/MongoConnectionManager';
+import type { MongoConnectionManager } from '@nexoralShared/Database/MongoConnectionManager';
 
 function makeCol(overrides: Record<string, unknown> = {}) {
   return {

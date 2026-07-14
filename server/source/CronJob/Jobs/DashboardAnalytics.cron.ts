@@ -3,7 +3,7 @@ import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { CacheKeys } from "nexoraldns-shared";
 
 
 // ainn Function to Load the Dashboard Data

@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DIContainer } from './DIContainer';
-import { MongoConnectionManager } from '../Database/MongoConnectionManager';
+import {
+  MongoConnectionManager,
+  RabbitMQConnectionManager,
+  RabbitMQQueueManager,
+  RabbitMQPublisher,
+  RabbitMQConsumer,
+  RabbitMQService,
+  RedisConnectionManager,
+  RedisCacheStore,
+  RedisPubSub,
+} from 'nexoraldns-shared';
 import { MongoCollectionManager } from '../Database/MongoCollectionManager';
-import { RabbitMQConnectionManager } from '../RabbitMQ/RabbitMQConnectionManager';
-import { RabbitMQQueueManager } from '../RabbitMQ/RabbitMQQueueManager';
-import { RabbitMQPublisher } from '../RabbitMQ/RabbitMQPublisher';
-import { RabbitMQConsumer } from '../RabbitMQ/RabbitMQConsumer';
-import { RabbitMQService } from '../RabbitMQ/Rabbitmq.config';
-import { RedisConnectionManager } from '../Redis/RedisConnectionManager';
-import { RedisCacheStore } from '../Redis/RedisCacheStore';
-import { RedisPubSub } from '../Redis/RedisPubSub';
 import { RedisAdminInspector } from '../Redis/RedisAdminInspector';
 import { RedisCacheService } from '../Redis/Redis.cache';
 import { CookieHeaderTokenExtractor } from '../Middlewares/TokenExtractor';
@@ -215,13 +217,15 @@ container.register('ServiceToggleService', () => new ServiceToggleService(), tru
 // DHCP
 container.register('RouterConnectionService', () => new RouterConnectionService(), true);
 
-// Graceful shutdown - close RabbitMQ connection so buffered messages are flushed
+// Graceful shutdown - close all infra connections (RabbitMQ, Redis, Mongo) so
+// buffered messages are flushed and in-flight work is drained. Each close is
+// settled independently since a given connection may never have been opened.
 const gracefulShutdown = async (): Promise<void> => {
-  try {
-    await container.get<RabbitMQService>('RabbitMQService').close();
-  } catch {
-    // Connection may never have been opened
-  }
+  await Promise.allSettled([
+    container.get<RabbitMQService>('RabbitMQService').close(),
+    container.get<RedisConnectionManager>('RedisConnectionManager').close(),
+    container.get<MongoConnectionManager>('MongoConnectionManager').close(),
+  ]);
   process.exit(0);
 };
 

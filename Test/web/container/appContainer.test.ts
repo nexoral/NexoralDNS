@@ -37,16 +37,21 @@ const BlockListMock = fakeClass('BlockList');
 const ServiceStatusCheckerMock = fakeClass('ServiceStatusChecker');
 const DomainDBPoolServiceMock = fakeClass('DomainDBPoolService');
 
-vi.mock('@web/Database/MongoConnectionManager', () => ({ MongoConnectionManager: MongoConnectionManagerMock }));
+// All classes now living in shared/ are mocked via a single module id -
+// separate vi.mock() calls targeting the same specifier would clobber each
+// other instead of merging.
+vi.mock('nexoraldns-shared', () => ({
+  MongoConnectionManager: MongoConnectionManagerMock,
+  RabbitMQConnectionManager: RabbitMQConnectionManagerMock,
+  RabbitMQQueueManager: RabbitMQQueueManagerMock,
+  RabbitMQPublisher: RabbitMQPublisherMock,
+  RabbitMQConsumer: RabbitMQConsumerMock,
+  RabbitMQService: RabbitMQServiceMock,
+  RedisConnectionManager: RedisConnectionManagerMock,
+  RedisCacheStore: RedisCacheStoreMock,
+  RedisPubSub: RedisPubSubMock,
+}));
 vi.mock('@web/Database/MongoCollectionManager', () => ({ MongoCollectionManager: MongoCollectionManagerMock }));
-vi.mock('@web/RabbitMQ/RabbitMQConnectionManager', () => ({ RabbitMQConnectionManager: RabbitMQConnectionManagerMock }));
-vi.mock('@web/RabbitMQ/RabbitMQQueueManager', () => ({ RabbitMQQueueManager: RabbitMQQueueManagerMock }));
-vi.mock('@web/RabbitMQ/RabbitMQPublisher', () => ({ RabbitMQPublisher: RabbitMQPublisherMock }));
-vi.mock('@web/RabbitMQ/RabbitMQConsumer', () => ({ RabbitMQConsumer: RabbitMQConsumerMock }));
-vi.mock('@web/RabbitMQ/Rabbitmq.config', () => ({ RabbitMQService: RabbitMQServiceMock }));
-vi.mock('@web/Redis/RedisConnectionManager', () => ({ RedisConnectionManager: RedisConnectionManagerMock }));
-vi.mock('@web/Redis/RedisCacheStore', () => ({ RedisCacheStore: RedisCacheStoreMock }));
-vi.mock('@web/Redis/RedisPubSub', () => ({ RedisPubSub: RedisPubSubMock }));
 vi.mock('@web/Redis/AclBlockingService', () => ({ AclBlockingService: AclBlockingServiceMock }));
 vi.mock('@web/Redis/Redis.cache', () => ({ RedisCacheService: RedisCacheServiceMock }));
 vi.mock('@web/services/Forwarder/GlobalDNSforwarder.service', () => ({ GlobalDNSforwarderService: GlobalDNSforwarderServiceMock }));

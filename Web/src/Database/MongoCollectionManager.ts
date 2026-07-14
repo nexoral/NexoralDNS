@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Collection, Document } from 'mongodb';
 import logger from '../utilities/logger';
-import { MongoConnectionManager } from './MongoConnectionManager';
+import { MongoConnectionManager } from 'nexoraldns-shared';
 import { DB_DEFAULT_CONFIGS } from '../Config/key';
 
 export class MongoCollectionManager {

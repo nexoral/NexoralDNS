@@ -4,7 +4,7 @@ import { createFakeRedisClient } from '../_testUtils/fakeRedis';
 vi.mock('@server/source/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 
 import { RedisAdminInspector } from '@server/source/Redis/RedisAdminInspector';
-import type { RedisConnectionManager } from '@server/source/Redis/RedisConnectionManager';
+import type { RedisConnectionManager } from '@nexoralShared/Redis/RedisConnectionManager';
 
 function setup() {
   const client = createFakeRedisClient();

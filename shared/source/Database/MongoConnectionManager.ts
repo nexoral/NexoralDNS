@@ -1,14 +1,17 @@
-import logger from '../utilities/logger';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { MongoClient } from 'mongodb';
 import os from 'os';
-import { DB_DEFAULT_CONFIGS } from '../core/key';
+import logger from '../utilities/logger';
 
 export class MongoConnectionManager {
   private client: MongoClient | null = null;
   private isConnecting = false;
   private connectionLogged = false;
   private readonly MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
+  // Both server/ and Web/ hard-coded the same "nexoral_db" value in their own
+  // config files; inlined here as an env-overridable constant so shared/ has
+  // no dependency on either consumer's config module.
+  private readonly DB_NAME = process.env.MONGO_DB_NAME || 'nexoral_db';
 
   /**
    * Computes MongoDB connection pool size based on cluster width
@@ -64,7 +67,7 @@ export class MongoConnectionManager {
       logger.info('✅ Connected to MongoDB successfully');
       return this.client;
     } catch (error) {
-      logger.error('❌ Failed to connect to MongoDB:', error);
+      logger.error('❌ Failed to connect to MongoDB:', error as any);
       this.client = null;
       throw error;
     } finally {
@@ -76,7 +79,7 @@ export class MongoConnectionManager {
     if (!this.client) return;
 
     this.client.on('error', (err) => {
-      logger.error('❌ MongoDB error:', err);
+      logger.error('❌ MongoDB error:', err as any);
     });
 
     this.client.on('connectionPoolClosed', () => {
@@ -95,7 +98,7 @@ export class MongoConnectionManager {
     if (!this.client) {
       throw new Error('MongoDB client not connected');
     }
-    return this.client.db(DB_DEFAULT_CONFIGS.DB_NAME);
+    return this.client.db(this.DB_NAME);
   }
 
   async close(): Promise<void> {

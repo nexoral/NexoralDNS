@@ -1,0 +1,11 @@
+{
+  "name": "nexoraldns-workspace-root",
+  "private": true,
+  "description": "Workspace root linking server/, Web/, shared/, and DHCP/ so common third-party dependencies resolve to a single installed copy. tools/ and client/ are intentionally NOT members.",
+  "workspaces": [
+    "server",
+    "Web",
+    "shared",
+    "DHCP"
+  ]
+}

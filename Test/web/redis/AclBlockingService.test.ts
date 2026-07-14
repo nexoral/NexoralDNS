@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { AclBlockingService } from '@web/Redis/AclBlockingService';
 import { createFakeRedisClient } from '@testUtils/fakeRedis';
-import type { RedisConnectionManager } from '@web/Redis/RedisConnectionManager';
+import type { RedisConnectionManager } from '@nexoralShared/Redis/RedisConnectionManager';
 
 vi.mock('@web/utilities/logger', () => ({
   default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },

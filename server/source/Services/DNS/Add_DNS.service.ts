@@ -9,7 +9,7 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 // keys import
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { RedisCacheService } from "../../Redis/Redis.cache";
-import CacheKeys from "../../Redis/CacheKeys.cache";
+import { CacheKeys } from "nexoraldns-shared";
 
 // db connections
 import { ObjectId } from "mongodb";

@@ -1,6 +1,6 @@
 {
-  "name": "nexoral dns server",
-  "version": "7.17.60-stable",
+  "name": "nexoraldns-server",
+  "version": "8.18.61-stable",
   "description": "this server is responsible for managing the all records that are custom build for the all networks",
   "keywords": [
     "server"
@@ -11,6 +11,7 @@
   "main": "lib/cluster/Cluster.js",
   "scripts": {
     "test": "npm test",
+    "prebuild": "cd ../shared && npm install && npm run build",
     "build": "tsc",
     "start": "node lib/cluster/Cluster.js",
     "dev": "npm run build && node lib/core/fastify.js"
@@ -21,10 +22,10 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.5.2",
     "@fastify/swagger-ui": "^5.2.3",
-    "amqplib": "^0.10.9",
     "bcryptjs": "^3.0.2",
     "fastify": "^5.6.0",
     "mongodb": "^6.20.0",
+    "nexoraldns-shared": "file:../shared",
     "outers": "^8.6.9",
     "pino": "^10.3.1",
     "redis": "^5.10.0",
@@ -32,7 +33,6 @@
     "typescript": "^5.9.2"
   },
   "devDependencies": {
-    "@types/amqplib": "^0.10.8",
     "@types/node": "^24.5.2"
   }
 }

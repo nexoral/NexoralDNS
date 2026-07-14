@@ -1,88 +1,182 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createFakeAmqp } from '../_testUtils/fakeAmqp';
+import { createFakeAmqp, FakeAmqpConnection } from '../_testUtils/fakeAmqp';
 
-const { amqpConnectMock } = vi.hoisted(() => ({ amqpConnectMock: vi.fn() }));
-vi.mock('amqplib', () => ({ default: { connect: amqpConnectMock } }));
-vi.mock('@server/source/utilities/logger', () => ({ default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
+const { amqpConnect } = vi.hoisted(() => ({ amqpConnect: vi.fn() }));
 
-import { RabbitMQConnectionManager } from '@server/source/RabbitMQ/RabbitMQConnectionManager';
+vi.mock('amqplib', () => ({ default: { connect: amqpConnect } }));
+vi.mock('@nexoralShared/utilities/logger', () => ({
+  default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
+}));
 
-let amqp: ReturnType<typeof createFakeAmqp>;
+async function importFresh() {
+  vi.resetModules();
+  const { RabbitMQConnectionManager } = await import('@nexoralShared/RabbitMQ/RabbitMQConnectionManager');
+  return RabbitMQConnectionManager;
+}
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.useFakeTimers();
-  amqp = createFakeAmqp();
-  amqpConnectMock.mockResolvedValue(amqp.connection);
-});
-afterEach(() => {
-  vi.clearAllTimers();
-  vi.useRealTimers();
-  delete process.env.RABBITMQ_URI;
-});
+describe('RabbitMQConnectionManager', () => {
+  let fake: ReturnType<typeof createFakeAmqp>;
 
-describe('RabbitMQConnectionManager.connect', () => {
-  it('connects, opens a channel, and returns it', async () => {
-    const m = new RabbitMQConnectionManager();
-    const channel = await m.connect();
-    expect(amqpConnectMock).toHaveBeenCalledTimes(1);
-    expect(amqp.connection.createChannel).toHaveBeenCalledTimes(1);
-    expect(channel).toBe(amqp.channel);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fake = createFakeAmqp();
+    amqpConnect.mockResolvedValue(fake.connection);
   });
 
-  it('reuses the existing channel/connection', async () => {
-    const m = new RabbitMQConnectionManager();
-    await m.connect();
-    await m.connect();
-    expect(amqpConnectMock).toHaveBeenCalledTimes(1);
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('honours RABBITMQ_URI', async () => {
-    process.env.RABBITMQ_URI = 'amqp://custom:5673';
-    await new RabbitMQConnectionManager().connect();
-    expect(amqpConnectMock).toHaveBeenCalledWith('amqp://custom:5673');
+  it('connects and returns a channel on first call', async () => {
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    expect(await manager.connect()).toBe(fake.channel);
+    expect(amqpConnect).toHaveBeenCalledTimes(1);
+    expect(fake.connection.createChannel).toHaveBeenCalledTimes(1);
   });
 
-  it('rethrows the original error after scheduling a reconnect', async () => {
-    amqpConnectMock.mockRejectedValueOnce(new Error('refused')).mockResolvedValue(amqp.connection);
-    const m = new RabbitMQConnectionManager();
-
-    const settled = m.connect().catch((e) => e);
-    await vi.runAllTimersAsync();
-
-    expect(await settled).toBeInstanceOf(Error);
-  });
-});
-
-describe('RabbitMQConnectionManager.getChannel / close', () => {
-  it('getChannel returns null before connect and the channel after', async () => {
-    const m = new RabbitMQConnectionManager();
-    expect(m.getChannel()).toBeNull();
-    await m.connect();
-    expect(m.getChannel()).toBe(amqp.channel);
+  it('reuses the existing channel + connection on subsequent calls', async () => {
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    await manager.connect();
+    expect(await manager.connect()).toBe(fake.channel);
+    expect(amqpConnect).toHaveBeenCalledTimes(1);
   });
 
-  it('close() closes channel and connection then clears them', async () => {
-    const m = new RabbitMQConnectionManager();
-    await m.connect();
-    await m.close();
-    expect(amqp.channel.close).toHaveBeenCalledTimes(1);
-    expect(amqp.connection.close).toHaveBeenCalledTimes(1);
-    expect(m.getChannel()).toBeNull();
+  it('a second concurrent connect() waits for the in-flight one via waitForConnection() (single amqp.connect)', async () => {
+    vi.useFakeTimers();
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+
+    let resolveConn!: () => void;
+    amqpConnect.mockImplementation(() => new Promise((res) => { resolveConn = () => res(fake.connection); }));
+
+    const first = manager.connect();
+    await Promise.resolve(); // first sets isConnecting=true and awaits amqp.connect
+    const second = manager.connect(); // isConnecting → enters the waitForConnection() poll loop
+
+    resolveConn(); // first's amqp.connect resolves; isConnecting flips false in finally
+    await vi.advanceTimersByTimeAsync(100); // let waitForConnection's 100ms poll observe isConnecting=false
+
+    const [a, b] = await Promise.all([first, second]);
+    expect(a).toBe(fake.channel);
+    expect(b).toBe(fake.channel);
+    expect(amqpConnect).toHaveBeenCalledTimes(1); // second reused the first connection, no re-dial
   });
 
-  it('close() swallows errors', async () => {
-    const m = new RabbitMQConnectionManager();
-    await m.connect();
-    amqp.channel.close.mockRejectedValue(new Error('x'));
-    await expect(m.close()).resolves.toBeUndefined();
+  it('getChannel() returns null before connecting and the channel after', async () => {
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    expect(manager.getChannel()).toBeNull();
+    await manager.connect();
+    expect(manager.getChannel()).toBe(fake.channel);
   });
 
-  it("the connection 'close' event clears the channel", async () => {
-    const m = new RabbitMQConnectionManager();
-    await m.connect();
-    amqp.connection.emit('close');
-    await Promise.resolve();
-    expect(m.getChannel()).toBeNull();
+  it('rejects and schedules a background reconnect when the initial connect fails', async () => {
+    vi.useFakeTimers();
+    const RabbitMQConnectionManager = await importFresh();
+    amqpConnect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    const manager = new RabbitMQConnectionManager();
+
+    await expect(manager.connect()).rejects.toThrow('ECONNREFUSED');
+
+    amqpConnect.mockResolvedValue(fake.connection);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(manager.getChannel()).toBe(fake.channel);
+  });
+
+  it('close() closes channel then connection and resets state', async () => {
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    await manager.connect();
+    await manager.close();
+    expect(fake.channel.close).toHaveBeenCalledTimes(1);
+    expect(fake.connection.close).toHaveBeenCalledTimes(1);
+    expect(manager.getChannel()).toBeNull();
+  });
+
+  it('close() swallows errors from channel.close() and does not throw, skipping connection.close()', async () => {
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    await manager.connect();
+    fake.channel.close.mockRejectedValueOnce(new Error('already closed'));
+    await expect(manager.close()).resolves.toBeUndefined();
+    expect(fake.connection.close).not.toHaveBeenCalled();
+  });
+
+  it('reconnects automatically when the connection emits "close"', async () => {
+    vi.useFakeTimers();
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    await manager.connect();
+
+    const secondFake = createFakeAmqp();
+    amqpConnect.mockResolvedValue(secondFake.connection);
+
+    fake.connection.emit('close');
+    expect(manager.getChannel()).toBeNull(); // torn down immediately on close
+
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(amqpConnect).toHaveBeenCalledTimes(2);
+    expect(manager.getChannel()).toBe(secondFake.channel);
+  });
+
+  it('on "error" the background loop fires but connection/channel are NOT cleared, so the stale channel is reused', async () => {
+    // Unlike 'close', the 'error' handler only calls scheduleReconnect() — it
+    // does not null out this.connection/this.channel. So connect() inside the
+    // reconnect loop takes the "already connected" fast path and never calls
+    // amqp.connect() again. This documents that real (subtle) behavior.
+    vi.useFakeTimers();
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    await manager.connect();
+
+    const secondFake = createFakeAmqp();
+    amqpConnect.mockResolvedValue(secondFake.connection);
+
+    fake.connection.emit('error', new Error('reset by peer'));
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(amqpConnect).toHaveBeenCalledTimes(1);
+    expect(manager.getChannel()).toBe(fake.channel);
+  });
+
+  it('gives up after MAX_RECONNECT_ATTEMPTS (10) consecutive failures', async () => {
+    vi.useFakeTimers();
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    await manager.connect();
+
+    amqpConnect.mockRejectedValue(new Error('down'));
+    fake.connection.emit('close');
+
+    for (let i = 0; i < 10; i++) {
+      await vi.advanceTimersByTimeAsync(5000);
+    }
+    expect(amqpConnect).toHaveBeenCalledTimes(11); // 1 initial + 10 retries
+
+    amqpConnect.mockClear();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(amqpConnect).not.toHaveBeenCalled();
+  });
+
+  it('a successful reconnect resets the attempt counter for future failures', async () => {
+    vi.useFakeTimers();
+    const RabbitMQConnectionManager = await importFresh();
+    const manager = new RabbitMQConnectionManager();
+    await manager.connect();
+
+    amqpConnect
+      .mockRejectedValueOnce(new Error('fail-1'))
+      .mockRejectedValueOnce(new Error('fail-2'))
+      .mockResolvedValueOnce(fake.connection as unknown as FakeAmqpConnection);
+    fake.connection.emit('close');
+
+    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(manager.getChannel()).toBe(fake.channel);
+    expect(amqpConnect).toHaveBeenCalledTimes(4); // initial + 3 retries
   });
 });

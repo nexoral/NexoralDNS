@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DIContainer } from './DIContainer';
-import { MongoConnectionManager } from '../Database/MongoConnectionManager';
+import {
+  MongoConnectionManager,
+  RabbitMQConnectionManager,
+  RabbitMQQueueManager,
+  RabbitMQPublisher,
+  RabbitMQConsumer,
+  RabbitMQService,
+  RedisConnectionManager,
+  RedisCacheStore,
+  RedisPubSub,
+} from 'nexoraldns-shared';
 import { MongoCollectionManager } from '../Database/MongoCollectionManager';
-import { RabbitMQConnectionManager } from '../RabbitMQ/RabbitMQConnectionManager';
-import { RabbitMQQueueManager } from '../RabbitMQ/RabbitMQQueueManager';
-import { RabbitMQPublisher } from '../RabbitMQ/RabbitMQPublisher';
-import { RabbitMQConsumer } from '../RabbitMQ/RabbitMQConsumer';
-import { RabbitMQService } from '../RabbitMQ/Rabbitmq.config';
-import { RedisConnectionManager } from '../Redis/RedisConnectionManager';
-import { RedisCacheStore } from '../Redis/RedisCacheStore';
-import { RedisPubSub } from '../Redis/RedisPubSub';
 import { AclBlockingService } from '../Redis/AclBlockingService';
 import { RedisCacheService } from '../Redis/Redis.cache';
 import { GlobalDNSforwarderService } from '../services/Forwarder/GlobalDNSforwarder.service';
