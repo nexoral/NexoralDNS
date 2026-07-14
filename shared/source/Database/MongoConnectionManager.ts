@@ -1,9 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { MongoClient } from 'mongodb';
+import { MongoClient, Db } from 'mongodb';
 import os from 'os';
 import logger from '../utilities/logger';
 
-export class MongoConnectionManager {
+// A new database backend can implement this without touching MongoConnectionManager
+export interface IDatabaseConnectionManager {
+  connect(): Promise<unknown>;
+  close(): Promise<void>;
+  isConnected(): Promise<boolean>;
+  getDatabase(): Db;
+}
+
+export class MongoConnectionManager implements IDatabaseConnectionManager {
   private client: MongoClient | null = null;
   private isConnecting = false;
   private connectionLogged = false;

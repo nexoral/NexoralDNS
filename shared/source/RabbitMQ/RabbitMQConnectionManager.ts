@@ -2,7 +2,13 @@
 import amqp, { Channel } from 'amqplib';
 import logger from '../utilities/logger';
 
-export class RabbitMQConnectionManager {
+// A new message broker backend can implement this without touching RabbitMQConnectionManager
+export interface IMessageBrokerConnectionManager {
+  connect(): Promise<unknown>;
+  close(): Promise<void>;
+}
+
+export class RabbitMQConnectionManager implements IMessageBrokerConnectionManager {
   private connection: any = null;
   private channel: Channel | null = null;
   private connectingPromise: Promise<Channel> | null = null;

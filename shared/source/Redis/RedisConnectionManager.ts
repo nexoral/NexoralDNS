@@ -2,7 +2,14 @@
 import { createClient, RedisClientType } from 'redis';
 import logger from '../utilities/logger';
 
-export class RedisConnectionManager {
+// A new cache backend can implement this without touching RedisConnectionManager
+export interface ICacheConnectionManager {
+  connect(): Promise<unknown>;
+  getClient(): Promise<unknown>;
+  close(): Promise<void>;
+}
+
+export class RedisConnectionManager implements ICacheConnectionManager {
   private client: RedisClientType | null = null;
   private isConnecting = false;
   private reconnectAttempts = 0;
