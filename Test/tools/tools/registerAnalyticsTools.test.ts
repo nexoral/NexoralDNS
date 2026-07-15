@@ -32,11 +32,18 @@ describe('registerAnalyticsTools', () => {
     expect(api.request).toHaveBeenCalledWith('sid', '/analytics/get-dashboard-data');
   });
 
-  it('get_logs: appends filters plus pagination to the query string', async () => {
+  it('get_logs: appends filters plus cursor pagination to the query string', async () => {
     const cap = captureTools();
     registerAnalyticsTools(cap.server);
-    await cap.call('get_logs', { SourceIP: '10.0.0.1', Status: 'BLOCKED', limit: 20, page: 3 }, 'sid');
-    expect(api.request).toHaveBeenCalledWith('sid', '/analytics/get-logs?SourceIP=10.0.0.1&Status=BLOCKED&limit=20&page=3');
+    await cap.call('get_logs', { SourceIP: '10.0.0.1', Status: 'BLOCKED', limit: 20, cursor: '507f1f77bcf86cd799439011' }, 'sid');
+    expect(api.request).toHaveBeenCalledWith('sid', '/analytics/get-logs?SourceIP=10.0.0.1&Status=BLOCKED&limit=20&cursor=507f1f77bcf86cd799439011');
+  });
+
+  it('get_logs: passes order through to the query string', async () => {
+    const cap = captureTools();
+    registerAnalyticsTools(cap.server);
+    await cap.call('get_logs', { order: 'asc' }, 'sid');
+    expect(api.request).toHaveBeenCalledWith('sid', '/analytics/get-logs?order=asc');
   });
 
   it('get_logs: works with no filters at all', async () => {

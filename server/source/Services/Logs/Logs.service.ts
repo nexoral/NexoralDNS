@@ -10,9 +10,10 @@ import BuildResponse from "../../helper/responseBuilder.helper";
 export default class LogsService {
   constructor() { }
 
-  public async getAnalyticalLogs (limit: number | undefined, cursor: string | undefined, query: any, reply: FastifyReply) {
+  public async getAnalyticalLogs (limit: number | undefined, cursor: string | undefined, query: any, reply: FastifyReply, order?: 'asc' | 'desc') {
     const Analytics = container.get<MongoCollectionManager>('MongoCollectionManager').getCollection(DB_DEFAULT_CONFIGS.Collections.ANALYTICS);
     if (!limit) limit = 25
+    const sortDirection = order === 'asc' ? 1 : -1;
 
     if (!Analytics) {
       const ErrorResponse = new BuildResponse(reply, StatusCodes.INTERNAL_SERVER_ERROR, "Database connection error");
@@ -22,9 +23,10 @@ export default class LogsService {
     // Build match query with cursor filtering
     const matchQuery: any = query ? { ...query } : {};
 
-    // If cursor is provided, add _id filter to get documents after the cursor
+    // If cursor is provided, add _id filter to get documents beyond the cursor,
+    // walking in whichever direction the sort order goes
     if (cursor) {
-      matchQuery._id = { $lt: new ObjectId(cursor) };
+      matchQuery._id = sortDirection === 1 ? { $gt: new ObjectId(cursor) } : { $lt: new ObjectId(cursor) };
     }
 
     // Use single aggregation to get data
@@ -32,8 +34,8 @@ export default class LogsService {
       // Match the query filters including cursor
       { $match: matchQuery },
 
-      // Sort by _id descending (newest first)
-      { $sort: { _id: -1 } },
+      // Sort by _id (default newest first; 'asc' walks oldest first)
+      { $sort: { _id: sortDirection } },
 
       // Limit results
       { $limit: limit }
