@@ -21,6 +21,7 @@ export default class LogsController {
     interface requestQueryParams extends LogsQueryFilters {
       limit: string,
       cursor: string,
+      order: 'asc' | 'desc',
     }
 
     const Responser = new BuildResponse(reply, StatusCodes.OK, "Logs fetched successfully");
@@ -41,7 +42,7 @@ export default class LogsController {
     const query = buildLogsQuery(filters);
 
     try {
-      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query, reply);
+      await LogsServices.getAnalyticalLogs(parseInt(filters.limit), filters.cursor, query, reply, filters.order);
     } catch (error) {
       logger.info(error)
       Responser.setStatusCode(StatusCodes.INTERNAL_SERVER_ERROR);

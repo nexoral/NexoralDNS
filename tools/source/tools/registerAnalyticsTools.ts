@@ -31,13 +31,14 @@ export default function registerAnalyticsTools(server: McpServer): void {
       description: "Fetch paginated DNS query logs, optionally filtered by IP, domain, status, time range, or duration.",
       inputSchema: {
         ...logFilterFields,
-        limit: z.number().int().min(1).optional().describe("Records per page (default 10)"),
-        page: z.number().int().min(1).optional().describe("Page number (default 1)"),
+        limit: z.number().int().min(1).optional().describe("Records per page (default 25)"),
+        cursor: z.string().optional().describe("_id of the last record from the previous page; omit for the first page"),
+        order: z.enum(["asc", "desc"]).optional().describe("Sort by _id ascending (oldest first) or descending/default (newest first)"),
       },
     },
-    async ({ limit, page, ...filters }, extra) =>
+    async ({ limit, cursor, order, ...filters }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/analytics/get-logs${buildQuery({ ...filters, limit, page })}`),
+        await apiClient.request(requireSessionId(extra), `/analytics/get-logs${buildQuery({ ...filters, limit, cursor, order })}`),
       ),
   );
 
