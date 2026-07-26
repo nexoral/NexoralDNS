@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, textResult, requireSessionId, buildQuery } from "./toolResult";
+import { fromApiResult, textResult, requireAuthToken, buildQuery } from "./toolResult";
 
 const logFilterFields = {
   SourceIP: z.string().optional().describe("Filter by source IP address"),
@@ -21,7 +21,7 @@ export default function registerAnalyticsTools(server: McpServer): void {
       description: "Fetch aggregated analytics data for the dashboard overview.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/analytics/get-dashboard-data")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/analytics/get-dashboard-data")),
   );
 
   server.registerTool(
@@ -38,7 +38,7 @@ export default function registerAnalyticsTools(server: McpServer): void {
     },
     async ({ limit, cursor, order, ...filters }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/analytics/get-logs${buildQuery({ ...filters, limit, cursor, order })}`),
+        await apiClient.request(requireAuthToken(extra), `/analytics/get-logs${buildQuery({ ...filters, limit, cursor, order })}`),
       ),
   );
 
@@ -57,7 +57,7 @@ export default function registerAnalyticsTools(server: McpServer): void {
     },
     async ({ format, ...filters }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/analytics/export-logs", {
+        await apiClient.request(requireAuthToken(extra), "/analytics/export-logs", {
           method: "POST",
           body: { format, ...filters },
         }),
@@ -73,7 +73,7 @@ export default function registerAnalyticsTools(server: McpServer): void {
         "Requires the Full Access or View Logs permission.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/analytics/export-logs/status")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/analytics/export-logs/status")),
   );
 
   server.registerTool(
@@ -87,7 +87,7 @@ export default function registerAnalyticsTools(server: McpServer): void {
       inputSchema: {},
     },
     async (_args, extra) => {
-      const result = await apiClient.downloadLogExport(requireSessionId(extra));
+      const result = await apiClient.downloadLogExport(requireAuthToken(extra));
       if (!result.ok) {
         return textResult(`Error (${result.statusCode}): ${result.message}`, true);
       }

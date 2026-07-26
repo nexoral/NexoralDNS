@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, requireSessionId, buildQuery } from "./toolResult";
+import { fromApiResult, requireAuthToken, buildQuery } from "./toolResult";
 
 const PERMISSION_NOTE = "Requires the Full Access or Manage Users permission.";
 
@@ -17,7 +17,7 @@ export default function registerUserTools(server: McpServer): void {
       },
     },
     async ({ skip, limit }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/users${buildQuery({ skip, limit })}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/users${buildQuery({ skip, limit })}`)),
   );
 
   server.registerTool(
@@ -28,7 +28,7 @@ export default function registerUserTools(server: McpServer): void {
       inputSchema: { userId: z.string().describe("The user's ID") },
     },
     async ({ userId }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/users/${encodeURIComponent(userId)}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/users/${encodeURIComponent(userId)}`)),
   );
 
   server.registerTool(
@@ -44,7 +44,7 @@ export default function registerUserTools(server: McpServer): void {
     },
     async ({ username, password, roleId }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/users", {
+        await apiClient.request(requireAuthToken(extra), "/users", {
           method: "POST",
           body: { username, password, roleId },
         }),
@@ -65,7 +65,7 @@ export default function registerUserTools(server: McpServer): void {
     },
     async ({ userId, username, roleId, isActive }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/users/${encodeURIComponent(userId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/users/${encodeURIComponent(userId)}`, {
           method: "PUT",
           body: { username, roleId, isActive },
         }),
@@ -84,7 +84,7 @@ export default function registerUserTools(server: McpServer): void {
     },
     async ({ userId, newPassword }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/users/${encodeURIComponent(userId)}/reset-password`, {
+        await apiClient.request(requireAuthToken(extra), `/users/${encodeURIComponent(userId)}/reset-password`, {
           method: "PATCH",
           body: { newPassword },
         }),
@@ -100,7 +100,7 @@ export default function registerUserTools(server: McpServer): void {
     },
     async ({ userId }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/users/${encodeURIComponent(userId)}`, { method: "DELETE" }),
+        await apiClient.request(requireAuthToken(extra), `/users/${encodeURIComponent(userId)}`, { method: "DELETE" }),
       ),
   );
 }

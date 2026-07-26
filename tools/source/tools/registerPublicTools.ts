@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { textResult, fromApiResult, requireSessionId } from "./toolResult";
+import { textResult, fromApiResult, requireAuthToken } from "./toolResult";
 
 /** Tools that hit `server/`'s info/health/service endpoints. */
 export default function registerPublicTools(server: McpServer): void {
@@ -42,6 +42,6 @@ export default function registerPublicTools(server: McpServer): void {
         "Unlike get_server_info and check_server_health, this one requires login.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/service-info")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/service-info")),
   );
 }

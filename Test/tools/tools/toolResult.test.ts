@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { textResult, requireSessionId, fromApiResult, buildQuery } from '@tools/source/tools/toolResult';
+import { textResult, requireAuthToken, fromApiResult, buildQuery } from '@tools/source/tools/toolResult';
 import type { ApiResult } from '@tools/source/client/types';
 
 describe('textResult', () => {
@@ -12,13 +12,17 @@ describe('textResult', () => {
   });
 });
 
-describe('requireSessionId', () => {
-  it('returns the session id when present', () => {
-    expect(requireSessionId({ sessionId: 'abc' } as any)).toBe('abc');
+describe('requireAuthToken', () => {
+  it('returns the verified access token when the bearer middleware supplied one', () => {
+    expect(requireAuthToken({ authInfo: { token: 'abc' } } as any)).toBe('abc');
   });
 
-  it('throws when the transport supplied no session id (stateful-mode invariant)', () => {
-    expect(() => requireSessionId({} as any)).toThrowError(/not running in stateful mode/);
+  it('throws when authInfo is absent (bearer middleware bypassed)', () => {
+    expect(() => requireAuthToken({} as any)).toThrowError(/not behind bearer auth/);
+  });
+
+  it('throws when authInfo carries no token', () => {
+    expect(() => requireAuthToken({ authInfo: {} } as any)).toThrowError(/not behind bearer auth/);
   });
 });
 

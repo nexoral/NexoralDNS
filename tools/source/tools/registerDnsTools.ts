@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, requireSessionId } from "./toolResult";
+import { fromApiResult, requireAuthToken } from "./toolResult";
 
 const dnsRecordType = z.enum(["A", "CNAME", "AAAA"]);
 
@@ -16,7 +16,7 @@ export default function registerDnsTools(server: McpServer): void {
       },
     },
     async ({ domain }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/dns/list/${encodeURIComponent(domain)}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/dns/list/${encodeURIComponent(domain)}`)),
   );
 
   server.registerTool(
@@ -34,7 +34,7 @@ export default function registerDnsTools(server: McpServer): void {
     },
     async ({ domainName, name, type, value, ttl }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/dns/create-dns", {
+        await apiClient.request(requireAuthToken(extra), "/dns/create-dns", {
           method: "POST",
           body: { DomainName: domainName, name, type, value, ttl },
         }),
@@ -56,7 +56,7 @@ export default function registerDnsTools(server: McpServer): void {
     },
     async ({ id, name, type, value, ttl }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/dns/update/${encodeURIComponent(id)}`, {
+        await apiClient.request(requireAuthToken(extra), `/dns/update/${encodeURIComponent(id)}`, {
           method: "PUT",
           body: { name, type, value, ttl },
         }),
@@ -75,7 +75,7 @@ export default function registerDnsTools(server: McpServer): void {
     },
     async ({ id, domainName }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/dns/delete", {
+        await apiClient.request(requireAuthToken(extra), "/dns/delete", {
           method: "PUT",
           body: { id, domainName },
         }),

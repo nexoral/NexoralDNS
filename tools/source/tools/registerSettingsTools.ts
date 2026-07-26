@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, requireSessionId, buildQuery } from "./toolResult";
+import { fromApiResult, requireAuthToken, buildQuery } from "./toolResult";
 
 const PERMISSION_NOTE = "Requires the Full Access or Configure Settings permission.";
 
@@ -13,7 +13,7 @@ export default function registerSettingsTools(server: McpServer): void {
       description: `Turn the DNS resolution service on or off. ${PERMISSION_NOTE}`,
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/settings/toggle-service")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/settings/toggle-service")),
   );
 
   server.registerTool(
@@ -23,7 +23,7 @@ export default function registerSettingsTools(server: McpServer): void {
       description: `Get the current default TTL (seconds) applied to blocked domains and forwarder requests. ${PERMISSION_NOTE}`,
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/settings/default-ttl")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/settings/default-ttl")),
   );
 
   server.registerTool(
@@ -37,7 +37,7 @@ export default function registerSettingsTools(server: McpServer): void {
     },
     async ({ defaultTTL }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/settings/default-ttl", {
+        await apiClient.request(requireAuthToken(extra), "/settings/default-ttl", {
           method: "PUT",
           body: { defaultTTL },
         }),
@@ -51,7 +51,7 @@ export default function registerSettingsTools(server: McpServer): void {
       description: "Get statistics for all DNS caches.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/settings/get-cache-stat")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/settings/get-cache-stat")),
   );
 
   server.registerTool(
@@ -62,7 +62,7 @@ export default function registerSettingsTools(server: McpServer): void {
       inputSchema: {},
     },
     async (_args, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), "/settings/delete-all-dns-cache", { method: "DELETE" })),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), "/settings/delete-all-dns-cache", { method: "DELETE" })),
   );
 
   server.registerTool(
@@ -77,7 +77,7 @@ export default function registerSettingsTools(server: McpServer): void {
     async ({ keyName }, extra) =>
       fromApiResult(
         await apiClient.request(
-          requireSessionId(extra),
+          requireAuthToken(extra),
           `/settings/delete-specific-cache-key${buildQuery({ keyName })}`,
           { method: "DELETE" },
         ),
