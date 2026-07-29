@@ -1,0 +1,20 @@
+# Compiled tsc output - duplicates every .ts source as .js, plus __awaiter
+# polyfill internals. Mirrors the build-output block in .gitignore.
+# Docs/lib/ is deliberately NOT listed - it is hand-written source.
+/server/lib/
+/Web/lib/
+/DHCP/lib/
+/tools/lib/
+/shared/lib/
+
+# Generated istanbul coverage report - viewer boilerplate, not project code
+Test/coverage/
+
+# Binary assets - extract to orphan nodes with zero edges
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.svg

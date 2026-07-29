@@ -148,3 +148,6 @@ dist/
 
 # Generated log export files (temporary, cleaned up on download / hourly sweep)
 server/exports/
+
+# Generated knowledge graph (rebuilt by graphify hooks; .graphifyignore IS tracked)
+graphify-out/
