@@ -82,6 +82,7 @@ func (s *StartRules) SubscribeInvalidations(ctx context.Context) {
 		logger.Warn(fmt.Sprintf("🔔 Received Cache Invalidation Request: %s", message))
 
 		s.blockList.ClearCaches()
+		s.statusChecker.ClearMemo()
 		s.cache.Delete(context.Background(), keys.ServiceStatus)
 
 		logger.Info("✅ Local Caches Cleared")
@@ -146,7 +147,9 @@ func (s *StartRules) executeCore(
 	queryName := io.ParseQueryName(msg)
 	queryType := io.ParseQueryType(msg)
 
-	logger.Info(fmt.Sprintf("DNS Query: %s (%s) from %s", queryName, queryType, rinfo.Address))
+	// Debug, not info: at production query rates this is the single most
+	// expensive line on the path — every write serialises through one lock.
+	logger.Debug(fmt.Sprintf("DNS Query: %s (%s) from %s", queryName, queryType, rinfo.Address))
 
 	event := analytics{
 		QueryName: queryName,

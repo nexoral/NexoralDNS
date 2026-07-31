@@ -89,10 +89,6 @@ func (p *Publisher) Publish(ctx context.Context, queue string, message any, opts
 		logger.Error(fmt.Sprintf("❌ Failed to publish to queue %s:", queue), err)
 		return false
 	}
-	// Parity with the TypeScript publisher, which logged every publish at info.
-	// This fires once per DNS query via the analytics queue — drop it if the log
-	// volume matters more than matching the old output.
-	logger.Info(fmt.Sprintf("📤 Published message to queue: %s", queue))
 	return true
 }
 

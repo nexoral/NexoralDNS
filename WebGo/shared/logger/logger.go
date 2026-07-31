@@ -52,6 +52,7 @@ func emit(level slog.Level, msg string, args []any) {
 	log.LogAttrs(context.Background(), level, msg, detail(args)...)
 }
 
+func Debug(msg string, args ...any) { emit(slog.LevelDebug, msg, args) }
 func Info(msg string, args ...any)  { emit(slog.LevelInfo, msg, args) }
 func Warn(msg string, args ...any)  { emit(slog.LevelWarn, msg, args) }
 func Error(msg string, args ...any) { emit(slog.LevelError, msg, args) }
