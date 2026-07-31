@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"net"
 
-	"nexoraldns/webgo/internal/dnsmsg"
+	"nexoraldns/web/internal/dnsmsg"
 )
 
 // TCP writes DNS answers over a stream transport, prefixing each with its

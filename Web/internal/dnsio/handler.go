@@ -5,7 +5,7 @@ package dnsio
 import (
 	"net"
 
-	"nexoraldns/webgo/internal/dnsmsg"
+	"nexoraldns/web/internal/dnsmsg"
 )
 
 // RemoteInfo describes the client a query arrived from. For TCP and DoT it is

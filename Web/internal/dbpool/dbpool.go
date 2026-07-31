@@ -10,9 +10,9 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"nexoraldns/webgo/internal/config"
-	"nexoraldns/webgo/internal/database"
-	"nexoraldns/webgo/internal/dnsmsg"
+	"nexoraldns/web/internal/config"
+	"nexoraldns/web/internal/database"
+	"nexoraldns/web/internal/dnsmsg"
 )
 
 // hopCacheTTL is how long a single resolved hop stays cached.

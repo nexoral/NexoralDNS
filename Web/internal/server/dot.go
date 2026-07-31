@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net"
 
-	"nexoraldns/webgo/internal/netutil"
-	"nexoraldns/webgo/internal/rules"
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/internal/netutil"
+	"nexoraldns/web/internal/rules"
+	"nexoraldns/web/shared/logger"
 )
 
 // DoTPort is the well-known port for DNS over TLS.

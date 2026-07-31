@@ -138,9 +138,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 
-# Build output (tsc outDir for server/, Web/, DHCP/, tools/, shared/ — NOT Docs/lib, which is hand-written source)
+# Build output (tsc outDir for server/, DHCP/, tools/, shared/ — NOT Docs/lib, which is
+# hand-written source). /Web/web is the compiled Go binary, not a tsc directory.
 /server/lib/
-/Web/lib/
+/Web/web
 /DHCP/lib/
 /tools/lib/
 /shared/lib/

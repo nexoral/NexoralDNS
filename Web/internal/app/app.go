@@ -10,16 +10,16 @@ import (
 	"context"
 	"sync"
 
-	"nexoraldns/webgo/internal/cache"
-	"nexoraldns/webgo/internal/database"
-	"nexoraldns/webgo/internal/dbpool"
-	"nexoraldns/webgo/internal/forwarder"
-	"nexoraldns/webgo/internal/rules"
-	"nexoraldns/webgo/internal/server"
-	"nexoraldns/webgo/shared/logger"
-	sharedmongo "nexoraldns/webgo/shared/mongo"
-	"nexoraldns/webgo/shared/rabbitmq"
-	sharedredis "nexoraldns/webgo/shared/redis"
+	"nexoraldns/web/internal/cache"
+	"nexoraldns/web/internal/database"
+	"nexoraldns/web/internal/dbpool"
+	"nexoraldns/web/internal/forwarder"
+	"nexoraldns/web/internal/rules"
+	"nexoraldns/web/internal/server"
+	"nexoraldns/web/shared/logger"
+	sharedmongo "nexoraldns/web/shared/mongo"
+	"nexoraldns/web/shared/rabbitmq"
+	sharedredis "nexoraldns/web/shared/redis"
 )
 
 // App holds every singleton for the process lifetime.

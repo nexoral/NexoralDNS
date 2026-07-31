@@ -1,4 +1,21 @@
-# Build stage
+# Go build stage — Web/ is the core DNS server, a Go module rather than an npm
+# package. Built on its own so the Node stage never sees it and the toolchain
+# never reaches the runtime image.
+FROM golang:1.26-alpine AS go-builder
+
+WORKDIR /src
+
+# Dependencies first, so a source-only change reuses the cached module layer.
+COPY Web/go.mod Web/go.sum ./
+RUN go mod download
+
+COPY Web/ ./
+
+# Static binary: no libc dependency, so it runs on the Ubuntu runtime image.
+# -trimpath drops build paths; -s -w strips debug info to shrink the binary.
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/web .
+
+# Node build stage
 FROM node:24-alpine AS builder
 
 WORKDIR /app
@@ -9,7 +26,6 @@ RUN npm config set fetch-retries 5 && \
 
 COPY package.json package-lock.json ./
 COPY server/package.json ./server/package.json
-COPY Web/package.json ./Web/package.json
 # full copy, not just package.json: its prepare script needs real source to compile
 COPY shared ./shared
 COPY DHCP/package.json ./DHCP/package.json
@@ -27,7 +43,6 @@ COPY . .
 RUN cd server && npm run build && npm prune --production
 RUN cd client && npm run build && npm prune --production
 RUN cd DHCP && npm run build && npm prune --production
-RUN cd Web && npm run build && npm prune --production
 RUN cd tools && npm run build && npm prune --production
 
 # Runtime stage
@@ -58,8 +73,7 @@ COPY --from=builder /app/client/public ./client/public
 COPY --from=builder /app/DHCP/lib ./DHCP/lib
 COPY --from=builder /app/DHCP/package.json ./DHCP/
 
-COPY --from=builder /app/Web/lib ./Web/lib
-COPY --from=builder /app/Web/package.json ./Web/
+COPY --from=go-builder /out/web ./Web/web
 
 COPY --from=builder /app/tools/lib ./tools/lib
 COPY --from=builder /app/tools/node_modules ./tools/node_modules
@@ -70,9 +84,9 @@ COPY --from=builder /app/ecosystem.config.js ./
 
 RUN setcap cap_net_raw+ep /bin/ping && \
     setcap cap_net_bind_service,cap_dac_override+ep $(which node) && \
-    chmod +x ./Scripts/docker-entrypoint.sh
+    chmod +x ./Web/web ./Scripts/docker-entrypoint.sh
 
 ENV NODE_ENV=production
-EXPOSE 53/udp 53/tcp 4000 4773 4774
+EXPOSE 53/udp 53/tcp 853/tcp 4000 4773 4774
 
 CMD ["./Scripts/docker-entrypoint.sh"]

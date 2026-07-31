@@ -7,7 +7,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/shared/logger"
 )
 
 // PubSub owns the subscriber side of Redis. go-redis dedicates a connection to

@@ -10,7 +10,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/shared/logger"
 )
 
 // ConnectionManager is a singleton owning the shared command client.

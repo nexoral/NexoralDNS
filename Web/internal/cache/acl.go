@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"nexoraldns/webgo/shared/keys"
-	"nexoraldns/webgo/shared/logger"
-	sharedredis "nexoraldns/webgo/shared/redis"
+	"nexoraldns/web/shared/keys"
+	"nexoraldns/web/shared/logger"
+	sharedredis "nexoraldns/web/shared/redis"
 )
 
 // ACLService answers "is this domain blocked for this client" from the ACL sets

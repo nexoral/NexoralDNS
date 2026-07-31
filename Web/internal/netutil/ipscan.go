@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/shared/logger"
 )
 
 // scanInterval is how often the host's address is re-checked.

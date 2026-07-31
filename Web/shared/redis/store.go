@@ -10,7 +10,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/shared/logger"
 )
 
 // CacheStore is the key/value cache API over the shared Redis client. Every

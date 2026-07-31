@@ -8,14 +8,14 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"nexoraldns/webgo/internal/cache"
-	"nexoraldns/webgo/internal/dbpool"
-	"nexoraldns/webgo/internal/dnsio"
-	"nexoraldns/webgo/internal/dnsmsg"
-	"nexoraldns/webgo/internal/forwarder"
-	"nexoraldns/webgo/shared/keys"
-	"nexoraldns/webgo/shared/logger"
-	"nexoraldns/webgo/shared/rabbitmq"
+	"nexoraldns/web/internal/cache"
+	"nexoraldns/web/internal/dbpool"
+	"nexoraldns/web/internal/dnsio"
+	"nexoraldns/web/internal/dnsmsg"
+	"nexoraldns/web/internal/forwarder"
+	"nexoraldns/web/shared/keys"
+	"nexoraldns/web/shared/logger"
+	"nexoraldns/web/shared/rabbitmq"
 )
 
 // queryTimeout bounds the whole pipeline for one query.

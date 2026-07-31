@@ -8,12 +8,12 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"nexoraldns/webgo/internal/cache"
-	"nexoraldns/webgo/internal/config"
-	"nexoraldns/webgo/internal/database"
-	"nexoraldns/webgo/internal/dnsio"
-	"nexoraldns/webgo/shared/keys"
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/internal/cache"
+	"nexoraldns/web/internal/config"
+	"nexoraldns/web/internal/database"
+	"nexoraldns/web/internal/dnsio"
+	"nexoraldns/web/shared/keys"
+	"nexoraldns/web/shared/logger"
 )
 
 // ErrServiceConfigMissing signals the service document could not be read, which

@@ -10,10 +10,10 @@ import (
 	"net"
 	"time"
 
-	"nexoraldns/webgo/internal/dnsio"
-	"nexoraldns/webgo/internal/netutil"
-	"nexoraldns/webgo/internal/rules"
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/internal/dnsio"
+	"nexoraldns/web/internal/netutil"
+	"nexoraldns/web/internal/rules"
+	"nexoraldns/web/shared/logger"
 )
 
 // idleTimeout closes connections that go quiet. RFC 7766 §6.2.3 recommends an

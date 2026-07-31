@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/shared/logger"
 )
 
 // certValidity is how long a generated certificate stays valid.

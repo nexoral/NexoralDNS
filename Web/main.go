@@ -1,4 +1,4 @@
-// Command webgo is the NexoralDNS core DNS server.
+// Command web is the NexoralDNS core DNS server.
 //
 // It answers DNS over UDP:53, TCP:53 and TLS:853 for a local area network,
 // resolving from Redis, then MongoDB, then public upstream servers.
@@ -17,9 +17,9 @@ import (
 	"syscall"
 	"time"
 
-	"nexoraldns/webgo/internal/app"
-	"nexoraldns/webgo/internal/netutil"
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/internal/app"
+	"nexoraldns/web/internal/netutil"
+	"nexoraldns/web/shared/logger"
 )
 
 // shutdownTimeout bounds how long draining connections may take.

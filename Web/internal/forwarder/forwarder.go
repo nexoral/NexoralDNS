@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"nexoraldns/webgo/internal/dnsio"
-	"nexoraldns/webgo/internal/dnsmsg"
-	"nexoraldns/webgo/shared/keys"
-	"nexoraldns/webgo/shared/logger"
-	"nexoraldns/webgo/shared/rabbitmq"
+	"nexoraldns/web/internal/dnsio"
+	"nexoraldns/web/internal/dnsmsg"
+	"nexoraldns/web/shared/keys"
+	"nexoraldns/web/shared/logger"
+	"nexoraldns/web/shared/rabbitmq"
 )
 
 // upstream is one public DNS server available for forwarding.

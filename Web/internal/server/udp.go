@@ -8,10 +8,10 @@ import (
 	"net"
 	"sync"
 
-	"nexoraldns/webgo/internal/dnsio"
-	"nexoraldns/webgo/internal/netutil"
-	"nexoraldns/webgo/internal/rules"
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/internal/dnsio"
+	"nexoraldns/web/internal/netutil"
+	"nexoraldns/web/internal/rules"
+	"nexoraldns/web/shared/logger"
 )
 
 // DNSPort is the well-known port for DNS over UDP and TCP.

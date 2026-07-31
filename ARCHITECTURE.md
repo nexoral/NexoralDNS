@@ -34,7 +34,7 @@ NexoralDNS is a LAN-only DNS server and management system with:
 - **Multi-worker clustering** for multi-core utilization
 - **RBAC-based admin dashboard** (users, roles, permissions) for managing the above
 
-> **Not currently implemented**: domain rerouting/rewriting (e.g. redirecting `google.com` → a custom target) and per-user subscription plan gating in the DNS query path. Earlier drafts of this document described both in detail; neither exists in the current codebase (`Web/src`, `server/source`) — there is no rewrite/reroute logic and no plan-check anywhere in the query path. If/when built, this document should be updated alongside the code.
+> **Not currently implemented**: domain rerouting/rewriting (e.g. redirecting `google.com` → a custom target) and per-user subscription plan gating in the DNS query path. Earlier drafts of this document described both in detail; neither exists in the current codebase (`Web/`, `server/source`) — there is no rewrite/reroute logic and no plan-check anywhere in the query path. If/when built, this document should be updated alongside the code.
 
 ---
 
@@ -206,35 +206,42 @@ Per `Scripts/docker-compose.yml`, MongoDB/Redis/RabbitMQ/`nexoraldns` (which bun
 ## Directory Structure
 
 ```
-Web/src/
-├── cluster/Cluster.ts               # cluster.fork() bootstrap, SCHED_RR
-├── Config/
-│   ├── DNS.ts                       # Worker entrypoint: starts UDP+TCP+DoT
-│   └── key.ts                       # DB_DEFAULT_CONFIGS (collections, defaults)
-├── Database/MongoCollectionManager.ts  # RBAC-free collection touch, no handle caching (by design)
-├── Redis/
-│   ├── Redis.cache.ts               # Singleton RedisCacheService (CRUD, pub/sub, ACL)
-│   └── AclBlockingService.ts        # ACL/domain-blocking lookups (Web-only feature)
-├── (MongoConnectionManager, RedisConnectionManager, RedisCacheStore, RedisPubSub,
-│    CacheKeys/QueueKeys/DNS_QUERY_STATUS_KEYS, RabbitMQService + collaborators —
-│    all now live in shared/source/, consumed via `nexoraldns-shared`. See below.)
-├── services/
-│   ├── DNS/
-│   │   ├── DNS.Service.ts           # UDP listener (port 53)
-│   │   ├── DNS_TCP.Service.ts       # TCP listener (port 53, RFC 7766)
-│   │   └── DNS_DoT.Service.ts       # TLS listener (port 853, RFC 7858, self-signed cert)
-│   ├── Start/
-│   │   ├── Rules.service.ts         # StartRulesService — the 4-check pipeline
-│   │   └── ServiceStatusChecker.service.ts
-│   ├── DB/DB_Pool.service.ts        # DNS record + CNAME chain resolution
-│   ├── Rules/BlockList.service.ts   # ACL check, 3-layer cache
-│   └── Forwarder/GlobalDNSforwarder.service.ts  # Upstream DNS, dedicated per-query socket
-└── utilities/
-    ├── IDNSIOHandler.ts             # Shared interface: UDP + TCP/TLS handlers implement this
-    ├── IO.utls.ts                   # UDP implementation + pure DNS packet parsing
-    ├── TCPInputOutputHandler.ts     # TCP/TLS implementation (delegates parsing to IO.utls)
-    ├── AutoIP_SCAN.utls.ts          # Detects LAN IP changes, rebinds UDP socket
-    └── GetWLANIP.utls.ts
+Web/                                 # Core DNS server — a Go module
+├── main.go                          # Entrypoint: signal handling, graceful shutdown
+├── internal/
+│   ├── app/app.go                   # Dependency wiring (replaces the DI container)
+│   ├── config/keys.go               # Collection names, defaults, service identity
+│   ├── database/collections.go      # Collection handles, resolved fresh (by design)
+│   ├── cache/
+│   │   ├── cache.go                 # Cache facade: CRUD, pub/sub, ACL
+│   │   └── acl.go                   # ACL/domain-blocking lookups (Web-only feature)
+│   ├── dnsmsg/codec.go              # DNS wire format encode/decode, bounds-checked
+│   ├── dnsio/
+│   │   ├── handler.go               # Handler interface: UDP and TCP/TLS both implement it
+│   │   ├── udp.go                   # Datagram send
+│   │   └── tcp.go                   # Stream send, 2-byte length prefix (also DoT)
+│   ├── netutil/
+│   │   ├── localip.go               # LAN address discovery
+│   │   ├── socket.go                # SO_REUSEPORT listeners, buffer tuning
+│   │   └── ipscan.go                # Detects LAN IP changes, rebinds UDP listeners
+│   ├── server/
+│   │   ├── udp.go                   # UDP listeners (port 53), one per ~75% of CPUs
+│   │   ├── tcp.go                   # TCP listener (port 53, RFC 7766) + framing loop
+│   │   ├── dot.go                   # TLS listener (port 853, RFC 7858)
+│   │   └── cert.go                  # Self-signed cert generation via crypto/x509
+│   ├── rules/
+│   │   ├── rules.go                 # StartRules — the 4-check pipeline
+│   │   ├── servicestatus.go         # Service on/off gate, 5s in-memory memo
+│   │   └── blocklist.go             # ACL check, in-memory verdict cache
+│   ├── dbpool/dbpool.go             # DNS record + CNAME chain resolution
+│   └── forwarder/
+│       ├── forwarder.go             # Upstream DNS forwarding
+│       ├── pool.go                  # Multiplexed socket pool, generated TXIDs
+│       └── breaker.go               # Per-upstream circuit breakers
+└── shared/                          # Infrastructure layer, Go port of shared/source/
+    ├── keys/                        # CacheKeys, QueueKeys, ACLKeys, status labels
+    ├── logger/                      # Structured JSON logging (log/slog)
+    ├── mongo/ redis/ rabbitmq/      # Connection managers, cache store, pub/sub, publisher
 
 server/source/
 ├── cluster/Cluster.ts               # Own cluster.fork() bootstrap (same SCHED_RR pattern)
@@ -266,12 +273,12 @@ shared/source/                        # `nexoraldns-shared` — file: dependency
 
 | Service | File | Responsibility |
 |---|---|---|
-| `StartRulesService` | `Web/src/services/Start/Rules.service.ts` | The single query-processing entrypoint shared by all three transports. Owns the 4-check pipeline, single-flight dedup (`inflight` Map, scoped **per instance** — UDP/TCP/DoT each construct their own `StartRulesService`, so dedup does not cross transports), and the `cache:invalidate` Redis subscription (guarded to register once per process via a static flag) |
+| `StartRulesService` | `Web/internal/rules/rules.go` | The single query-processing entrypoint shared by all three transports. Owns the 4-check pipeline, single-flight dedup (`inflight` Map, scoped **per instance** — UDP/TCP/DoT each construct their own `StartRulesService`, so dedup does not cross transports), and the `cache:invalidate` Redis subscription (guarded to register once per process via a static flag) |
 | `ServiceStatusChecker` | `.../Start/ServiceStatusChecker.service.ts` | Redis-cached service on/off switch, MongoDB `service` collection fallback |
 | `BlockList` | `.../Rules/BlockList.service.ts` | ACL check with 3 cache layers (local `Map` 5s → static global `Map` 3s → Redis `acl:ip:*`/`acl:all_users` sets), wildcard domain matching, fail-open on error |
 | `DomainDBPoolService` | `.../DB/DB_Pool.service.ts` | Resolves a domain to its record, walking CNAME chains up to 10 hops via sequential MongoDB `findOne` calls (each hop depends on the previous — cannot be parallelized) |
 | `GlobalDNSforwarder` | `.../Forwarder/GlobalDNSforwarder.service.ts` | Forwards each query on its own dedicated, short-lived UDP socket (not a shared singleton) to a shuffled 6-IP pool (Cloudflare/Google/Quad9 unfiltered), 2s per-server timeout with fallthrough. Concurrency capped at 256 in-flight forwards via a counting semaphore (`acquireForwardSlot`/`releaseForwardSlot`) — beyond that, requests queue for a slot rather than opening unbounded sockets |
-| `RedisCacheService` | `Web/src/Redis/Redis.cache.ts` | Singleton Redis client: generic CRUD, pub/sub (cache invalidation), ACL-specific reads (`getBlockedDomainsForIP`, `isDomainBlocked`) |
+| `RedisCacheService` | `Web/internal/cache/cache.go` | Singleton Redis client: generic CRUD, pub/sub (cache invalidation), ACL-specific reads (`getBlockedDomainsForIP`, `isDomainBlocked`) |
 | `RabbitMQService` | `shared/source/RabbitMQ/Rabbitmq.config.ts` (single copy, consumed by both `Web/` and `server/` via `nexoraldns-shared`) | Singleton AMQP client. Queue declarations are memoized per-process (`ensureQueue`) — asserted once, not on every publish/consume call |
 | `IDNSIOHandler` implementations | `IO.utls.ts` (UDP), `TCPInputOutputHandler.ts` (TCP/TLS) | Pure DNS packet parsing/building shared by all handlers; TCP/TLS variant delegates parsing to the UDP one and only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
 
@@ -293,7 +300,7 @@ shared/source/                        # `nexoraldns-shared` — file: dependency
 
 Both `Web/` and `server/` connect to the same MongoDB database (`nexoral_db` by default) but register different subsets of collections, matching what each service actually reads/writes.
 
-**`Web/`'s DNS engine reads/writes**: `service`, `dns_records`, `domains`, `analytics` (via `Web/src/Config/key.ts`).
+**`Web/`'s DNS engine reads/writes**: `service`, `dns_records`, `domains`, `analytics` (via `Web/internal/config/keys.go`).
 
 **`server/`'s API additionally manages**: `users`, `roles`, `permissions`, `access_control_policies`, `domain_groups`, `ip_groups`, `session_manage` (via `server/source/core/key.ts`).
 
@@ -369,7 +376,7 @@ See [RBAC & User Management](#rbac--user-management) below — unchanged from th
 
 ## Redis Caching Strategy
 
-Actual key scheme (`Web/src/Redis/CacheKeys.cache.ts`) — narrower than earlier drafts of this document suggested:
+Actual key scheme (`Web/shared/keys/keys.go`) — narrower than earlier drafts of this document suggested:
 
 ```typescript
 enum CacheKeys {

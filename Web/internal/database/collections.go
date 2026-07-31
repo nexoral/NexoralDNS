@@ -7,9 +7,9 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
-	"nexoraldns/webgo/internal/config"
-	"nexoraldns/webgo/shared/logger"
-	sharedmongo "nexoraldns/webgo/shared/mongo"
+	"nexoraldns/web/internal/config"
+	"nexoraldns/web/shared/logger"
+	sharedmongo "nexoraldns/web/shared/mongo"
 )
 
 // CollectionManager hands out collection handles. Handles are resolved fresh on

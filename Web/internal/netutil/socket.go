@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/shared/logger"
 )
 
 // socketBufferSize is requested for both directions so a burst of queries is not

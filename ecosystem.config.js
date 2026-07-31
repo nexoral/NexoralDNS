@@ -38,18 +38,9 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 3
     },
-    // web (Core DNS Server) — runs from /Web
-    {
-      name: 'web',
-      script: 'sudo',
-      args: 'npm run start',
-      cwd: '/app/Web',
-      env: { NODE_ENV: 'production' },
-      out_file: '/var/log/web.log',
-      error_file: '/var/log/web.err.log',
-      restart_delay: 5000,
-      max_restarts: 3
-    },
+    // web (Core DNS Server) is deliberately NOT listed here. It is a compiled Go
+    // binary, started directly by Scripts/docker-entrypoint.sh — pm2 manages Node
+    // processes, and routing a binary through it buys nothing.
     // tools (MCP tool server) — runs from /tools, calls server's REST API over loopback
     {
       name: 'tools',

@@ -2,7 +2,7 @@
   "name": "nexoraldns-tests",
   "version": "1.0.0",
   "private": true,
-  "description": "Vitest test suites for NexoralDNS (server, tools). Web/ is superseded by WebGo/, whose tests live beside the Go source. Fully mocked infra (Mongo/Redis/RabbitMQ) — CI/CD-ready, needs no real services.",
+  "description": "Vitest test suites for NexoralDNS (server, tools). Web/ is a Go module and is tested separately. Fully mocked infra (Mongo/Redis/RabbitMQ) — CI/CD-ready, needs no real services.",
   "scripts": {
     "test": "npm run test:server && npm run test:tools",
     "test:server": "vitest run --config vitest.server.config.ts",

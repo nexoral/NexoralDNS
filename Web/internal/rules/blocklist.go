@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"nexoraldns/webgo/internal/cache"
-	"nexoraldns/webgo/shared/logger"
+	"nexoraldns/web/internal/cache"
+	"nexoraldns/web/shared/logger"
 )
 
 // blockCacheTTL is how long an access-control verdict is trusted in memory.

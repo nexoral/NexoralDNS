@@ -1,4 +1,4 @@
-module nexoraldns/webgo
+module nexoraldns/web
 
 go 1.26.5
 

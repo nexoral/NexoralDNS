@@ -39,9 +39,10 @@ cd server && npm run build    # Compile TypeScript
 cd server && npm run dev       # Dev mode
 cd server && npm start         # Production (cluster)
 
-# Web Dashboard
-cd Web && npm run build        # Production build
-cd Web && npm run dev          # Dev server
+# Web — Core DNS Server (Go)
+cd Web && go build -o web .    # Compile the binary
+cd Web && sudo ./web           # Run (ports 53 and 853 need root)
+cd Web && go vet ./...         # Static checks
 
 # Tests
 cd Test && npm test            # Run all tests

@@ -19,9 +19,10 @@ cd server && npm run build    # TypeScript → lib/ (MANDATORY)
 cd server && npm run dev       # Build + start dev mode
 cd server && npm start         # Production mode (cluster)
 
-# Web Dashboard
-cd Web && npm run dev          # Development server
-cd Web && npm run build        # Production build
+# Web — Core DNS Server (Go)
+cd Web && go build -o web .    # Compile the binary
+cd Web && sudo ./web           # Run (ports 53 and 853 need root)
+cd Web && go vet ./...         # Static checks
 
 # DHCP Server
 cd DHCP && npm run build       # TypeScript → lib/
@@ -79,7 +80,7 @@ server/          # Main DNS server (TypeScript, Fastify)
 │   ├── database/       # MongoDB schemas & connections
 │   └── cluster/        # Multi-process cluster mode
 
-Web/             # Admin dashboard (React/Vite)
+Web/             # Core DNS server (Go) — UDP:53, TCP:53, DoT:853
 DHCP/            # DHCP server (TypeScript)
 Broker/          # Message broker (future use)
 client/          # Client SDK

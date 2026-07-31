@@ -4,7 +4,7 @@ import (
 	"net"
 	"sync/atomic"
 
-	"nexoraldns/webgo/internal/dnsmsg"
+	"nexoraldns/web/internal/dnsmsg"
 )
 
 // UDP writes DNS answers back over a datagram socket. The socket is held in an

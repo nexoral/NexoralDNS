@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	sharedredis "nexoraldns/webgo/shared/redis"
+	sharedredis "nexoraldns/web/shared/redis"
 )
 
 // Service is the single cache entry point for the DNS path, composing the
