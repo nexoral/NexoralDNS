@@ -1,44 +1,15 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { textResult, fromApiResult, requireSessionId } from "./toolResult";
+import { fromApiResult, requireAuthToken } from "./toolResult";
 
+/**
+ * No login/logout tools: authentication happens in the browser via the OAuth
+ * flow (see auth/NexoralOAuthProvider), so credentials never reach the LLM or
+ * the conversation. Clients end a session through the OAuth revocation
+ * endpoint, which is wired to `server/`'s logout.
+ */
 export default function registerAuthTools(server: McpServer): void {
-  server.registerTool(
-    "login",
-    {
-      title: "Login",
-      description:
-        "Authenticate with the NexoralDNS dashboard using a username and password. " +
-        "Must be called before any other tool — the permissions of the logged-in account " +
-        "determine which operations you're allowed to perform.",
-      inputSchema: {
-        username: z.string().describe("NexoralDNS dashboard username"),
-        password: z.string().describe("NexoralDNS dashboard password"),
-      },
-    },
-    async ({ username, password }, extra) => {
-      const result = await apiClient.login(requireSessionId(extra), username, password);
-      if (!result.ok) {
-        return textResult(`Login failed: ${result.message}`, true);
-      }
-      return textResult(`Logged in as ${username}.`);
-    },
-  );
-
-  server.registerTool(
-    "logout",
-    {
-      title: "Logout",
-      description: "End the current NexoralDNS session started by the login tool.",
-      inputSchema: {},
-    },
-    async (_args, extra) => {
-      await apiClient.logout(requireSessionId(extra));
-      return textResult("Logged out.");
-    },
-  );
-
   server.registerTool(
     "change_password",
     {
@@ -51,7 +22,7 @@ export default function registerAuthTools(server: McpServer): void {
     },
     async ({ currentPassword, newPassword }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/auth/change-password", {
+        await apiClient.request(requireAuthToken(extra), "/auth/change-password", {
           method: "POST",
           body: { currentPassword, newPassword },
         }),
@@ -65,6 +36,6 @@ export default function registerAuthTools(server: McpServer): void {
       description: "Verify the current session is still valid and return the logged-in user's details and permissions.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/auth/verify")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/auth/verify")),
   );
 }

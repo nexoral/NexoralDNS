@@ -39,9 +39,10 @@ cd server && npm run build    # Compile TypeScript
 cd server && npm run dev       # Dev mode
 cd server && npm start         # Production (cluster)
 
-# Web Dashboard
-cd Web && npm run build        # Production build
-cd Web && npm run dev          # Dev server
+# Web — Core DNS Server (Go)
+cd Web && go build -o web .    # Compile the binary
+cd Web && sudo ./web           # Run (ports 53 and 853 need root)
+cd Web && go vet ./...         # Static checks
 
 # Tests
 cd Test && npm test            # Run all tests
@@ -186,3 +187,13 @@ Update when features change:
 - ✅ Docs updated
 - ✅ Backward compatible
 - ✅ LAN-only emphasized
+
+## graphify
+
+This project has a graphify knowledge graph at `graphify-out/`.
+
+Rules:
+- Use `graphify query "<question>"` as the DEFAULT codebase search: run it before any grep/glob/file-read, and fall back to raw search only when the graph returns nothing
+- Before answering architecture or codebase questions, read `graphify-out/GRAPH_REPORT.md` for god nodes and community structure
+- If `graphify-out/wiki/index.md` exists, navigate it instead of reading raw files
+- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current

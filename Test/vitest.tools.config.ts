@@ -12,11 +12,16 @@ export default defineConfig({
       // `zod` is a Test/ devDep and pinned here to Test's own copy, keeping the
       // suite fully self-contained (same principle as the pino/redis/... aliases
       // in vitest.web.config.ts). Every OTHER runtime import in the covered files
-      // is either a Node built-in, `pino` (a Test/ devDep), or
-      // `@modelcontextprotocol/sdk` — and the SDK is only ever imported for its
-      // TYPES, which the TS transform strips, so it is never needed at runtime
-      // and deliberately not aliased.
+      // is either a Node built-in, `pino`, or `@modelcontextprotocol/sdk` — both
+      // pinned below for the same reason.
       zod: path.resolve(__dirname, 'node_modules/zod'),
+      // auth/NexoralOAuthProvider.ts imports the SDK's OAuth *error classes* as
+      // runtime values (they carry the `invalid_grant`/`invalid_token` codes the
+      // token handler turns into spec-compliant responses), so unlike the purely
+      // type-level SDK imports elsewhere this one must resolve at runtime.
+      // Points at dist/esm directly: aliasing to the package root would bypass
+      // its `exports` map and resolve to paths that don't exist on disk.
+      '@modelcontextprotocol/sdk': path.resolve(__dirname, 'node_modules/@modelcontextprotocol/sdk/dist/esm'),
       // logger.ts imports bare `pino`, which would resolve against tools/node_modules,
       // while `vi.mock('pino')` in a Test/ file resolves against Test/node_modules —
       // two module ids means the mock silently never matches. Pin both to Test's own

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, requireSessionId } from "./toolResult";
+import { fromApiResult, requireAuthToken } from "./toolResult";
 
 export default function registerDhcpTools(server: McpServer): void {
   server.registerTool(
@@ -10,7 +10,7 @@ export default function registerDhcpTools(server: McpServer): void {
       description: "List all IP addresses currently connected to the DHCP-managed router/network.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/dhcp/list-of-available-ips")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/dhcp/list-of-available-ips")),
   );
 
   server.registerTool(
@@ -22,6 +22,6 @@ export default function registerDhcpTools(server: McpServer): void {
         "Requires the Full Access or Refresh Connected IPs permission.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/dhcp/refresh-connected-ips")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/dhcp/refresh-connected-ips")),
   );
 }

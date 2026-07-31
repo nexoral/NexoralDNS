@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, requireSessionId, buildQuery } from "./toolResult";
+import { fromApiResult, requireAuthToken, buildQuery } from "./toolResult";
 
 const PERMISSION_NOTE = "Requires the Full Access or Configure Settings permission.";
 
@@ -43,7 +43,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ policyType, targetType, blockType, policyName, isActive, ...rest }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/access-control/policy", {
+        await apiClient.request(requireAuthToken(extra), "/access-control/policy", {
           method: "POST",
           body: { policyType, targetType, blockType, policyName, isActive, ...rest },
         }),
@@ -66,7 +66,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ filter, skip, limit }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/policies${buildQuery({ filter, skip, limit })}`),
+        await apiClient.request(requireAuthToken(extra), `/access-control/policies${buildQuery({ filter, skip, limit })}`),
       ),
   );
 
@@ -78,7 +78,7 @@ export default function registerAccessControlTools(server: McpServer): void {
       inputSchema: { policyId: z.string().describe("The policy's ID") },
     },
     async ({ policyId }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/access-control/policy/${encodeURIComponent(policyId)}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/access-control/policy/${encodeURIComponent(policyId)}`)),
   );
 
   server.registerTool(
@@ -98,7 +98,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ policyId, ...body }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/policy/${encodeURIComponent(policyId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/access-control/policy/${encodeURIComponent(policyId)}`, {
           method: "PUT",
           body,
         }),
@@ -114,7 +114,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ policyId }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/policy/${encodeURIComponent(policyId)}/toggle`, {
+        await apiClient.request(requireAuthToken(extra), `/access-control/policy/${encodeURIComponent(policyId)}/toggle`, {
           method: "PATCH",
         }),
       ),
@@ -129,7 +129,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ policyId }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/policy/${encodeURIComponent(policyId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/access-control/policy/${encodeURIComponent(policyId)}`, {
           method: "DELETE",
         }),
       ),
@@ -144,7 +144,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async (_args, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/access-control/cache/invalidate", { method: "POST" }),
+        await apiClient.request(requireAuthToken(extra), "/access-control/cache/invalidate", { method: "POST" }),
       ),
   );
 
@@ -163,7 +163,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ name, description, domains }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/access-control/domain-group", {
+        await apiClient.request(requireAuthToken(extra), "/access-control/domain-group", {
           method: "POST",
           body: { name, description, domains },
         }),
@@ -177,7 +177,7 @@ export default function registerAccessControlTools(server: McpServer): void {
       description: `List all domain groups. ${PERMISSION_NOTE}`,
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/access-control/domain-groups")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/access-control/domain-groups")),
   );
 
   server.registerTool(
@@ -188,7 +188,7 @@ export default function registerAccessControlTools(server: McpServer): void {
       inputSchema: { groupId: z.string().describe("The group's ID") },
     },
     async ({ groupId }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/access-control/domain-group/${encodeURIComponent(groupId)}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/access-control/domain-group/${encodeURIComponent(groupId)}`)),
   );
 
   server.registerTool(
@@ -205,7 +205,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ groupId, ...body }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/domain-group/${encodeURIComponent(groupId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/access-control/domain-group/${encodeURIComponent(groupId)}`, {
           method: "PUT",
           body,
         }),
@@ -221,7 +221,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ groupId }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/domain-group/${encodeURIComponent(groupId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/access-control/domain-group/${encodeURIComponent(groupId)}`, {
           method: "DELETE",
         }),
       ),
@@ -242,7 +242,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ name, description, ipAddresses }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/access-control/ip-group", {
+        await apiClient.request(requireAuthToken(extra), "/access-control/ip-group", {
           method: "POST",
           body: { name, description, ipAddresses },
         }),
@@ -256,7 +256,7 @@ export default function registerAccessControlTools(server: McpServer): void {
       description: `List all IP groups. ${PERMISSION_NOTE}`,
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/access-control/ip-groups")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/access-control/ip-groups")),
   );
 
   server.registerTool(
@@ -267,7 +267,7 @@ export default function registerAccessControlTools(server: McpServer): void {
       inputSchema: { groupId: z.string().describe("The group's ID") },
     },
     async ({ groupId }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/access-control/ip-group/${encodeURIComponent(groupId)}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/access-control/ip-group/${encodeURIComponent(groupId)}`)),
   );
 
   server.registerTool(
@@ -284,7 +284,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ groupId, ...body }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/ip-group/${encodeURIComponent(groupId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/access-control/ip-group/${encodeURIComponent(groupId)}`, {
           method: "PUT",
           body,
         }),
@@ -300,7 +300,7 @@ export default function registerAccessControlTools(server: McpServer): void {
     },
     async ({ groupId }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/access-control/ip-group/${encodeURIComponent(groupId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/access-control/ip-group/${encodeURIComponent(groupId)}`, {
           method: "DELETE",
         }),
       ),

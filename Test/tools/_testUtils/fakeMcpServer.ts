@@ -14,8 +14,8 @@ export interface CapturedTool {
 export interface CapturedServer {
   server: McpServer;
   tools: Map<string, CapturedTool>;
-  /** Invoke a registered tool's handler with the given args and an MCP session id. */
-  call(name: string, args: Record<string, unknown>, sessionId?: string): Promise<any>;
+  /** Invoke a registered tool's handler with the given args and an OAuth access token. */
+  call(name: string, args: Record<string, unknown>, accessToken?: string): Promise<any>;
 }
 
 /**
@@ -37,10 +37,12 @@ export function captureTools(): CapturedServer {
   return {
     server,
     tools,
-    call(name, args, sessionId = 'sess-test') {
+    call(name, args, accessToken = 'token-test') {
       const tool = tools.get(name);
       if (!tool) throw new Error(`tool "${name}" was not registered`);
-      return tool.handler(args, { sessionId });
+      // Shaped like the real `extra`: the bearer middleware puts the verified
+      // token on `authInfo`, which is what every authenticated tool reads.
+      return tool.handler(args, { authInfo: { token: accessToken, clientId: 'nexoraldns-mcp', scopes: [] } });
     },
   };
 }

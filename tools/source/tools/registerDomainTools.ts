@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, requireSessionId } from "./toolResult";
+import { fromApiResult, requireAuthToken } from "./toolResult";
 
 export default function registerDomainTools(server: McpServer): void {
   server.registerTool(
@@ -11,7 +11,7 @@ export default function registerDomainTools(server: McpServer): void {
       description: "List every domain registered in NexoralDNS.",
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/domains/all-domains")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/domains/all-domains")),
   );
 
   server.registerTool(
@@ -27,7 +27,7 @@ export default function registerDomainTools(server: McpServer): void {
     },
     async ({ domainName, type, ipAddress }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/domains/create-domain", {
+        await apiClient.request(requireAuthToken(extra), "/domains/create-domain", {
           method: "POST",
           body: { DomainName: domainName, type, IpAddress: ipAddress },
         }),
@@ -45,7 +45,7 @@ export default function registerDomainTools(server: McpServer): void {
     },
     async ({ domainName }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/domains/delete", {
+        await apiClient.request(requireAuthToken(extra), "/domains/delete", {
           method: "DELETE",
           body: { domainName },
         }),

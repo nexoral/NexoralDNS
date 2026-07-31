@@ -14,7 +14,7 @@ jobs:
       skip_release: ${{ steps.changes.outputs.skip_release }}
       run_tests: ${{ steps.changes.outputs.run_tests }}
       test_all: ${{ steps.changes.outputs.test_all }}
-      test_web: ${{ steps.changes.outputs.test_web }}
+      check_web: ${{ steps.changes.outputs.check_web }}
       test_server: ${{ steps.changes.outputs.test_server }}
       test_tools: ${{ steps.changes.outputs.test_tools }}
       test_only_changed: ${{ steps.changes.outputs.test_only_changed }}
@@ -42,7 +42,7 @@ jobs:
             echo "skip_release=false" >> "$GITHUB_OUTPUT"
             echo "run_tests=true" >> "$GITHUB_OUTPUT"
             echo "test_all=true" >> "$GITHUB_OUTPUT"
-            echo "test_web=true" >> "$GITHUB_OUTPUT"
+            echo "check_web=true" >> "$GITHUB_OUTPUT"
             echo "test_server=true" >> "$GITHUB_OUTPUT"
             echo "test_tools=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -55,7 +55,7 @@ jobs:
             echo "skip_release=false" >> "$GITHUB_OUTPUT"
             echo "run_tests=true" >> "$GITHUB_OUTPUT"
             echo "test_all=true" >> "$GITHUB_OUTPUT"
-            echo "test_web=true" >> "$GITHUB_OUTPUT"
+            echo "check_web=true" >> "$GITHUB_OUTPUT"
             echo "test_server=true" >> "$GITHUB_OUTPUT"
             echo "test_tools=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -72,7 +72,7 @@ jobs:
             echo "skip_release=true" >> "$GITHUB_OUTPUT"
             echo "run_tests=false" >> "$GITHUB_OUTPUT"
             echo "test_all=false" >> "$GITHUB_OUTPUT"
-            echo "test_web=false" >> "$GITHUB_OUTPUT"
+            echo "check_web=false" >> "$GITHUB_OUTPUT"
             echo "test_server=false" >> "$GITHUB_OUTPUT"
             echo "test_tools=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -81,11 +81,11 @@ jobs:
           # ── Test-suite selection ──────────────────────────────────────────
           # Decide which Test/ suite(s) to run based on which module folders were
           # touched:
-          #   - Web/ only      -> npm run test:web
+          #   - Web/ only      -> go build + go vet (Web/ is a Go module, no vitest suite)
           #   - server/ only   -> npm run test:server   (suite is a future stub)
           #   - tools/ only    -> npm run test:tools    (suite is a future stub)
           #   - any 2 of them  -> run each changed module's suite
-          #   - all 3 modules  -> npm run test (full)
+          #   - server+tools   -> npm run test (full)
           #   - Test/ only     -> npm run test (full) BUT skip docker build & release
           web_changed=false
           server_changed=false
@@ -104,8 +104,8 @@ jobs:
 
           run_tests=false
           test_all=false
-          if [ "$test_only_changed" = "true" ] || [ "$test_changed" = "true" ] || { [ "$web_changed" = "true" ] && [ "$server_changed" = "true" ] && [ "$tools_changed" = "true" ]; }; then
-            # Test harness itself changed, or all three modules changed at once, or Test/ only.
+          if [ "$test_only_changed" = "true" ] || [ "$test_changed" = "true" ] || { [ "$server_changed" = "true" ] && [ "$tools_changed" = "true" ]; }; then
+            # Test harness itself changed, or both Node modules changed at once, or Test/ only.
             run_tests=true
             test_all=true
             if [ "$test_only_changed" = "true" ]; then
@@ -113,16 +113,16 @@ jobs:
             else
               echo "::notice title=Tests::Running the full suite (npm run test)."
             fi
-          elif [ "$web_changed" = "true" ] || [ "$server_changed" = "true" ] || [ "$tools_changed" = "true" ]; then
+          elif [ "$server_changed" = "true" ] || [ "$tools_changed" = "true" ]; then
             run_tests=true
-            echo "::notice title=Tests::Running per-module suites (web=$web_changed server=$server_changed tools=$tools_changed)."
+            echo "::notice title=Tests::Running per-module suites (server=$server_changed tools=$tools_changed)."
           else
             echo "::notice title=Tests skipped::No changes under Web/, server/, tools/, or Test/."
           fi
 
           echo "run_tests=$run_tests"     >> "$GITHUB_OUTPUT"
           echo "test_all=$test_all"       >> "$GITHUB_OUTPUT"
-          echo "test_web=$web_changed"    >> "$GITHUB_OUTPUT"
+          echo "check_web=$web_changed"   >> "$GITHUB_OUTPUT"
           echo "test_server=$server_changed" >> "$GITHUB_OUTPUT"
           echo "test_tools=$tools_changed"   >> "$GITHUB_OUTPUT"
           echo "test_only_changed=$test_only_changed" >> "$GITHUB_OUTPUT"
@@ -229,11 +229,6 @@ jobs:
         working-directory: Test
         run: npm run coverage
 
-      - name: Run Web test suite with coverage
-        if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_web == 'true'
-        working-directory: Test
-        run: npm run coverage:web
-
       - name: Run server test suite with coverage
         if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_server == 'true'
         working-directory: Test
@@ -244,17 +239,54 @@ jobs:
         working-directory: Test
         run: npm run coverage:tools
 
+  verify-web:
+    # Web/ is the core DNS server, a Go module. It has no test suite yet, so the
+    # gate is a clean compile, a clean vet and correct formatting — enough to stop
+    # a broken DNS server reaching the image.
+    needs: detect-changes
+    if: needs.detect-changes.outputs.check_web == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: Web/go.mod
+          cache-dependency-path: Web/go.sum
+
+      - name: Build
+        working-directory: Web
+        run: go build ./...
+
+      - name: Vet
+        working-directory: Web
+        run: go vet ./...
+
+      - name: Check formatting
+        working-directory: Web
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error title=gofmt::These files are not formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
   build-and-push:
     # Gated on the test suite: the image is only built/pushed once tests pass.
     # test-environment is skipped when no testable folder changed (e.g. a
     # Dockerfile-only change), so we allow success OR skipped but block failure.
-    needs: [detect-changes, test-environment]
+    needs: [detect-changes, test-environment, verify-web]
     if: >-
       !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.skip != 'true' &&
       needs.detect-changes.outputs.test_only_changed != 'true' &&
-      (needs.test-environment.result == 'success' || needs.test-environment.result == 'skipped')
+      (needs.test-environment.result == 'success' || needs.test-environment.result == 'skipped') &&
+      (needs.verify-web.result == 'success' || needs.verify-web.result == 'skipped')
     runs-on: ubuntu-latest
 
     steps:

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import apiClient from "../client/ApiClient";
-import { fromApiResult, requireSessionId, buildQuery } from "./toolResult";
+import { fromApiResult, requireAuthToken, buildQuery } from "./toolResult";
 
 const PERMISSION_NOTE = "Requires the Full Access or Manage Roles permission.";
 
@@ -13,7 +13,7 @@ export default function registerRoleTools(server: McpServer): void {
       description: `List the fixed catalog of permission codes roles can be granted. ${PERMISSION_NOTE}`,
       inputSchema: {},
     },
-    async (_args, extra) => fromApiResult(await apiClient.request(requireSessionId(extra), "/roles/permissions")),
+    async (_args, extra) => fromApiResult(await apiClient.request(requireAuthToken(extra), "/roles/permissions")),
   );
 
   server.registerTool(
@@ -27,7 +27,7 @@ export default function registerRoleTools(server: McpServer): void {
       },
     },
     async ({ skip, limit }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/roles${buildQuery({ skip, limit })}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/roles${buildQuery({ skip, limit })}`)),
   );
 
   server.registerTool(
@@ -38,7 +38,7 @@ export default function registerRoleTools(server: McpServer): void {
       inputSchema: { roleId: z.string().describe("The role's ID") },
     },
     async ({ roleId }, extra) =>
-      fromApiResult(await apiClient.request(requireSessionId(extra), `/roles/${encodeURIComponent(roleId)}`)),
+      fromApiResult(await apiClient.request(requireAuthToken(extra), `/roles/${encodeURIComponent(roleId)}`)),
   );
 
   server.registerTool(
@@ -53,7 +53,7 @@ export default function registerRoleTools(server: McpServer): void {
     },
     async ({ name, permissionCodes }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), "/roles", {
+        await apiClient.request(requireAuthToken(extra), "/roles", {
           method: "POST",
           body: { name, permissionCodes },
         }),
@@ -73,7 +73,7 @@ export default function registerRoleTools(server: McpServer): void {
     },
     async ({ roleId, name, permissionCodes }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/roles/${encodeURIComponent(roleId)}`, {
+        await apiClient.request(requireAuthToken(extra), `/roles/${encodeURIComponent(roleId)}`, {
           method: "PUT",
           body: { name, permissionCodes },
         }),
@@ -89,7 +89,7 @@ export default function registerRoleTools(server: McpServer): void {
     },
     async ({ roleId }, extra) =>
       fromApiResult(
-        await apiClient.request(requireSessionId(extra), `/roles/${encodeURIComponent(roleId)}`, { method: "DELETE" }),
+        await apiClient.request(requireAuthToken(extra), `/roles/${encodeURIComponent(roleId)}`, { method: "DELETE" }),
       ),
   );
 }

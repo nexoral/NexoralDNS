@@ -7,15 +7,17 @@ export function textResult(text: string, isError = false): CallToolResult {
 }
 
 /**
- * The Streamable HTTP transport is configured in stateful mode (see index.ts),
- * so every request handled after initialization carries a session ID —
- * its absence indicates a transport misconfiguration, not user input.
+ * The OAuth access token for this call, put there by the bearer middleware in
+ * index.ts after `server/` verified it. Every authenticated tool goes through
+ * here, so no tool ever handles credentials itself — its absence indicates the
+ * middleware was bypassed, not user input.
  */
-export function requireSessionId(extra: RequestHandlerExtra<ServerRequest, ServerNotification>): string {
-  if (!extra.sessionId) {
-    throw new Error("MCP session ID missing — transport is not running in stateful mode");
+export function requireAuthToken(extra: RequestHandlerExtra<ServerRequest, ServerNotification>): string {
+  const token = extra.authInfo?.token;
+  if (!token) {
+    throw new Error("Access token missing — the MCP endpoint is not behind bearer auth");
   }
-  return extra.sessionId;
+  return token;
 }
 
 /** Converts a REST `ApiResult` into an MCP tool result, uniformly for every tool. */

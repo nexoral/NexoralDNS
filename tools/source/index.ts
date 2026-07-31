@@ -1,15 +1,21 @@
-import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { networkInterfaces } from "node:os";
+import express, { NextFunction, Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { ToolsKeys, MCP_SERVER_INFO } from "./core/key";
+import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
+import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import { LOGIN_PATH, MCP_PATH, MCP_PUBLIC_URL, MCP_SERVER_INFO, ToolsKeys } from "./core/key";
+import oauthProvider from "./auth/NexoralOAuthProvider";
+import renderLoginPage from "./auth/loginPage";
 import registerAllTools from "./tools/index";
 import logger from "./utilities/logger";
 
-const MCP_PATH = "/mcp";
 const transports = new Map<string, StreamableHTTPServerTransport>();
+
+const RESOURCE_URL = new URL(`${MCP_PUBLIC_URL}${MCP_PATH}`);
+const RESOURCE_METADATA_URL = `${MCP_PUBLIC_URL}/.well-known/oauth-protected-resource${MCP_PATH}`;
 
 /**
  * Host header allowlist for this machine, computed once at startup — this is
@@ -17,7 +23,7 @@ const transports = new Map<string, StreamableHTTPServerTransport>();
  * external middleware rather than via its (deprecated) built-in options.
  */
 function discoverAllowedHosts(port: number): Set<string> {
-  const hosts = new Set<string>([`localhost:${port}`, `127.0.0.1:${port}`]);
+  const hosts = new Set<string>([`localhost:${port}`, `127.0.0.1:${port}`, new URL(MCP_PUBLIC_URL).host]);
   for (const addresses of Object.values(networkInterfaces())) {
     for (const address of addresses ?? []) {
       if (address.family === "IPv4" && !address.internal) {
@@ -30,18 +36,13 @@ function discoverAllowedHosts(port: number): Set<string> {
 
 const allowedHosts = discoverAllowedHosts(ToolsKeys.PORT);
 
-function isAllowedHost(req: IncomingMessage): boolean {
-  const host = req.headers.host;
-  return !!host && allowedHosts.has(host);
-}
-
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    chunks.push(chunk as Buffer);
+function hostGuard(req: Request, res: Response, next: NextFunction): void {
+  if (req.headers.host && allowedHosts.has(req.headers.host)) {
+    next();
+    return;
   }
-  if (chunks.length === 0) return undefined;
-  return JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+  logger.warn(`[MCP] rejected request: unrecognized Host header "${req.headers.host}"`);
+  res.status(421).type("text/plain").send("Misdirected Request: unrecognized Host header");
 }
 
 function buildMcpServer(): McpServer {
@@ -50,10 +51,8 @@ function buildMcpServer(): McpServer {
   return server;
 }
 
-function sendJsonRpcError(res: ServerResponse, status: number, message: string): void {
-  res.writeHead(status, { "Content-Type": "application/json" }).end(
-    JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message }, id: null }),
-  );
+function sendJsonRpcError(res: Response, status: number, message: string): void {
+  res.status(status).json({ jsonrpc: "2.0", error: { code: -32000, message }, id: null });
 }
 
 /** Never log raw credentials — blanks any argument key that looks password-like. */
@@ -76,12 +75,12 @@ function describeJsonRpcBody(body: unknown): { summary: string; toolArgs?: unkno
   return { summary: method ?? "(unknown method)" };
 }
 
-async function handleMcpRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleMcpRequest(req: Request, res: Response): Promise<void> {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  const body = req.method === "POST" ? (req.body as unknown) : undefined;
 
   if (sessionId && transports.has(sessionId)) {
     const transport = transports.get(sessionId) as StreamableHTTPServerTransport;
-    const body = req.method === "POST" ? await readJsonBody(req) : undefined;
 
     if (req.method === "POST") {
       const { summary, toolArgs } = describeJsonRpcBody(body);
@@ -94,56 +93,92 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse): Prom
     return;
   }
 
-  if (req.method === "POST") {
-    const body = await readJsonBody(req);
-    if (!sessionId && isInitializeRequest(body)) {
-      let transport: StreamableHTTPServerTransport;
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (id) => {
-          transports.set(id, transport);
-          logger.info(`[MCP] session ${id} initialized`);
-        },
-      });
-      transport.onclose = () => {
-        if (transport.sessionId) {
-          transports.delete(transport.sessionId);
-          logger.info(`[MCP] session ${transport.sessionId} closed`);
-        }
-      };
+  if (req.method === "POST" && !sessionId && isInitializeRequest(body)) {
+    let transport: StreamableHTTPServerTransport;
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (id) => {
+        transports.set(id, transport);
+        logger.info(`[MCP] session ${id} initialized`);
+      },
+    });
+    transport.onclose = () => {
+      if (transport.sessionId) {
+        transports.delete(transport.sessionId);
+        logger.info(`[MCP] session ${transport.sessionId} closed`);
+      }
+    };
 
-      const server = buildMcpServer();
-      await server.connect(transport);
-      await transport.handleRequest(req, res, body);
-      return;
-    }
+    const server = buildMcpServer();
+    await server.connect(transport);
+    await transport.handleRequest(req, res, body);
+    return;
   }
 
   logger.warn(`[MCP] rejected request: no valid session ID (method=${req.method})`);
   sendJsonRpcError(res, 400, "Bad Request: No valid session ID provided");
 }
 
-const httpServer = createServer((req, res) => {
-  if (req.url !== MCP_PATH) {
-    res.writeHead(404).end();
-    return;
-  }
-  if (!isAllowedHost(req)) {
-    logger.warn(`[MCP] rejected request: unrecognized Host header "${req.headers.host}"`);
-    res.writeHead(421, { "Content-Type": "text/plain" }).end("Misdirected Request: unrecognized Host header");
-    return;
-  }
+const app = express();
+app.use(hostGuard);
 
-  handleMcpRequest(req, res).catch((error: unknown) => {
-    logger.error("[MCP] request failed", error);
-    if (!res.headersSent) {
-      sendJsonRpcError(res, 500, "Internal server error");
-    }
-  });
+// Mounts /authorize, /token, /register, /revoke and both discovery documents.
+app.use(
+  mcpAuthRouter({
+    provider: oauthProvider,
+    issuerUrl: new URL(MCP_PUBLIC_URL),
+    resourceServerUrl: RESOURCE_URL,
+    resourceName: "NexoralDNS",
+  }),
+);
+
+app.get(LOGIN_PATH, (req, res) => {
+  const requestId = String(req.query.request ?? "");
+  const clientName = oauthProvider.clientNameFor(requestId);
+  if (!clientName) {
+    res.status(400).type("text/plain").send("This login request has expired — start again from your MCP client.");
+    return;
+  }
+  res.type("html").send(renderLoginPage(requestId, clientName));
 });
 
-httpServer.listen(ToolsKeys.PORT, ToolsKeys.HOST, () => {
-  logger.info(`NexoralDNS MCP tool server listening on http://${ToolsKeys.HOST}:${ToolsKeys.PORT}${MCP_PATH}`);
+app.post(LOGIN_PATH, express.urlencoded({ extended: false }), (req, res, next) => {
+  const { request, username, password } = req.body as Record<string, string | undefined>;
+  const requestId = String(request ?? "");
+
+  oauthProvider
+    .completeLogin(requestId, String(username ?? ""), String(password ?? ""))
+    .then((result) => {
+      if ("redirectTo" in result) {
+        res.redirect(result.redirectTo);
+        return;
+      }
+      const clientName = oauthProvider.clientNameFor(requestId);
+      if (!clientName) {
+        res.status(400).type("text/plain").send(result.error);
+        return;
+      }
+      res.status(401).type("html").send(renderLoginPage(requestId, clientName, result.error));
+    })
+    .catch(next);
+});
+
+app.all(
+  MCP_PATH,
+  requireBearerAuth({ verifier: oauthProvider, resourceMetadataUrl: RESOURCE_METADATA_URL }),
+  express.json(),
+  (req, res) => {
+    handleMcpRequest(req, res).catch((error: unknown) => {
+      logger.error("[MCP] request failed", error);
+      if (!res.headersSent) {
+        sendJsonRpcError(res, 500, "Internal server error");
+      }
+    });
+  },
+);
+
+const httpServer = app.listen(ToolsKeys.PORT, ToolsKeys.HOST, () => {
+  logger.info(`NexoralDNS MCP tool server listening on ${MCP_PUBLIC_URL}${MCP_PATH}`);
 });
 
 function shutdown(): void {
