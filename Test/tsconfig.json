@@ -18,9 +18,6 @@
       "vitest/globals"
     ],
     "paths": {
-      "@web/*": [
-        "../Web/src/*"
-      ],
       "@tools/*": [
         "../tools/*"
       ],

@@ -4,11 +4,38 @@ import logger from '../utilities/logger';
 import { RabbitMQConnectionManager } from './RabbitMQConnectionManager';
 import { RabbitMQQueueManager } from './RabbitMQQueueManager';
 
+// How long to wait before rebuilding a consumer whose channel closed.
+const REATTACH_DELAY_MS = 5000;
+
 export class RabbitMQConsumer {
   constructor(
     private connectionManager: RabbitMQConnectionManager,
     private queueManager: RabbitMQQueueManager
   ) {}
+
+  /**
+   * Rebuilds a consumer after its channel closes.
+   *
+   * A consumer on a dead channel stops receiving silently — the queue simply
+   * grows with nobody watching. Reconnecting the underlying connection is not
+   * enough, because the consumer was registered against the old channel.
+   */
+  private reattachOnClose(channel: Channel, queue: string, restart: () => Promise<void>): void {
+    channel.once('close', () => {
+      logger.warn(`🔴 Consumer channel closed for queue: ${queue} — reattaching in ${REATTACH_DELAY_MS / 1000}s`);
+      setTimeout(() => {
+        restart().catch((error) => {
+          logger.error(`❌ Failed to reattach consumer for queue ${queue}:`, error as any);
+        });
+      }, REATTACH_DELAY_MS);
+    });
+
+    // Without a listener amqplib emits an unhandled 'error' event, which takes
+    // the whole process down on a channel-level failure.
+    channel.on('error', (error) => {
+      logger.error(`❌ Consumer channel error for queue ${queue}:`, error as any);
+    });
+  }
 
   async consume(
     queue: string,
@@ -19,10 +46,14 @@ export class RabbitMQConsumer {
     }
   ): Promise<void> {
     try {
-      const channel = await this.connectionManager.connect();
       await this.queueManager.ensureQueue(queue);
 
+      // Own channel: prefetch is per-channel, so sharing one lets consumers
+      // silently overwrite each other's limit.
+      const channel = await this.connectionManager.createChannel();
       await channel.prefetch(options?.prefetch ?? 1);
+
+      this.reattachOnClose(channel, queue, () => this.consume(queue, callback, options));
 
       logger.info(`🔵 Started consuming from queue: ${queue}`);
 
@@ -106,10 +137,17 @@ export class RabbitMQConsumer {
     };
 
     try {
-      const channel = await this.connectionManager.connect();
       await this.queueManager.ensureQueue(queue);
 
+      // Own channel, and the prefetch must be at least the batch size: with a
+      // smaller one the batch can never fill, so every flush waits out the full
+      // batchTimeout and throughput collapses to batchSize/batchTimeout.
+      const channel = await this.connectionManager.createChannel();
       await channel.prefetch(batchSize);
+
+      this.reattachOnClose(channel, queue, () =>
+        this.consumeBatch(queue, batchCallback, options)
+      );
 
       logger.info(`🔵 Started batch consumer for queue: ${queue} (batch size: ${batchSize})`);
 

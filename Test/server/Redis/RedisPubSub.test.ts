@@ -79,7 +79,7 @@ describe('RedisPubSub.subscribe', () => {
   it('rethrows and resets the subscriber client when connect() fails', async () => {
     // Canonical behavior: unlike Redis.cache.ts's other error paths, a failed
     // subscribe surfaces loudly instead of being swallowed — the caller (e.g.
-    // Rules.service.ts's cache:invalidate listener) depends on this
+    // Web/'s cache:invalidate listener, now Go) depends on this
     // subscription for correctness, so a silent failure would be worse than a
     // startup crash.
     const subscriberClient = createFakeRedisClient();

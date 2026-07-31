@@ -123,7 +123,7 @@ export default async function Home() {
               <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>&lt;2ms</b> cached response</span>
               <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>7-layer</b> query engine</span>
               <span><b style={{ color: '#cdd9e8', fontWeight: 600 }}>100%</b> self-hosted</span>
-              <span><b style={{ color: '#f6b352', fontWeight: 600 }}>8,050 QPS</b> load tested</span>
+              <span><b style={{ color: '#f6b352', fontWeight: 600 }}>12,746 QPS</b> load tested</span>
             </div>
           </div>
 
@@ -360,22 +360,22 @@ export default async function Home() {
               <span style={{
                 fontSize: 11, fontWeight: 700, letterSpacing: '.08em', padding: '2px 9px', borderRadius: 999,
                 background: 'rgba(61,220,132,.14)', border: '1px solid rgba(61,220,132,.28)', color: '#74e6a4',
-              }}>Node.js DNS Server</span>
+              }}>Go DNS Server</span>
             </div>
             <div className="qps-stat" style={{ fontSize: 88, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1, background: 'linear-gradient(135deg,#f6b352,#ffd580)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-              8,050
+              12,746
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: '#cdd9e8', letterSpacing: '.06em', marginTop: 6 }}>
               queries / second
             </div>
             <div style={{ marginTop: 10, fontSize: 13.5, color: '#7c8aa0' }}>
-              Achieved with a pure <b style={{ color: '#bcc8d8' }}>Node.js</b> DNS server — no C/C++ native bindings, no Rust, no Go.
+              Measured with <b style={{ color: '#bcc8d8' }}>dnsperf</b> against the Go DNS engine — one process, one UDP listener per core share, no external resolver in the path.
             </div>
 
             {/* Sub-stats */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 36, flexWrap: 'wrap' }}>
               {[
-                { label: 'Avg latency', value: '< 2ms', accent: '#3ddc84' },
+                { label: 'Avg latency', value: '3.8ms', accent: '#3ddc84' },
                 { label: 'Cache hit rate', value: '~98%', accent: '#5b8cff' },
                 { label: 'Dropped queries', value: '0', accent: '#34e1d4' },
               ].map((s, i) => (
@@ -405,7 +405,7 @@ export default async function Home() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {['Consumer laptop', 'No RAID / NVMe tuning', 'Cluster mode enabled'].map((tag, i) => (
+              {['Consumer laptop', 'No RAID / NVMe tuning', 'Load generator on the same box'].map((tag, i) => (
                 <span key={i} style={{
                   fontSize: 11.5, padding: '4px 10px', borderRadius: 999,
                   background: 'rgba(130,165,220,.08)', border: '1px solid rgba(130,165,220,.14)',

@@ -50,16 +50,16 @@ NexoralDNS is a LAN-only DNS server and management system with:
                                │
               ┌────────────────┼────────────────┐
               ▼                ▼                ▼
-      DNS.Service.ts   DNS_TCP.Service.ts  DNS_DoT.Service.ts
-      (dgram/UDP)      (net.Server)        (tls.Server)
+      server/udp.go    server/tcp.go       server/dot.go     
+      (N×SO_REUSEPORT) (net.Listener)      (tls.Listener)
               │                │                │
               └────────────────┼────────────────┘
                                ▼
               All three transports parse via the same
-              IDNSIOHandler interface and dispatch into:
+              dnsio.Handler interface and dispatch into:
 ┌─────────────────────────────────────────────────────────────────────┐
-│              StartRulesService.execute() — Rules.service.ts          │
-│                  (identical logic regardless of transport)           │
+│              StartRules.Execute() — internal/rules/rules.go          │
+│                  (one shared instance, identical per transport)      │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
         ┌──────────────────────┼──────────────────────┐
@@ -141,7 +141,7 @@ NexoralDNS is a LAN-only DNS server and management system with:
                                           └─────────────────────┘
 ```
 
-**Fail-safe behavior**: if MongoDB is unreachable at any point in checks 1-3, the pipeline sets a `databaseOffline` flag and bypasses service-status/ACL enforcement rather than hard-failing — queries still resolve (via cache or upstream forward) with reduced policy enforcement, on the reasoning that a LAN losing all DNS resolution is worse than temporarily bypassing blocklists. See `Rules.service.ts`.
+**Fail-safe behavior**: if MongoDB is unreachable at any point in checks 1-3, the pipeline sets a `databaseOffline` flag and bypasses service-status/ACL enforcement rather than hard-failing — queries still resolve (via cache or upstream forward) with reduced policy enforcement, on the reasoning that a LAN losing all DNS resolution is worse than temporarily bypassing blocklists. See `Web/internal/rules/rules.go`.
 
 ---
 
@@ -159,22 +159,22 @@ NexoralDNS is a LAN-only DNS server and management system with:
                │ HTTP/REST                              │ UDP:53 / TCP:53 / DoT:853
                ▼                                        ▼
 ┌──────────────────────────────────┐   ┌───────────────────────────────────────┐
-│   server/ — Fastify API           │   │   Web/ — Core DNS Engine               │
-│   (port 4773)                     │   │   (cluster.fork() × floor(cpus×0.75)) │
+│   server/ — Fastify API           │   │   Web/ — Core DNS Engine (Go)          │
+│   (port 4773)                     │   │   (1 process, N=cpus×0.75 listeners)  │
 │                                    │   │                                       │
-│  Router → Controller → Service    │   │  DNS.Service.ts (UDP)                 │
-│  layers for: DNS records, users,  │   │  DNS_TCP.Service.ts (TCP)             │
-│  roles, ACL policies, anti-porn/  │   │  DNS_DoT.Service.ts (TLS/853)         │
+│  Router → Controller → Service    │   │  server/udp.go (UDP, reuseport)       │
+│  layers for: DNS records, users,  │   │  server/tcp.go (TCP)                  │
+│  roles, ACL policies, anti-porn/  │   │  server/dot.go (TLS/853)              │
 │  anti-ads mode, domain/IP groups, │   │       │                               │
 │  analytics, health checks         │   │       ▼                               │
-│                                    │   │  Rules.service.ts (StartRulesService) │
-│  Own cluster.fork() pool, own     │   │  ServiceStatusChecker.service.ts      │
-│  MongoClient, own RabbitMQ conn   │   │  BlockList.service.ts                 │
-│  (connection classes now live in  │   │  DB_Pool.service.ts                   │
-│  shared/ — see below)              │   │  GlobalDNSforwarder.service.ts        │
+│                                    │   │  rules/rules.go (StartRules)          │
+│  Own cluster.fork() pool, own     │   │  rules/servicestatus.go               │
+│  MongoClient, own RabbitMQ conn   │   │  rules/blocklist.go                   │
+│  (connection classes now live in  │   │  dbpool/dbpool.go                     │
+│  shared/ — see below)              │   │  forwarder/forwarder.go               │
 └─────────────┬──────────────────────┘   │                                       │
-              │                          │  Own cluster.fork() pool, own        │
-              │                          │  MongoClient, own RabbitMQ conn      │
+              │                          │  Goroutine-per-query, one            │
+              │                          │  shared Mongo + RabbitMQ pool        │
               │                          └───────────────┬───────────────────────┘
               │                                          │
               └──────────────────┬───────────────────────┘
@@ -258,7 +258,8 @@ server/source/
     ├── BatchAnalytics.cron.ts       # Consumes DNS_Analytics queue → analytics collection
     └── LogsExportWorker.cron.ts     # Consumes LOGS_EXPORT queue
 
-shared/source/                        # `nexoraldns-shared` — file: dependency of both Web/ and server/
+shared/source/                        # `nexoraldns-shared` — file: dependency of server/ and DHCP/
+                                      # (Web/ carries its own Go port under Web/shared/)
 ├── RabbitMQ/                        # RabbitMQConnectionManager, QueueManager, Publisher, Consumer, Rabbitmq.config
 ├── Redis/                           # RedisConnectionManager, RedisCacheStore, RedisPubSub, CacheKeys.cache
 ├── Database/MongoConnectionManager.ts  # CPU-scaled maxPoolSize, connectionLogged guard
@@ -273,25 +274,25 @@ shared/source/                        # `nexoraldns-shared` — file: dependency
 
 | Service | File | Responsibility |
 |---|---|---|
-| `StartRulesService` | `Web/internal/rules/rules.go` | The single query-processing entrypoint shared by all three transports. Owns the 4-check pipeline, single-flight dedup (`inflight` Map, scoped **per instance** — UDP/TCP/DoT each construct their own `StartRulesService`, so dedup does not cross transports), and the `cache:invalidate` Redis subscription (guarded to register once per process via a static flag) |
+| `StartRules` | `Web/internal/rules/rules.go` | The single query-processing entrypoint shared by all three transports. Owns the 4-check pipeline, single-flight dedup (`singleflight.Group` — one instance is wired in `app.New()` and shared by UDP/TCP/DoT, so dedup **does** cross transports), and the `cache:invalidate` Redis subscription (registered once from `app.Start()`) |
 | `ServiceStatusChecker` | `.../Start/ServiceStatusChecker.service.ts` | Redis-cached service on/off switch, MongoDB `service` collection fallback |
 | `BlockList` | `.../Rules/BlockList.service.ts` | ACL check with 3 cache layers (local `Map` 5s → static global `Map` 3s → Redis `acl:ip:*`/`acl:all_users` sets), wildcard domain matching, fail-open on error |
 | `DomainDBPoolService` | `.../DB/DB_Pool.service.ts` | Resolves a domain to its record, walking CNAME chains up to 10 hops via sequential MongoDB `findOne` calls (each hop depends on the previous — cannot be parallelized) |
 | `GlobalDNSforwarder` | `.../Forwarder/GlobalDNSforwarder.service.ts` | Forwards each query on its own dedicated, short-lived UDP socket (not a shared singleton) to a shuffled 6-IP pool (Cloudflare/Google/Quad9 unfiltered), 2s per-server timeout with fallthrough. Concurrency capped at 256 in-flight forwards via a counting semaphore (`acquireForwardSlot`/`releaseForwardSlot`) — beyond that, requests queue for a slot rather than opening unbounded sockets |
 | `RedisCacheService` | `Web/internal/cache/cache.go` | Singleton Redis client: generic CRUD, pub/sub (cache invalidation), ACL-specific reads (`getBlockedDomainsForIP`, `isDomainBlocked`) |
 | `RabbitMQService` | `shared/source/RabbitMQ/Rabbitmq.config.ts` (single copy, consumed by both `Web/` and `server/` via `nexoraldns-shared`) | Singleton AMQP client. Queue declarations are memoized per-process (`ensureQueue`) — asserted once, not on every publish/consume call |
-| `IDNSIOHandler` implementations | `IO.utls.ts` (UDP), `TCPInputOutputHandler.ts` (TCP/TLS) | Pure DNS packet parsing/building shared by all handlers; TCP/TLS variant delegates parsing to the UDP one and only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
+| `dnsio.Handler` implementations | `dnsio/udp.go` (UDP), `dnsio/tcp.go` (TCP/TLS) | Both embed the same parsing helpers from `dnsmsg/codec.go`; the stream variant only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
 
 ---
 
 ## Cluster & Concurrency Model
 
-- Both `Web/` and `server/` independently run `cluster.fork()` with `Math.max(1, Math.floor(os.cpus().length * 0.75))` workers and `cluster.schedulingPolicy = cluster.SCHED_RR` for round-robin distribution of incoming connections/datagrams across workers.
+- `server/` runs `cluster.fork()` with `Math.max(1, Math.floor(os.cpus().length * 0.75))` workers and `cluster.schedulingPolicy = cluster.SCHED_RR`. `Web/` reaches the same parallelism inside a single Go process: it opens that same number of UDP listeners on port 53 with `SO_REUSEPORT` so the kernel spreads datagrams across them, drains each on its own goroutine, and handles every query on a goroutine of its own.
 - **MongoDB connection pooling is CPU-scaled**, not left at the driver default. Both `mongodb.db.ts` files compute `maxPoolSize` per worker as `clamp(200 / totalUsableCpus, 20, 50)` — a floor of 20 (so a single busy worker always has headroom) and a ceiling of 50 (since DNS/API lookups are single fast document reads, not bulk operations), targeting roughly 200 aggregate connections across the whole cluster rather than `workers × 100` (the driver default) with no coordination.
 - **The inbound query socket's UDP buffer is explicitly enlarged** (4MB requested via `setRecvBufferSize`/`setSendBufferSize` in `DNS.Service.ts`), applied only after the socket is confirmed bound (`"listening"` event) — calling these setters on an unbound socket throws. The actual granted size is logged, since the OS caps the request at `net.core.rmem_max`/`wmem_max` regardless of what's asked for; on a stock Linux host with default sysctls (`rmem_max` = `rmem_default` = 212992 bytes), the code-level request is silently clamped back to the default unless that ceiling is separately raised.
 - The Docker deployment raises that ceiling automatically: `Scripts/docker-entrypoint.sh` writes to `/proc/sys/net/core/rmem_max`/`wmem_max` at container start (works because the `nexoraldns` service runs `privileged: true` + `network_mode: host` in `docker-compose.yml`/`dev.compose.yaml`, so there's no isolated network namespace — the write lands on the real host value). **The bare-metal `Scripts/install.sh` path does not yet do this** — see Known Gaps.
 - **Outbound upstream forwarding uses a dedicated socket per query, not one shared socket, and does not do buffer tuning** — a real production issue (frequent "no response from any DNS server" failures across unrelated domains) traced back to many concurrent queries sharing one forwarder socket: a direct test sending 20 queries through one shared socket at once dropped 19 of them; giving each query its own socket resolved 20/20, repeatably. Since buffer size wasn't the bottleneck (verified: the same loss occurred even with `rmem_max` already raised to 4MB), the fix was architectural, not a tuning knob. This also let the transaction-ID-rewriting/pending-request map the old shared-socket design needed be removed entirely — a dedicated socket has no other query to disambiguate a response from. Concurrent socket creation is capped at 256 in-flight forwards (`MAX_CONCURRENT_FORWARDS`) to bound file-descriptor usage under extreme concurrency; requests beyond the cap queue for a freed slot, trading added latency for staying alive over crashing outright.
-- **Single-flight deduplication** prevents duplicate concurrent MongoDB lookups for the same domain, but is scoped to one `StartRulesService` instance — since UDP/TCP/DoT each construct their own instance, and the IP-rebind path also constructs a fresh instance — a cold domain queried simultaneously across transports or immediately after a rebind is not deduplicated against those other instances.
+- **Single-flight deduplication** prevents duplicate concurrent MongoDB lookups for the same domain. One `StartRules` instance is shared by all three transports and survives an IP rebind, so a cold domain queried simultaneously over UDP, TCP and DoT collapses into a single database read.
 - **RabbitMQ queue declarations are memoized** per process via an `assertedQueues: Set<string>` guard in a shared `ensureQueue()` helper — every `publish`/`consume`/`publishBatch`/`consumeBatch`/`getQueueMessageCount` call site routes through it, so a queue is declared once per process lifetime rather than on every message (a queue is a durable, broker-side object that survives channel/connection drops, so re-declaring it per-message was pure overhead).
 
 ---
@@ -309,7 +310,7 @@ Both `Web/` and `server/` connect to the same MongoDB database (`nexoral_db` by 
 {
   _id: ObjectId,
   name: string,               // domain name, exact-match lookup key
-  type: "A" | "CNAME" | ...,  // CNAME triggers chain resolution in DB_Pool.service.ts
+  type: "A" | "CNAME" | ...,  // CNAME triggers chain resolution in dbpool/dbpool.go  
   value: string,               // IP for A records, target domain for CNAME
   ttl: number,
   domainId: ObjectId
@@ -394,7 +395,7 @@ enum QueueKeys {
 
 **Record cache**: `${Domain_DNS_Record}:${queryName}` → the resolved record JSON, TTL = the record's own `ttl` field. Set both on a fresh MongoDB resolution and on a successful upstream forward.
 
-**Cache invalidation**: pub/sub on the `cache:invalidate` channel (not a polling/expiry-only model) — on receipt, `BlockList.clearAllCaches()` clears both in-process Map caches and the `Service_Status` Redis key is deleted, forcing the next query to re-read from MongoDB. The subscription is registered once per process (guarded by a static flag on `StartRulesService`), regardless of how many transport listeners construct their own instance.
+**Cache invalidation**: pub/sub on the `cache:invalidate` channel (not a polling/expiry-only model) — on receipt, `BlockList.ClearCaches()` clears the in-process verdict cache, `ServiceStatusChecker.ClearMemo()` drops the 5s service-status memo, and the `Service_Status` Redis key is deleted, forcing the next query to re-read from MongoDB. The subscription is registered once from `app.Start()`.
 
 ---
 
@@ -568,16 +569,25 @@ These are **targets the design aims for, not numbers verified by a load test** �
 | MongoDB lookup (cache miss) | **<5ms** | Single-flight-deduped `findOne`, sequential per CNAME hop (1 hop = 1 round trip; a 10-hop chain is ~10x a direct hit) |
 | Upstream forward | **<50ms** | 2s timeout per upstream server, automatic fallthrough across a shuffled 6-IP/3-provider pool (worst case 12s if all 6 fail), on a dedicated per-query socket |
 
-A rough capacity model derived from reading the code (not a benchmark — see [Testing](#testing)): aggregate steady-state throughput scales with cluster width and available hardware, roughly **hundreds of QPS on Raspberry Pi-class hardware up to tens of thousands of QPS on dedicated multi-core servers**, with MongoDB (not the Node event loop or Redis) becoming the bottleneck under sustained cache-miss-heavy load. Domain concentration (how many clients share the same popular domains vs. each hitting unique long-tail ones) matters more than raw device count, since the Redis record cache benefits *all* clients querying a given domain within its TTL window, not just the client that populated it.
+Measured with `dnsperf` against `Test/dnsperf.txt` (49 domains, warm cache) on an AMD Ryzen 5 5500U laptop — 6 cores / 12 threads — with MongoDB, Redis, RabbitMQ **and the load generator itself** running on the same machine:
+
+| Load shape | QPS | Avg latency | Lost |
+|---|---|---|---|
+| 5 clients, 50 in flight | **12,746** | 3.8 ms | 0 |
+| 8 threads, 2000 in flight | 10,396 | 189 ms | 95 (0.03%) |
+
+The gentler run is both faster and far lower latency: at 2000 in flight the load generator competes with the server for the same cores, and the deep queue adds wait time that Little's Law predicts almost exactly (2000 ÷ 10,396 ≈ 192 ms). Saturation numbers measure the queue, not the server.
+
+Scaling beyond this is bounded by hardware and by domain concentration, with MongoDB (not the DNS engine or Redis) becoming the bottleneck under sustained cache-miss-heavy load. Domain concentration (how many clients share the same popular domains vs. each hitting unique long-tail ones) matters more than raw device count, since the Redis record cache benefits *all* clients querying a given domain within its TTL window, not just the client that populated it.
 
 ---
 
 ## Operational Resilience
 
-- **Fail-safe on DB outage**: `Rules.service.ts` catches MongoDB errors at the service-status and ACL-check stages and sets `databaseOffline = true`, bypassing policy enforcement rather than returning SERVFAIL — the query still resolves via cache or upstream forward.
+- **Fail-safe on DB outage**: `internal/rules/rules.go` catches MongoDB errors at the service-status and ACL-check stages and sets `databaseOffline = true`, bypassing policy enforcement rather than returning SERVFAIL — the query still resolves via cache or upstream forward.
 - **Fail-open on ACL errors**: `BlockList.checkDomain` and `RedisCache.isDomainBlocked` both return `false` (allow) on internal errors rather than blocking all traffic.
 - **Multi-provider upstream forwarding**: 3 providers, 6 IPs (Cloudflare, Google, Quad9 unfiltered), shuffled per query, 2s per-server timeout with automatic fallthrough to the next provider on timeout or send failure — each query on its own dedicated socket, so one slow/failing query can't affect another's attempts.
-- **Automatic LAN IP rebinding**: `AutoIP_SCAN.utls.ts` polls the local IP every 10s (`Retry.Seconds`) and rebinds the UDP socket if it changes (e.g., DHCP lease renewal on the host itself), re-attaching all listeners and reconstructing `StartRulesService` to avoid stale-socket errors on in-flight queries.
+- **Automatic LAN IP rebinding**: `internal/netutil/ipscan.go` polls the local IP every 10s and rebinds the UDP listeners if it changes (e.g., DHCP lease renewal on the host itself); a failed rebind is retried on the next tick. TCP:53 and DoT:853 bind once at startup and do **not** follow an address change.
 - **Self-signed DoT certificates**: auto-generated via `openssl` on first startup if absent, persisted to `/etc/nexoral/cert` (configurable via `DOT_CERT_DIR`) so the same cert survives restarts.
 
 ---
@@ -675,7 +685,7 @@ Both paths run five PM2-managed processes per `ecosystem.config.js`: `server` (F
 Roughly in priority order based on what's actually been found gap-hunting this codebase, not a wishlist:
 
 1. ~~Extract shared Mongo/RabbitMQ connection code~~ **Done** — see `shared/` in Directory Structure and item 3 in [Known Gaps](#known-gaps--non-goals). Also folded Redis's connection/cache-store/pub-sub/cache-keys layer into the same package while at it.
-2. **Add a test suite** — unit tests for `Rules.service.ts`'s 4-check pipeline, `BlockList.service.ts`'s wildcard matching, `DB_Pool.service.ts`'s CNAME chain resolution and circular-reference detection
+2. **Add a test suite for `Web/`** — Go tests for `rules/rules.go`'s 4-check pipeline, `cache/acl.go`'s wildcard matching, and `dbpool/dbpool.go`'s CNAME chain resolution and circular-reference detection. Start with `dnsmsg/codec.go`: its bounds checks replace behaviour JavaScript got from `try/catch`, so a mistake there panics the server on a malformed packet
 3. **Real load testing** via `dnsperf` against representative target hardware to replace estimated capacity numbers with measured ones
 4. **Real-time metrics** (Prometheus/Grafana or similar) for p50/p95/p99 query latency, cache hit rate, and per-layer timing — currently only available after-the-fact via the `analytics` collection
 5. **Bare-metal UDP buffer parity** — add the equivalent of `Scripts/docker-entrypoint.sh`'s sysctl tuning to `Scripts/install.sh`
