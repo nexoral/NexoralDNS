@@ -19,7 +19,13 @@ const (
 // to 127.0.0.1 if the host has none.
 func LocalIP(preferred string) string {
 	byInterface, order := ipv4Addresses()
+	return pickIP(byInterface, order, preferred)
+}
 
+// pickIP applies the interface preference to an already-gathered address set.
+// Split out from LocalIP so the selection rules can be exercised against a fixed
+// set of interfaces rather than whatever the host happens to have.
+func pickIP(byInterface map[string][]string, order []string, preferred string) string {
 	switch preferred {
 	case PreferWiFi:
 		if ip := firstMatching(byInterface, order, "wlan", "wi-fi"); ip != "" {

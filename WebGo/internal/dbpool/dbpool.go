@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"nexoraldns/webgo/internal/config"
 	"nexoraldns/webgo/internal/database"
@@ -36,13 +35,13 @@ type cacheEntry struct {
 // Service walks the dns_records collection. Its hop cache is shared by every
 // query goroutine, so it is guarded for concurrent use.
 type Service struct {
-	collections *database.CollectionManager
+	collections database.CollectionSource
 
 	mu       sync.RWMutex
 	hopCache map[string]cacheEntry
 }
 
-func NewService(collections *database.CollectionManager) *Service {
+func NewService(collections database.CollectionSource) *Service {
 	return &Service{collections: collections, hopCache: map[string]cacheEntry{}}
 }
 
@@ -83,7 +82,7 @@ func (s *Service) Resolve(ctx context.Context, domainName string) (*dnsmsg.Recor
 	return nil, fmt.Errorf("maximum CNAME depth exceeded for %s", domainName)
 }
 
-func (s *Service) lookupHop(ctx context.Context, collection *mongo.Collection, name string) (*dnsmsg.Record, error) {
+func (s *Service) lookupHop(ctx context.Context, collection database.DocFinder, name string) (*dnsmsg.Record, error) {
 	s.mu.RLock()
 	cached, found := s.hopCache[name]
 	s.mu.RUnlock()
@@ -96,8 +95,8 @@ func (s *Service) lookupHop(ctx context.Context, collection *mongo.Collection, n
 	}
 
 	var record dnsmsg.Record
-	err := collection.FindOne(ctx, bson.M{"name": name}).Decode(&record)
-	if errors.Is(err, mongo.ErrNoDocuments) {
+	err := collection.FindOne(ctx, bson.M{"name": name}, &record)
+	if errors.Is(err, database.ErrNoDocuments) {
 		return nil, nil
 	}
 	if err != nil {

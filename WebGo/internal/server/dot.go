@@ -46,7 +46,7 @@ func (d *DoT) Start(ctx context.Context) error {
 	})
 
 	logger.Info(fmt.Sprintf("DNS DoT server running at tls://%s:%d", ip, DoTPort))
-	go acceptLoop(ctx, d.listener, d.rules, "DoT")
+	go acceptLoop(ctx, d.listener, d.rules.Execute, "DoT")
 	return nil
 }
 

@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"nexoraldns/webgo/internal/cache"
 	"nexoraldns/webgo/internal/dnsio"
 	"nexoraldns/webgo/internal/dnsmsg"
 	"nexoraldns/webgo/shared/keys"
@@ -45,13 +44,24 @@ const (
 	upstreamTimeout = 2 * time.Second
 )
 
+// RecordCache stores resolved answers. *cache.Service is the real implementation.
+type RecordCache interface {
+	Set(ctx context.Context, key string, value any, ttl uint32)
+}
+
+// AnalyticsPublisher reports query telemetry. *rabbitmq.Service is the real
+// implementation.
+type AnalyticsPublisher interface {
+	Publish(ctx context.Context, queue string, message any, opts *rabbitmq.PublishOptions) bool
+}
+
 // Service forwards queries to upstream DNS servers over a pre-allocated socket
 // pool, skipping servers whose circuit breaker is open.
 type Service struct {
 	pool     *socketPool
 	breakers map[string]*circuitBreaker
-	cache    *cache.Service
-	rabbit   *rabbitmq.Service
+	cache    RecordCache
+	rabbit   AnalyticsPublisher
 
 	attempted atomic.Uint64
 	succeeded atomic.Uint64
@@ -59,7 +69,7 @@ type Service struct {
 	debug bool
 }
 
-func NewService(cacheService *cache.Service, rabbit *rabbitmq.Service) (*Service, error) {
+func NewService(cacheService RecordCache, rabbit AnalyticsPublisher) (*Service, error) {
 	pool, err := newSocketPool(socketPoolSize)
 	if err != nil {
 		return nil, err

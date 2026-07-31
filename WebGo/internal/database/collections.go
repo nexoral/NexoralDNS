@@ -55,12 +55,39 @@ func (c *CollectionManager) Initialize(ctx context.Context) error {
 	return nil
 }
 
+// ErrNoDocuments reports that a query matched nothing.
+var ErrNoDocuments = mongo.ErrNoDocuments
+
+// DocFinder is the slice of a collection the query path actually uses.
+//
+// *mongo.Collection is a concrete struct with no interface of its own, so this
+// narrow seam is what lets the resolution logic be exercised without a live
+// database. Collection returns the real implementation; tests supply their own.
+type DocFinder interface {
+	// FindOne decodes the first match into dest, returning ErrNoDocuments when
+	// nothing matched.
+	FindOne(ctx context.Context, filter any, dest any) error
+}
+
+// CollectionSource resolves collections by name. *CollectionManager is the real
+// implementation; tests inject their own.
+type CollectionSource interface {
+	Collection(name string) DocFinder
+}
+
+// mongoFinder adapts *mongo.Collection to DocFinder.
+type mongoFinder struct{ collection *mongo.Collection }
+
+func (m mongoFinder) FindOne(ctx context.Context, filter, dest any) error {
+	return m.collection.FindOne(ctx, filter).Decode(dest)
+}
+
 // Collection returns a handle, or nil when the client is not connected.
-func (c *CollectionManager) Collection(name string) *mongo.Collection {
+func (c *CollectionManager) Collection(name string) DocFinder {
 	db := c.conn.Database()
 	if db == nil {
 		logger.Warn("⚠️ Collection not available: " + name)
 		return nil
 	}
-	return db.Collection(name)
+	return mongoFinder{collection: db.Collection(name)}
 }

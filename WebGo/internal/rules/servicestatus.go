@@ -29,10 +29,10 @@ type ServiceStatusResult struct {
 // switched on, reading from Redis first and MongoDB second.
 type ServiceStatusChecker struct {
 	cache       *cache.Service
-	collections *database.CollectionManager
+	collections database.CollectionSource
 }
 
-func NewServiceStatusChecker(cacheService *cache.Service, collections *database.CollectionManager) *ServiceStatusChecker {
+func NewServiceStatusChecker(cacheService *cache.Service, collections database.CollectionSource) *ServiceStatusChecker {
 	return &ServiceStatusChecker{cache: cacheService, collections: collections}
 }
 
@@ -62,7 +62,7 @@ func (s *ServiceStatusChecker) Check(
 	}
 
 	var serviceConfig map[string]any
-	err := collection.FindOne(ctx, bson.M{"SERVICE_NAME": config.ServiceName}).Decode(&serviceConfig)
+	err := collection.FindOne(ctx, bson.M{"SERVICE_NAME": config.ServiceName}, &serviceConfig)
 	if err != nil || serviceConfig == nil {
 		logger.Error("Service configuration not found in the database.")
 		return ServiceStatusResult{}, ErrServiceConfigMissing

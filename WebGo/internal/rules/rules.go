@@ -35,6 +35,12 @@ type analytics struct {
 	Duration  float64 `json:"duration"`
 }
 
+// AnalyticsPublisher reports query telemetry. *rabbitmq.Service is the real
+// implementation.
+type AnalyticsPublisher interface {
+	Publish(ctx context.Context, queue string, message any, opts *rabbitmq.PublishOptions) bool
+}
+
 // StartRules runs the query pipeline: service status, then access control, then
 // the local record store, then upstream forwarding.
 //
@@ -45,7 +51,7 @@ type StartRules struct {
 	statusChecker *ServiceStatusChecker
 	dbPool        *dbpool.Service
 	cache         *cache.Service
-	rabbit        *rabbitmq.Service
+	rabbit        AnalyticsPublisher
 	forwarder     *forwarder.Service
 
 	inflight singleflight.Group
@@ -56,7 +62,7 @@ func NewStartRules(
 	statusChecker *ServiceStatusChecker,
 	dbPool *dbpool.Service,
 	cacheService *cache.Service,
-	rabbit *rabbitmq.Service,
+	rabbit AnalyticsPublisher,
 	fwd *forwarder.Service,
 ) *StartRules {
 	return &StartRules{
