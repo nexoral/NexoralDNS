@@ -33,7 +33,7 @@ export function createFakeReply(): FakeReply {
     sent: false,
     cookies: [],
     cleared: [],
-  } as FakeReply;
+  } as unknown as FakeReply; // `reply` is filled in below, once it exists
 
   const reply = {
     status: vi.fn((code: number) => {

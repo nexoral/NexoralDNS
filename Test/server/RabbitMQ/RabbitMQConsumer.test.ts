@@ -27,7 +27,10 @@ function badMessage(raw: string): ConsumeMessage {
 
 function setup() {
   const channel = new FakeAmqpChannel();
-  const conn = { connect: vi.fn().mockResolvedValue(channel) };
+  const conn = {
+    connect: vi.fn().mockResolvedValue(channel),
+    createChannel: vi.fn().mockResolvedValue(channel),
+  };
   const queueManager = { ensureQueue: vi.fn().mockResolvedValue(undefined) };
   const consumer = new RabbitMQConsumer(
     conn as unknown as RabbitMQConnectionManager,
