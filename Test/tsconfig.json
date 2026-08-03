@@ -26,6 +26,15 @@
       ],
       "@shared/*": [
         "./shared/*"
+      ],
+      "@server/*": [
+        "../server/*"
+      ],
+      "@nexoralShared/*": [
+        "../shared/source/*"
+      ],
+      "nexoraldns-shared": [
+        "../shared/source/index.ts"
       ]
     }
   },
