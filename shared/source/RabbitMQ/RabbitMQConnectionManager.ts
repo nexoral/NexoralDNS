@@ -131,4 +131,21 @@ export class RabbitMQConnectionManager implements IMessageBrokerConnectionManage
   getChannel(): Channel | null {
     return this.channel;
   }
+
+  /**
+   * Opens a channel of this consumer's own, separate from the shared one.
+   *
+   * prefetch is a channel-level setting, so consumers sharing a channel
+   * silently overwrite each other's: a batch consumer asking for 1000 ends up
+   * with whatever the last consumer set. That is how the analytics queue came
+   * to drain at one message every two seconds while 655k backed up behind it.
+   */
+  async createChannel(): Promise<Channel> {
+    await this.connect();
+
+    if (!this.connection) {
+      throw new Error('RabbitMQ connection unavailable');
+    }
+    return this.connection.createChannel();
+  }
 }

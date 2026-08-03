@@ -25,7 +25,7 @@ const blocks: Block[] = [
   { type: 'cards', cols: 3, items: [
     { icon: '🖥️', title: 'Client Layer',              desc: 'Web UI (Next.js), mobile app, CLI client, and any device using the DNS server.' },
     { icon: '⚡', title: 'API Server (Fastify, :4000)', desc: 'REST endpoints, controllers, services, and JWT authentication.' },
-    { icon: '🌐', title: 'DNS Server (:53 UDP/TCP, :853 TLS)', desc: 'DNS.Service.ts, DNS_TCP.Service.ts, DNS_DoT.Service.ts and Rules.service.ts share the IDNSIOHandler contract.' },
+    { icon: '🌐', title: 'DNS Server (:53 UDP/TCP, :853 TLS)', desc: 'A Go binary. server/udp.go, tcp.go and dot.go share the dnsio.Handler contract and dispatch into one rules pipeline.' },
     { icon: '🛒', title: 'Caching Layer (Redis)',      desc: 'Full responses, records, service status, rewrites, block lists and user plans.' },
     { icon: '🗄️', title: 'Database (MongoDB)',          desc: 'dns_records, dns_rewrites, dns_blocks, user_plans, dns_query_logs (30-day TTL), domains, service.' },
     { icon: '🔁', title: 'Global Forwarder',           desc: 'Upstream DNS resolution with single-flight inflight de-duplication.' },
@@ -48,13 +48,14 @@ block:global (SADD)       → ads.google.com
 plan:userId:507f…         → {"status":"active"}             EX 300` },
   { type: 'h', title: 'Technology stack' },
   { type: 'kv', items: [
-    { k: 'Runtime',    v: 'Node.js (TypeScript, strict, CommonJS)' },
-    { k: 'DNS Server', v: 'Native UDP/TCP (dgram, net, tls)' },
+    { k: 'DNS Engine', v: 'Go (single process, SO_REUSEPORT listeners)' },
+    { k: 'API / DHCP',  v: 'Node.js (TypeScript, strict, CommonJS)' },
+    { k: 'DNS Server', v: 'Native UDP/TCP/TLS (net, crypto/tls)' },
     { k: 'API Server', v: 'Fastify' },
     { k: 'Database',   v: 'MongoDB (3-node replica set)' },
     { k: 'Cache',      v: 'Redis (master-replica)' },
     { k: 'Web UI',     v: 'Next.js + React' },
-    { k: 'Deployment', v: 'Docker + Docker Compose, PM2 cluster mode' },
+    { k: 'Deployment', v: 'Docker + Docker Compose; PM2 for the Node services, the DNS binary runs from the entrypoint' },
   ]},
   { type: 'h', title: 'Security' },
   { type: 'list', variant: 'check', items: [

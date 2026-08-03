@@ -16,9 +16,11 @@ fi
 ensure_systemd_resolved_running
 
 VERSION_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION"
-REMOTE_VERSION=$(curl -s "$VERSION_URL" 2>/dev/null || echo "Unknown")
+REMOTE_VERSION=$(curl -s "${CURL_NET_OPTS[@]}" "$VERSION_URL" 2>/dev/null || echo "Unknown")
 
-clear
+# Deliberately no `clear` here: it used to wipe the compatibility, port and
+# systemd-resolved results, which are exactly what you need on screen when
+# the install fails or stalls further down.
 set_terminal_title "NexoralDNS Installer"
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
@@ -80,7 +82,7 @@ print_status "Downloading latest docker-compose.yml from GitHub..."
 DOWNLOAD_URL="https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/docker-compose.yml"
 # -f: treat an HTTP error (e.g. 404 from a moved/renamed file) as a failure
 # instead of writing the error page to disk and reporting success anyway.
-if curl -fL "$DOWNLOAD_URL" -o "$COMPOSE_FILE" > /dev/null 2>&1; then
+if curl -fL "${CURL_NET_OPTS[@]}" "$DOWNLOAD_URL" -o "$COMPOSE_FILE" > /dev/null 2>&1; then
   print_success "docker-compose.yml downloaded successfully"
 else
   print_error "Failed to download docker-compose.yml"
@@ -91,7 +93,7 @@ if [ -f "$COMPOSE_FILE" ]; then
   VERSION_FILE="$DOWNLOAD_DIR/VERSION"
 
   print_status "Checking version information..."
-  remote_version=$(curl -s "$VERSION_URL")
+  remote_version=$(curl -s "${CURL_NET_OPTS[@]}" "$VERSION_URL")
 
   if [ -n "$remote_version" ]; then
     echo -e "    ${CYAN}Remote version:${NC} ${BOLD}$remote_version${NC}"

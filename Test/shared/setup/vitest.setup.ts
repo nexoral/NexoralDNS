@@ -1,5 +1,5 @@
 // Global test environment defaults. Individual suites mock modules like
-// `@web/utilities/logger` or `mongodb`/`redis`/`amqplib` directly for
+// `@server/utilities/logger` or `mongodb`/`redis`/`amqplib` directly for
 // assertions — these env vars are just a safety net so any code path that
 // isn't explicitly mocked stays quiet and never touches a real network URI.
 // This is what makes the suite safe to run unattended in CI/CD.

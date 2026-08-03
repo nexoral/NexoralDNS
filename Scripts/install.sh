@@ -28,6 +28,13 @@ fi
 # Installed location for CLI modules shipped by the .deb package.
 NEXORALDNS_CLI_DIR="/usr/share/nexoraldns/cli"
 
+# Applied to every network fetch. Without these a stalled connection (dead
+# IPv6 route, unreachable mirror) makes curl wait forever with no output, so
+# the whole installer looks frozen. speed-time/speed-limit abort a transfer
+# that drops below 1 KB/s for 20s — unlike --max-time it does not penalise a
+# legitimately large download (the .deb) on a slow link.
+CURL_NET_OPTS=(--connect-timeout 10 --speed-time 20 --speed-limit 1024)
+
 # Every module this CLI needs, in load order (libs before commands).
 CLI_MODULES=(
   lib-common.sh
@@ -80,10 +87,15 @@ resolve_cli_dir() {
 # Downloads every module into a fresh temp directory. Used only on a brand
 # new machine (curl | bash) before nexoraldns has ever been installed.
 fetch_cli_modules() {
-  local tmp module
+  local tmp module done=0
   tmp="$(mktemp -d)"
+  # Progress goes to stderr: stdout is captured by the caller's $(...) and
+  # must contain nothing but the temp directory path.
+  echo "[INFO] Downloading NexoralDNS CLI modules (${#CLI_MODULES[@]} files)..." >&2
   for module in "${CLI_MODULES[@]}"; do
-    if ! curl -fsSL "https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/cli/$module" -o "$tmp/$module"; then
+    done=$((done + 1))
+    printf '  [%d/%d] %s\n' "$done" "${#CLI_MODULES[@]}" "$module" >&2
+    if ! curl -fsSL "${CURL_NET_OPTS[@]}" "https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/cli/$module" -o "$tmp/$module"; then
       echo "[ERROR] Failed to download CLI module: $module" >&2
       exit 1
     fi
@@ -119,7 +131,9 @@ case "${1:-}" in
 esac
 
 # Anything else falls through to the default install/reinstall flow.
-if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s nexoraldns >/dev/null 2>&1; then
+if dpkg -s nexoraldns >/dev/null 2>&1; then
+    print_success "nexoraldns CLI already installed (v$(dpkg-query -W -f='${Version}' nexoraldns 2>/dev/null)) — skipping CLI registration."
+elif [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ]; then
     print_status "Registering nexoraldns CLI command..."
     ARCH=$(dpkg --print-architecture 2>/dev/null)
     echo "Detected architecture: $ARCH"
@@ -127,7 +141,7 @@ if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s ne
     DEB_INSTALLED=false
     if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "i386" ]]; then
         REPO="nexoral/NexoralDNS"
-        RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
+        RELEASE_INFO=$(curl -s "${CURL_NET_OPTS[@]}" "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
         if [ -n "$RELEASE_INFO" ]; then
             REMOTE_VER=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
             if [ -n "$REMOTE_VER" ]; then
@@ -135,7 +149,7 @@ if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s ne
                 URL="https://github.com/${REPO}/releases/download/${REMOTE_VER}/${PKG}"
                 print_status "Downloading package: $PKG from $URL"
                 TEMP_DEB="/tmp/$PKG"
-                if curl -fsSL "$URL" -o "$TEMP_DEB"; then
+                if curl -fsSL "${CURL_NET_OPTS[@]}" "$URL" -o "$TEMP_DEB"; then
                     if sudo dpkg -i "$TEMP_DEB" >/dev/null 2>&1; then
                         DEB_INSTALLED=true
                         print_success "CLI package (nexoraldns) installed successfully."
@@ -151,7 +165,7 @@ if [ "$0" != "nexoraldns" ] && [ "$0" != "/usr/bin/nexoraldns" ] && ! dpkg -s ne
             sudo cp "$0" /usr/bin/nexoraldns && sudo chmod +x /usr/bin/nexoraldns
             print_success "CLI shortcut registered as 'nexoraldns'."
         else
-            sudo curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh -o /usr/bin/nexoraldns && sudo chmod +x /usr/bin/nexoraldns
+            sudo curl -fsSL "${CURL_NET_OPTS[@]}" https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh -o /usr/bin/nexoraldns && sudo chmod +x /usr/bin/nexoraldns
             print_success "CLI shortcut registered as 'nexoraldns' from GitHub."
         fi
     fi

@@ -4,7 +4,7 @@ import type { Block } from '@/components/DocPage';
 const blocks: Block[] = [
   { type: 'faq', heading: 'General', items: [
     { q: 'Is NexoralDNS free?',            a: 'Yes — a generous free tier for home users and developers. The premium tier adds advanced features for businesses.' },
-    { q: 'How does it compare to Pi-hole?', a: 'NexoralDNS is built on a modern stack (Node.js, Redis, MongoDB) with sub-ms caching, built-in HA clustering, a React dashboard, REST API and multi-user RBAC — more scalable and API-driven.' },
+    { q: 'How does it compare to Pi-hole?', a: 'NexoralDNS runs a Go DNS engine backed by Redis and MongoDB, with sub-ms cache hits, a React dashboard, REST API and multi-user RBAC — more scalable and API-driven.' },
   ]},
   { type: 'faq', heading: 'Installation', items: [
     { q: 'Can I run it on a Raspberry Pi?', a: 'Yes — it is lightweight and Docker-compatible with ARM64 images. Runs on Raspberry Pi 3, 4 and 5.' },

@@ -12,6 +12,14 @@ import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { RedisCacheService } from "../../Redis/Redis.cache";
 import { logger, CacheKeys } from 'nexoraldns-shared';
 
+// Bounds for the DNS record TTL an operator may set.
+//
+// The floor exists because a near-zero TTL defeats the record cache: entries
+// expire before they can be reused, every miss forwards upstream, and the
+// public resolvers throttle the whole LAN.
+const MIN_DEFAULT_TTL = 10;
+const MAX_DEFAULT_TTL = 86400;
+
 export default class DefaultTTLService {
 
   constructor() { }
@@ -55,8 +63,10 @@ export default class DefaultTTLService {
 
   /**
    * Update the Default TTL value
-   * @param {number} newTTL - New TTL value in seconds (min: 0, max: 86400).
-   *   0 is valid and means "do not cache" — used for instant block/unblock toggling.
+   * @param {number} newTTL - New TTL value in seconds (min: 10, max: 86400).
+   *   Values below 10 are rejected: they expire the record cache faster than it
+   *   can be reused, so every query forwards upstream and the public resolvers
+   *   rate-limit the LAN. Use the block list for instant on/off, not a low TTL.
    * @returns {Promise<void>}
    */
   public async updateDefaultTTL(newTTL: number, reply: FastifyReply): Promise<void> {
@@ -74,14 +84,18 @@ export default class DefaultTTLService {
       });
     }
 
-    if (newTTL < 0 || newTTL > 86400) {
+    // The floor is 10s, not 0. A very low TTL expires the record cache almost
+    // immediately, so every client re-asks constantly and each miss forwards to
+    // the public resolvers — which then rate-limit the whole LAN. A value of 1
+    // was enough to push a 46% cache hit rate and trip every upstream breaker.
+    if (newTTL < MIN_DEFAULT_TTL || newTTL > MAX_DEFAULT_TTL) {
       const ErrorResponse = new BuildResponse(
         reply,
         StatusCodes.BAD_REQUEST,
         "TTL value out of range"
       );
       return ErrorResponse.send({
-        error: "TTL must be between 0 and 86400 seconds (0 seconds to 24 hours)"
+        error: `TTL must be between ${MIN_DEFAULT_TTL} and ${MAX_DEFAULT_TTL} seconds (10 seconds to 24 hours)`
       });
     }
 

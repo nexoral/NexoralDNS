@@ -134,7 +134,7 @@ func (s *ServiceStatusChecker) decide(
 	ttl := DefaultTTL(serviceConfig)
 	if fromCache {
 		logger.Error("Service is inactive (from cache). DNS query processing is halted.")
-		ttl = 10
+		ttl = minTTL
 	} else {
 		logger.Error("Service is inactive. DNS query processing is halted.")
 	}
@@ -143,31 +143,44 @@ func (s *ServiceStatusChecker) decide(
 	return ServiceStatusResult{Active: false, Config: serviceConfig}
 }
 
-// DefaultTTL reads DefaultTTL off the service document, defaulting to 0.
+// TTL bounds for answers this server hands out.
+//
+// The floor is what stops a misconfigured document from taking the LAN down: a
+// TTL of 1 expires each cached record before it can be reused, so nearly every
+// query forwards upstream, the public resolvers throttle us, every circuit
+// breaker trips, and clients start receiving 0.0.0.0. Observed in practice as a
+// 46% cache hit rate with a million failed lookups behind it.
+const (
+	fallbackTTL uint32 = 300
+	minTTL      uint32 = 10
+)
+
+// DefaultTTL reads DefaultTTL off the service document, clamped to a usable
+// range. A missing, unreadable or non-numeric value falls back to 300s.
 //
 // The value arrives as an int from MongoDB but as a float64 after a JSON
 // round-trip through Redis, so every numeric shape is accepted.
 func DefaultTTL(serviceConfig map[string]any) uint32 {
 	if serviceConfig == nil {
-		return 0
+		return fallbackTTL
 	}
+
+	var configured float64
 	switch v := serviceConfig["DefaultTTL"].(type) {
 	case float64:
-		if v > 0 {
-			return uint32(v)
-		}
+		configured = v
 	case int32:
-		if v > 0 {
-			return uint32(v)
-		}
+		configured = float64(v)
 	case int64:
-		if v > 0 {
-			return uint32(v)
-		}
+		configured = float64(v)
 	case int:
-		if v > 0 {
-			return uint32(v)
-		}
+		configured = float64(v)
+	default:
+		return fallbackTTL
 	}
-	return 0
+
+	if configured < float64(minTTL) {
+		return minTTL
+	}
+	return uint32(configured)
 }

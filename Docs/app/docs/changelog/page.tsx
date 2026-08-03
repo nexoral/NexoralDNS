@@ -4,7 +4,24 @@ import type { Block } from '@/components/DocPage';
 const blocks: Block[] = [
   { type: 'timeline', versions: [
     {
-      ver: 'v6.12.53-stable', date: 'July 6, 2026', tag: 'LATEST',
+      ver: 'v8.21.64-stable', date: 'August 1, 2026', tag: 'LATEST',
+      changes: [
+        ['New',      'The core DNS server was rewritten in Go. UDP:53, TCP:53 and DoT:853 all behave as before — same 7-layer pipeline, same fail-safe bypass, same wildcard blocking, same circuit breakers, same upstream list'],
+        ['Improved', 'Multi-core work no longer needs cluster.fork(). One process opens a UDP listener per 75% of CPU cores, all sharing port 53 via SO_REUSEPORT, and the kernel spreads datagrams across them. Every query is handled on its own goroutine'],
+        ['Improved', 'A malformed packet can no longer take down the server. Each query is isolated, so a panic costs exactly one query instead of every listener in the process — the old cluster model dropped every in-flight query on the affected worker'],
+        ['Improved', 'Measured 12,746 queries/second at 3.8 ms average latency on a consumer laptop, with the load generator running on the same machine and zero dropped queries'],
+        ['Fixed',    'Analytics were reaching MongoDB at roughly one record every two seconds while hundreds of thousands queued up behind them. Every consumer shared a single AMQP channel, and prefetch is a channel-level setting, so a consumer asking for 1 silently capped the analytics batch consumer that had asked for 1000. Each consumer now opens its own channel'],
+        ['Fixed',    'A consumer whose channel closed stopped receiving for good — reconnecting the connection did not help, because the consumer was still bound to the dead channel. Consumers now reattach automatically'],
+        ['Fixed',    'The analytics batch job resolved its MongoDB collection once at startup. If the database was not up yet, that handle stayed empty for the process lifetime and every batch was requeued forever. It is now resolved per batch, with insert errors caught and reported'],
+        ['Fixed',    'A DNS answer built for a non-IPv4 value emitted a shorter rdata field than its own length header declared, producing a malformed packet. Such values now fall back to 0.0.0.0'],
+        ['Improved', 'The per-query log line moved from info to debug, and the per-publish broker log was removed. At production query rates those two lines were the single most expensive thing on the request path, since every write serialises through one lock. Set LOG_LEVEL=debug to bring the query log back'],
+        ['Improved', 'The service on/off check is remembered in memory for 5 seconds instead of hitting Redis on every single query. A policy change still takes effect immediately, because the broadcast clears the memo'],
+        ['Improved', 'DNS-over-TLS certificates are generated in-process with crypto/x509 instead of shelling out to the openssl binary, and are written atomically through a uniquely-named temp file so a stale or pre-planted file can never leave the private key world-readable'],
+        ['Improved', 'The dependency graph is wired once at startup and checked by the compiler, replacing the string-keyed DI container — a mis-wired dependency is now a build error instead of a crash on the first query that needs it'],
+      ],
+    },
+    {
+      ver: 'v6.12.53-stable', date: 'July 6, 2026',
       changes: [
         ['Improved', 'All console.log/console.error replaced with pino async structured logging — synchronous I/O eliminated from every hot path, event loop no longer blocked by logging'],
         ['Improved', 'MongoDB timeouts configured (connectTimeoutMS: 5s, serverSelectionTimeoutMS: 5s, socketTimeoutMS: 30s) — stuck connections no longer accumulate under load'],

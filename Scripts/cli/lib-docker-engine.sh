@@ -45,7 +45,7 @@ install_docker_engine() {
     sudo apt-get install -y ca-certificates curl > /dev/null 2>&1
     sudo install -m 0755 -d /etc/apt/keyrings
     print_status "Adding Docker's official GPG key..."
-    sudo curl -fsSL "${docker_repo_base}/gpg" -o /etc/apt/keyrings/docker.asc
+    sudo curl -fsSL "${CURL_NET_OPTS[@]}" "${docker_repo_base}/gpg" -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc
 
     print_status "Adding Docker repository..."
