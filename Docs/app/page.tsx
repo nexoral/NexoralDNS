@@ -401,7 +401,7 @@ export default async function Home() {
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#dbe4ef', marginBottom: 4 }}>Test hardware</div>
               <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 12, color: '#7c8aa0' }}>
-                AMD Ryzen 5 5500U · 6 cores / 12 threads · 6.6 GB RAM · x86_64
+                AMD Ryzen 5 5500U · 6 cores / 12 threads · 7.1 GiB RAM · Linux 6.8 · x86_64
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

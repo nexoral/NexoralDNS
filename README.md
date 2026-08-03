@@ -128,6 +128,27 @@ NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your n
 
 ---
 
+## ⚡ Performance
+
+Measured with `dnsperf` against the Go DNS engine (UDP:53), 49-domain query list, warm cache:
+
+| | |
+|---|---|
+| **Throughput** | **12,746 queries/second** |
+| Average latency | 3.8 ms |
+| Dropped queries | 0 |
+
+Test hardware — a mid-range consumer laptop, no dedicated server needed:
+
+- **CPU:** AMD Ryzen 5 5500U — 6 cores / 12 threads, x86_64
+- **RAM:** 7.1 GiB
+- **OS:** Linux 6.8, Docker `host` networking, no container CPU/memory limit
+- **Co-located:** MongoDB, Redis, RabbitMQ *and the load generator itself* on the same machine
+
+Because `dnsperf` competes for the same 12 threads as the server, this is a **floor, not a ceiling** — driving load from a separate host would measure higher. Full breakdown in [ARCHITECTURE.md](ARCHITECTURE.md#performance-targets).
+
+---
+
 ## 🔧 How It Works
 
 1. **Install:** Run the installation command on any machine in your LAN

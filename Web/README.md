@@ -75,6 +75,34 @@ down every listener.
 TCP and DoT serve one goroutine per connection, answering that connection's
 queries in order.
 
+## Performance
+
+`dnsperf` against `../Test/dnsperf.txt` (49 domains, warm cache) over UDP:53:
+
+| Load shape | QPS | Avg latency | Lost |
+|---|---|---|---|
+| 5 clients, 50 in flight | **12,746** | 3.8 ms | 0 |
+| 8 threads, 2000 in flight | 10,396 | 189 ms | 95 (0.03%) |
+
+Test bed: AMD Ryzen 5 5500U (6C/12T), 7.1 GiB RAM, Linux 6.8, Docker `host` network
+with no CPU limit, loopback transport — MongoDB, Redis, RabbitMQ and `dnsperf`
+itself all on the same box.
+
+The gentler run wins on both axes. At 2000 in flight the load generator is
+fighting the server for cores and the deep queue adds wait time Little's Law
+predicts almost exactly (2000 ÷ 10,396 ≈ 192 ms) — that run measures the queue,
+not the engine. Since the generator is co-located, **12,746 is a floor.**
+
+Reproduce:
+
+```bash
+dnsperf -s <lan-ip> -d ../Test/dnsperf.txt -c 5 -q 50 -l 30
+```
+
+Note there is no per-IP rate limiting on the query path — `internal/server/udp.go`
+spawns a goroutine per datagram with no admission control, so a saturation run is
+bounded by memory, not by a limiter.
+
 ## Testing
 
 There are no tests yet. When adding them, note that Go requires `_test.go` files

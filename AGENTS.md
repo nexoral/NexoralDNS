@@ -130,6 +130,13 @@ const service = new UsersService(reply);
 
 ## Performance
 
+### Measured baseline
+
+**12,746 QPS at 3.8 ms average, 0 lost** — `dnsperf`, 49 domains, warm cache, UDP:53.
+Hardware: AMD Ryzen 5 5500U (6C/12T), 7.1 GiB RAM, Linux 6.8, Docker `host` network,
+with Mongo/Redis/RabbitMQ and the load generator all co-located. Treat this as the
+regression floor: a change that drops throughput below it needs justifying.
+
 ### Cache First
 ```typescript
 // ✅ Check Redis before DB
