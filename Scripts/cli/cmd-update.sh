@@ -21,7 +21,7 @@ cmd_update() {
   fi
 
   print_status "Checking remote version for update..."
-  remote_version=$(curl -s https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION 2>/dev/null || echo "")
+  remote_version=$(curl -s "${CURL_NET_OPTS[@]}" https://raw.githubusercontent.com/nexoral/NexoralDNS/main/VERSION 2>/dev/null || echo "")
   if [ -z "$remote_version" ]; then
     print_error "Could not fetch remote version information. Aborting update."
     exit 1

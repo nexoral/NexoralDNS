@@ -16,7 +16,7 @@ cmd_pack() {
 
     print_status "Checking for latest nexoraldns package version..."
     REPO="nexoral/NexoralDNS"
-    RELEASE_INFO=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
+    RELEASE_INFO=$(curl -s "${CURL_NET_OPTS[@]}" "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)
 
     if [ -z "$RELEASE_INFO" ]; then
         print_error "Could not fetch release information from GitHub."
@@ -48,7 +48,7 @@ cmd_pack() {
     print_status "Downloading package: $PKG from $URL"
 
     TEMP_DEB="/tmp/$PKG"
-    if curl -fsSL "$URL" -o "$TEMP_DEB"; then
+    if curl -fsSL "${CURL_NET_OPTS[@]}" "$URL" -o "$TEMP_DEB"; then
         print_status "Installing latest package..."
         sudo dpkg -i "$TEMP_DEB"
         rm -f "$TEMP_DEB"
