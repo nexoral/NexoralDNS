@@ -222,7 +222,18 @@ func (s *Service) publishAnalytics(
 }
 
 // cacheAnswer stores the parsed answer. Fire-and-forget for the same reason.
+//
+// Only A records are cached. The key is "Domain_DNS_Record:<name>" with no query
+// type in it — the dashboard invalidates by that exact key, so it cannot gain
+// one — and layer 3 can only re-emit an A record. Caching an AAAA answer here
+// would therefore be doubly wrong: unusable on the way out, and it would evict
+// the A record for the same name, so a dual-stack client's AAAA lookups would
+// keep flushing the entry its A lookups depend on.
 func (s *Service) cacheAnswer(response []byte, queryName, queryType string, customTTL *uint32) {
+	if queryType != "A" {
+		return
+	}
+
 	record := dnsmsg.ParseDNSResponse(response, queryType)
 	if record == nil {
 		return

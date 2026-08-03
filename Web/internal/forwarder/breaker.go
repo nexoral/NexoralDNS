@@ -46,6 +46,7 @@ type circuitBreaker struct {
 	failureCount       int
 	failureWindowStart time.Time
 	lastFailureTime    time.Time
+	probeInFlight      bool
 }
 
 func newCircuitBreaker(ip, name string) *circuitBreaker {
@@ -62,14 +63,19 @@ func (c *circuitBreaker) allowRequest() bool {
 		return true
 
 	case stateOpen:
-		if time.Since(c.lastFailureTime) >= breakerCooldown {
-			c.state = stateHalfOpen
-			return true // probe
+		if time.Since(c.lastFailureTime) < breakerCooldown {
+			return false
 		}
-		return false
+		// Cooldown elapsed: promote to half-open and send exactly one probe.
+		c.state = stateHalfOpen
+		c.probeInFlight = true
+		return true
 
-	default: // stateHalfOpen — allow exactly one probe
-		c.state = stateOpen // flips back to closed on success
+	default: // stateHalfOpen — one probe at a time, everyone else fails fast
+		if c.probeInFlight {
+			return false
+		}
+		c.probeInFlight = true
 		return true
 	}
 }
@@ -85,8 +91,13 @@ func (c *circuitBreaker) recordFailure() {
 	}
 	c.failureCount++
 	c.lastFailureTime = now
+	c.probeInFlight = false
 
-	if c.failureCount >= failureThreshold {
+	// A failed probe re-opens immediately and restarts the cooldown. Waiting to
+	// re-reach the threshold would not work: the cooldown that just elapsed also
+	// expired the failure window, so the count resets to 1 and every subsequent
+	// query would be handed the probe slot in turn, each paying a full timeout.
+	if c.state == stateHalfOpen || c.failureCount >= failureThreshold {
 		c.state = stateOpen
 	}
 }
@@ -98,6 +109,7 @@ func (c *circuitBreaker) recordSuccess() {
 	c.failureCount = 0
 	c.failureWindowStart = time.Time{}
 	c.state = stateClosed
+	c.probeInFlight = false
 }
 
 func (c *circuitBreaker) snapshot() (breakerState, int) {
