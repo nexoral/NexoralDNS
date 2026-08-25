@@ -30,7 +30,7 @@ const blocks: Block[] = [
     { icon: '🗄️', title: 'Database (MongoDB)',          desc: 'dns_records, dns_rewrites, dns_blocks, user_plans, dns_query_logs (30-day TTL), domains, service.' },
     { icon: '🔁', title: 'Global Forwarder',           desc: 'Upstream DNS resolution with single-flight inflight de-duplication.' },
   ]},
-  { type: 'h', title: 'Performance targets' },
+  { type: 'h', title: 'Performance targets', sub: 'Per-stage budgets the design aims for. These are goals — see the measured load test below for numbers that were actually recorded.' },
   { type: 'table', grid: '1.2fr 1.4fr', head: ['Stage', 'Target'], rows: [
     { key: 'Redis Cache Hit',    cells: ['0.5–1ms (80%+ hit rate)'] },
     { key: 'Block Check',        cells: ['0.5ms (Redis SET lookup)'] },
@@ -40,6 +40,20 @@ const blocks: Block[] = [
     { key: 'Total (Cached)',     cells: ['🎯 <2ms'] },
     { key: 'Total (Uncached)',   cells: ['🎯 <5ms'] },
   ]},
+  { type: 'h', title: 'Measured load test', sub: 'dnsperf against the Go engine over UDP:53 — 49 domains, warm cache. Everything, including the load generator, ran on one machine.' },
+  { type: 'table', grid: '1.6fr 1fr 1fr 1fr', head: ['Load shape', 'QPS', 'Avg latency', 'Lost'], rows: [
+    { key: '5 clients, 50 in flight',    cells: ['12,746', '3.8ms', '0'] },
+    { key: '8 threads, 2000 in flight',  cells: ['10,396', '189ms', '95 (0.03%)'] },
+  ]},
+  { type: 'kv', items: [
+    { k: 'CPU',        v: 'AMD Ryzen 5 5500U — 6 cores / 12 threads, x86_64' },
+    { k: 'RAM',        v: '7.1 GiB' },
+    { k: 'OS',         v: 'Linux 6.8 · Docker host networking · no container CPU limit' },
+    { k: 'Transport',  v: 'UDP:53 over loopback — no NIC in the path' },
+    { k: 'Co-located', v: 'MongoDB, Redis, RabbitMQ and dnsperf itself' },
+  ]},
+  { type: 'callout', tone: 'tip', title: 'Why the gentler run wins',
+    text: 'At 2000 in flight the load generator competes with the server for the same 12 threads, and the deep queue adds wait time Little’s Law predicts almost exactly (2000 ÷ 10,396 ≈ 192ms) — that run measures the queue, not the server. Because the generator is co-located, 12,746 is a floor rather than the engine’s ceiling.' },
   { type: 'h', title: 'Redis cache key structure' },
   { type: 'code', prompt: false, label: 'redis keys', code: `service:status            → 'active'        EX 60
 dns:google.com            → {"value":"1.2.3.4","ttl":300}  EX 300

@@ -14,9 +14,14 @@ import (
 	"nexoraldns/web/shared/logger"
 )
 
+// Reconnection backoff. There is deliberately no attempt cap: the broker only
+// carries best-effort analytics, but giving up permanently means a broker that
+// is down for a minute costs telemetry for the entire process lifetime, with
+// nothing left running to notice it came back. The delay doubles to a ceiling so
+// a long outage is not hammered.
 const (
-	maxReconnectAttempts = 10
-	reconnectDelay       = 5 * time.Second
+	reconnectDelay    = 5 * time.Second
+	maxReconnectDelay = 60 * time.Second
 )
 
 // ConnectionManager keeps one connection and one channel alive, reconnecting in
@@ -120,30 +125,32 @@ func (r *ConnectionManager) scheduleReconnect() {
 }
 
 func (r *ConnectionManager) reconnectLoop() {
+	delay := reconnectDelay
+
 	for {
 		r.mu.Lock()
-		if r.closed || r.attempts >= maxReconnectAttempts {
-			exhausted := !r.closed
+		if r.closed {
 			r.reconnecting = false
 			r.mu.Unlock()
-			if exhausted {
-				logger.Error("❌ Max reconnection attempts (10) reached")
-			}
 			return
 		}
 		r.attempts++
 		attempt := r.attempts
 		r.mu.Unlock()
 
-		logger.Warn(fmt.Sprintf("⏳ Reconnecting to RabbitMQ in 5s (attempt %d)", attempt))
-		time.Sleep(reconnectDelay)
+		logger.Warn(fmt.Sprintf("⏳ Reconnecting to RabbitMQ in %s (attempt %d)", delay, attempt))
+		time.Sleep(delay)
 
+		// dial calls scheduleReconnect on failure, but that is a no-op while this
+		// loop still holds the reconnecting flag, so there is only ever one loop.
 		if _, err := r.dial(); err == nil {
 			r.mu.Lock()
 			r.reconnecting = false
 			r.mu.Unlock()
 			return
 		}
+
+		delay = min(delay*2, maxReconnectDelay)
 	}
 }
 

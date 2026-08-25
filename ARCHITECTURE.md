@@ -561,7 +561,7 @@ Input validation, safe ObjectId conversion (NoSQL injection prevention), policy-
 
 ## Performance Targets
 
-These are **targets the design aims for, not numbers verified by a load test** — there is currently no automated benchmark in this repo beyond a `dnsperf` query list (`Test/dnsperf.txt`, 49 domains) with no captured results. Treat the table below as an engineering goal, not a measured SLA.
+The per-path latency table below lists **design targets**, not per-path measurements — there is no automated per-layer benchmark in this repo. Aggregate throughput and average latency *have* been measured with `dnsperf` (see the load test results further down); the individual path budgets remain engineering goals.
 
 | Path | Target Latency | What actually happens |
 |-------|---------------|-------|
@@ -569,12 +569,25 @@ These are **targets the design aims for, not numbers verified by a load test** �
 | MongoDB lookup (cache miss) | **<5ms** | Single-flight-deduped `findOne`, sequential per CNAME hop (1 hop = 1 round trip; a 10-hop chain is ~10x a direct hit) |
 | Upstream forward | **<50ms** | 2s timeout per upstream server, automatic fallthrough across a shuffled 6-IP/3-provider pool (worst case 12s if all 6 fail), on a dedicated per-query socket |
 
-Measured with `dnsperf` against `Test/dnsperf.txt` (49 domains, warm cache) on an AMD Ryzen 5 5500U laptop — 6 cores / 12 threads — with MongoDB, Redis, RabbitMQ **and the load generator itself** running on the same machine:
+### Measured results
+
+Test bed — everything co-located on one machine, including the load generator:
+
+| | |
+|---|---|
+| CPU | AMD Ryzen 5 5500U — 6 cores / 12 threads, boost 4.05 GHz, x86_64 |
+| RAM | 7.1 GiB total |
+| OS | Linux 6.8 (kernel), Docker `host` network mode, no CPU/memory limit on the container |
+| Transport | UDP:53 over loopback (`10.35.70.15` bound to `lo`) — no NIC in the path |
+| Co-located | MongoDB, Redis, RabbitMQ **and `dnsperf` itself** |
+| Workload | `Test/dnsperf.txt` — 49 domains, warm cache |
 
 | Load shape | QPS | Avg latency | Lost |
 |---|---|---|---|
 | 5 clients, 50 in flight | **12,746** | 3.8 ms | 0 |
 | 8 threads, 2000 in flight | 10,396 | 189 ms | 95 (0.03%) |
+
+Because the load generator competes for the same 12 threads, **12,746 is a floor, not the engine's ceiling** — a run driven from a separate host would measure higher.
 
 The gentler run is both faster and far lower latency: at 2000 in flight the load generator competes with the server for the same cores, and the deep queue adds wait time that Little's Law predicts almost exactly (2000 ÷ 10,396 ≈ 192 ms). Saturation numbers measure the queue, not the server.
 
@@ -686,7 +699,7 @@ Roughly in priority order based on what's actually been found gap-hunting this c
 
 1. ~~Extract shared Mongo/RabbitMQ connection code~~ **Done** — see `shared/` in Directory Structure and item 3 in [Known Gaps](#known-gaps--non-goals). Also folded Redis's connection/cache-store/pub-sub/cache-keys layer into the same package while at it.
 2. **Add a test suite for `Web/`** — Go tests for `rules/rules.go`'s 4-check pipeline, `cache/acl.go`'s wildcard matching, and `dbpool/dbpool.go`'s CNAME chain resolution and circular-reference detection. Start with `dnsmsg/codec.go`: its bounds checks replace behaviour JavaScript got from `try/catch`, so a mistake there panics the server on a malformed packet
-3. **Real load testing** via `dnsperf` against representative target hardware to replace estimated capacity numbers with measured ones
+3. ~~**Real load testing** via `dnsperf` to replace estimated capacity numbers with measured ones~~ **Done** — 12,746 QPS at 3.8 ms average, 0 lost; see [Performance Targets](#performance-targets). Still outstanding: a benchmark run on *dedicated* hardware with the load generator on a separate host, and per-layer (rather than aggregate) timing
 4. **Real-time metrics** (Prometheus/Grafana or similar) for p50/p95/p99 query latency, cache hit rate, and per-layer timing — currently only available after-the-fact via the `analytics` collection
 5. **Bare-metal UDP buffer parity** — add the equivalent of `Scripts/docker-entrypoint.sh`'s sysctl tuning to `Scripts/install.sh`
 6. DNSSEC support, full IPv6/AAAA support, geo-based routing — longer-term, not currently scoped
