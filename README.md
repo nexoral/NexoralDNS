@@ -1,348 +1,184 @@
-# 🚀 NexoralDNS
+# NexoralDNS
 
-**Advanced DNS Management & Surveillance System**
+**Advanced DNS Management & Surveillance System for Local Networks**
 
-![Version](https://img.shields.io/badge/version-Latest%20Stable-brightgreen)
-![License](https://img.shields.io/badge/license-Proprietary-red)
-![Docker](https://img.shields.io/badge/docker-supported-blue)
+<!-- Status Badges -->
+[![CI Build](https://github.com/nexoral/NexoralDNS/actions/workflows/push_to_github_registry.yml/badge.svg)](https://github.com/nexoral/NexoralDNS/actions/workflows/push_to_github_registry.yml)
+[![Release](https://img.shields.io/github/v/release/nexoral/NexoralDNS)](https://github.com/nexoral/NexoralDNS/releases/latest)
+[![License](https://img.shields.io/badge/License-Source--Available-blue)](LICENSE)
+
+<!-- Tech Stack Badges -->
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/nexoral/NexoralDNS/pkgs/container/nexoraldns)
+[![Platform](https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black)](https://www.linux.org/)
+
+<!-- Community Badges -->
+[![GitHub Stars](https://img.shields.io/github/stars/nexoral/NexoralDNS?style=social)](https://github.com/nexoral/NexoralDNS/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/nexoral/NexoralDNS?style=social)](https://github.com/nexoral/NexoralDNS/network/members)
+[![GitHub Issues](https://img.shields.io/github/issues/nexoral/NexoralDNS)](https://github.com/nexoral/NexoralDNS/issues)
+[![GitHub Contributors](https://img.shields.io/github/contributors/nexoral/NexoralDNS)](https://github.com/nexoral/NexoralDNS/graphs/contributors)
+[![Last Commit](https://img.shields.io/github/last-commit/nexoral/NexoralDNS)](https://github.com/nexoral/NexoralDNS/commits/main)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/AnkanSaha)
 
 ---
 
-## ⚡ Quick Installation
+> **LAN-ONLY** — NexoralDNS is designed exclusively for Local Area Networks. Do **NOT** deploy on cloud platforms or expose to the public internet. ISPs will block DNS spoofing activity and your service will become non-functional.
 
-**One-command installation:**
+---
+
+## Why NexoralDNS?
+
+You're working on a project with your team. Your colleague just built a feature on their machine and pushed it — you want to test it, but you don't know their IP address. You could ask, dig through router settings, or spin up an ngrok tunnel — but that's over-engineered for something happening on the same LAN.
+
+**NexoralDNS solves this.** Assign a custom domain like `alice.dev.local` once, and every device on your network resolves it instantly — no IP hunting, no tunnels, no host file edits. It just works.
+
+---
+
+## Quick Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nexoral/NexoralDNS/main/Scripts/install.sh | sudo bash -
 ```
 
-> ✅ **That's it!** The script will automatically install the `nexoraldns` CLI package, configure Docker, and start the server.
+**Manage the service:**
 
-Once installed, you can manage the NexoralDNS server using the `nexoraldns` CLI command directly in your terminal:
-
-**Start services:**
-```bash
-nexoraldns start
-```
-> ▶️ **Start all NexoralDNS services** if they are stopped.
-
-**Stop services:**
-```bash
-nexoraldns stop
-```
-> ⏹️ **Stop all NexoralDNS services** without removing configurations.
-
-**Update services:**
-```bash
-nexoraldns update
-```
-> 🔄 **Update NexoralDNS services** (checks and pulls the latest Docker images).
-
-**Update CLI package:**
-```bash
-nexoraldns pack
-```
-> 📦 **Self-update the nexoraldns CLI package** itself to the latest version from GitHub Releases.
-
-**Complete removal:**
-```bash
-nexoraldns remove
-```
-> 🗑️ **This will completely remove NexoralDNS** including all configurations, services, and data.
+| Command | Description |
+|---------|-------------|
+| `nexoraldns start` | Start all services |
+| `nexoraldns stop` | Stop all services |
+| `nexoraldns update` | Pull latest Docker images |
+| `nexoraldns pack` | Self-update the CLI |
+| `nexoraldns remove` | Complete removal (irreversible) |
 
 ---
 
-## ⚠️ **IMPORTANT WARNING - LAN USE ONLY**
+## What is NexoralDNS?
 
-**🚨 DO NOT HOST THIS ON THE CLOUD OR PUBLIC INTERNET 🚨**
+NexoralDNS is a self-hosted DNS management system that transforms your network's DNS infrastructure. It provides custom domain resolution, traffic monitoring, security filtering, and a web-based dashboard — all running locally on your LAN.
 
-NexoralDNS is **STRICTLY** designed for **Local Area Network (LAN)** use only.
-
-**Why you should NEVER use this on cloud/public hosting:**
-
-- ⛔ **DNS Spoofing Detection:** Your ISP will detect this as DNS spoofing activity
-- 🔒 **Automatic Blocking:** ISPs will automatically block your DNS server
-- 🔀 **Traffic Redirection:** All DNS traffic will be forcibly routed to your ISP's DNS servers
-- 💔 **Service Disruption:** Your service will become completely non-functional
-- ⚖️ **Potential Legal Issues:** May violate ISP terms of service
-
-**✅ Correct Usage:**
-- Install on a local machine within your LAN (home/office network)
-- Configure your local router to use this DNS server
-- Use only for internal network traffic and custom domain resolution
-
-**❌ Incorrect Usage:**
-- Hosting on cloud platforms (AWS, Azure, Google Cloud, DigitalOcean, etc.)
-- Using as a public DNS resolver
-- Exposing port 53 to the public internet
-
-**This warning applies to all deployment scenarios. Always ensure NexoralDNS remains within your private network boundaries.**
+**Key capabilities:**
+- Custom domain management (e.g., `myapp.local`)
+- Real-time DNS traffic monitoring and analytics
+- Security filtering with one-click blocking modes
+- Web dashboard at `http://localhost:4000`
+- MCP tool server for LLM integration
+- DHCP server integration (Premium)
 
 ---
 
-## 🎯 What is NexoralDNS?
+## Features
 
-NexoralDNS is a **Software-as-a-Service (SaaS)** solution that transforms your network's DNS infrastructure. It provides comprehensive DNS management, monitoring, and custom domain resolution for your entire Local Area Network (LAN).
+| Feature | Description |
+|---------|-------------|
+| **Custom Domains** | Create internal domains without external DNS servers |
+| **Traffic Monitoring** | Comprehensive logging and real-time analytics |
+| **Anti-Porn Mode** | Block 100+ adult content websites with one click |
+| **Anti-Ads Mode** | Block 200+ advertising and tracking domains |
+| **Anti-AI Mode** | Block major AI chatbot and tool domains |
+| **RBAC** | Role-based access control with custom roles |
+| **MCP Server** | LLM integration via Model Context Protocol (54 tools) |
+| **Docker Deployment** | One-command installation via Docker |
 
----
-
-## 🤔 Why Do You Need NexoralDNS?
-
-### 🔒 Enhanced Security
-- Monitor all DNS traffic within your network
-- Block malicious domains and protect against DNS-based threats
-- Get real-time alerts on suspicious DNS activity
-
-### 🏠 Local Development
-- Create custom domains like `myapp.local` for development
-- No need to modify host files on every machine
-- Seamless team collaboration with shared custom domains
-
-### 📊 Network Monitoring
-- Detailed analytics on DNS usage and popular domains
-- Track network activity patterns
-- Identify bandwidth-heavy applications
-
-### 🎛️ Centralized Control
-- Manage DNS settings for your entire network from one interface
-- Easy configuration without touching individual devices
-- Backup and restore DNS configurations
+See the [full feature comparison](https://dns.nexoral.in/) for Free vs Premium details.
 
 ---
 
-## ✨ Key Features
+## Performance
 
-- **🌐 Custom Domain Management:** Create internal domains without external DNS servers
-- **📈 DNS Traffic Monitoring:** Comprehensive logging and real-time analytics
-- **🐳 Easy Deployment:** One-command installation via Docker
-- **🖥️ Web-based Management:** Intuitive dashboard accessible at `localhost:4000`
-- **🛡️ Security Filtering:** Block unwanted domains and protect your network
-- **🔞 Anti-Porn Mode:** Block 100+ adult content websites with one click - perfect for families and schools
-- **🛡️ Anti-Ads Mode:** Block 200+ advertising and tracking domains - eliminate ads, protect privacy, and speed up browsing
-- **🤖 Anti-AI Mode:** Block major AI chatbot, coding assistant, and generative-AI domains (ChatGPT, Claude, Gemini, Copilot, and more) - ideal for schools, exams, and workplaces
-- **👥 Users & Roles (RBAC):** Create custom roles from a fixed permission catalog, add admin-managed users with a temporary password, and enforce a forced password change on first login
-- **🤖 MCP Tool Server:** Let an LLM (via any MCP-compatible client) manage domains and DNS records on your behalf, using the same login and permission scope as the dashboard
-- **👨‍💻 Developer-Friendly:** Perfect for development environments
- - **📊 Real-time Analytics:** Monitor DNS queries as they happen
- - **☁️ Cloud Integration:** Sync settings across multiple installations
+Measured with `dnsperf` (UDP:53, 49 domains, warm cache):
 
----
-
-## ⚡ Performance
-
-Measured with `dnsperf` against the Go DNS engine (UDP:53), 49-domain query list, warm cache:
-
-| | |
-|---|---|
+| Metric | Value |
+|--------|-------|
 | **Throughput** | **12,746 queries/second** |
 | Average latency | 3.8 ms |
 | Dropped queries | 0 |
 
-Test hardware — a mid-range consumer laptop, no dedicated server needed:
-
-- **CPU:** AMD Ryzen 5 5500U — 6 cores / 12 threads, x86_64
-- **RAM:** 7.1 GiB
-- **OS:** Linux 6.8, Docker `host` networking, no container CPU/memory limit
-- **Co-located:** MongoDB, Redis, RabbitMQ *and the load generator itself* on the same machine
-
-Because `dnsperf` competes for the same 12 threads as the server, this is a **floor, not a ceiling** — driving load from a separate host would measure higher. Full breakdown in [ARCHITECTURE.md](ARCHITECTURE.md#performance-targets).
+Test hardware: AMD Ryzen 5 5500U (6C/12T), 7.1 GiB RAM, Linux 6.8, Docker `host` networking, with MongoDB/Redis/RabbitMQ co-located.
 
 ---
 
-## 🔧 How It Works
+## Quick Start
 
-1. **Install:** Run the installation command on any machine in your LAN
-2. **Configure Router:** Set your router's DNS to point to the NexoralDNS machine
-3. **Activate:** Use the web interface to activate with your cloud key
-4. **Manage:** Create custom domains and monitor traffic through the dashboard
+1. **Install** — Run the installation command above
+2. **Access Dashboard** — Open `http://localhost:4000`
+3. **Login** — Username: `admin`, Password: `admin` (change immediately)
+4. **Configure Router** — Set your router's DNS to the NexoralDNS machine IP
+5. **Create Domains** — Use the dashboard to create custom internal domains
 
----
-
-## 🛠️ Manual Installation (Alternative)
-
-If you prefer manual installation or want to contribute to development:
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/nexoral/NexoralDNS.git
-cd NexoralDNS
-```
-
-### 2. Start with Docker Compose
-```bash
-cd Scripts
-sudo docker compose up -d
-```
-
-### Requirements
-- Docker and Docker Compose installed
-- Sudo/Administrator privileges
-- Network access to configure router DNS settings
+For detailed setup instructions, see the [documentation](https://dns.nexoral.in/).
 
 ---
 
-## 🌐 Post-Installation Setup
+## System Requirements
 
-1. **Access Web Interface:** Open `http://localhost:4000`
-2. **Login:** Username: `admin`, Password: `admin`
-3. **Change Password:** Update default credentials immediately
-4. **Activate Service:** Enter your activation key from the cloud platform
-5. **Configure Router:** Set DNS server to your machine's IP address
-6. **Set Static IP:** Reserve IP address in router to prevent DNS interruption
-
-7. **Create custom domains & blocking rules:**
-
-- Use the web interface to create custom internal domains (for example `myapp.ankan`) that resolve only within your LAN.
-- Create blocking rules to block specific domains either for individual IP addresses or for the entire network. This is useful for parental controls, IoT protection, or blocking malicious domains.
-- **Enable Anti-Porn Mode** with one click to automatically block 100+ adult content websites for specific devices, groups, or your entire network (Access Control → Anti-Porn Mode).
-- **Enable Anti-Ads Mode** with one click to automatically block 200+ advertising and tracking domains including Google Ads, Facebook tracking, and more - improve privacy and browsing speed (Access Control → Anti-Ads Mode).
-- **Enable Anti-AI Mode** to automatically block major AI chatbot, AI coding assistant, and generative-AI tool domains (ChatGPT, Claude, Gemini, Copilot, Perplexity, Character.AI, Midjourney, and more) - useful for schools, exam environments, and workplaces that need to restrict AI tool access (Access Control → Anti-AI Mode).
+| Requirement | Minimum |
+|-------------|---------|
+| **OS** | Linux Debian/Ubuntu |
+| **RAM** | 1 GB (plus Docker overhead) |
+| **Storage** | 4 GB free space |
+| **Network** | LAN connectivity |
+| **Privileges** | Root/administrator access |
 
 ---
 
-## 🤖 MCP Tool Server (LLM Integration)
+## Documentation
 
-NexoralDNS ships a [Model Context Protocol](https://modelcontextprotocol.io) server (`tools/`) that lets any MCP-compatible LLM client manage the entire dashboard by calling the same authenticated REST API the dashboard uses — no separate authorization model, no elevated access.
+Full documentation is available at **[dns.nexoral.in](https://dns.nexoral.in/)**
 
-- **Endpoint:** `http://<your-LAN-IP>:4774/mcp` (Streamable HTTP transport, LAN-only like everything else)
-- **Browser sign-in (OAuth 2.1):** your MCP client reports the server as needing authentication, then opens a NexoralDNS sign-in page in your browser — credentials never go through the chat. The account's existing role/permissions decide exactly what that client is allowed to do (e.g. a Guest account still can't create DNS records)
-- **Health-gated:** every tool call first checks `server/`'s `/api/health` (cached briefly to stay cheap) — if MongoDB/Redis/RabbitMQ or the API itself is down, you get a clear "server is not healthy" error instead of a confusing connection failure. `check_server_health` and `get_server_info` need no account permissions, so you can diagnose that first.
-- **54 tools covering the full REST surface:**
-  - **Auth:** `change_password`, `verify_session` (signing in and out is the browser OAuth flow, not a tool)
-  - **Domains & DNS:** `list_domains`, `create_domain`, `delete_domain`, `list_dns_records`, `create_dns_record`, `update_dns_record`, `delete_dns_record`
-  - **Users & Roles:** `list_users`, `get_user`, `create_user`, `update_user`, `reset_user_password`, `delete_user`, `list_permissions`, `list_roles`, `get_role`, `create_role`, `update_role`, `delete_role`
-  - **Access Control:** policies (`create/list/get/update/toggle/delete_access_policy`, `invalidate_access_control_cache`), domain groups and IP groups (`create/list/get/update/delete_domain_group`, `create/list/get/update/delete_ip_group`)
-  - **DHCP:** `list_connected_ips`, `refresh_connected_ips`
-  - **Settings:** `toggle_dns_service`, `get_default_ttl`, `update_default_ttl`, `get_cache_stats`, `delete_all_dns_cache`, `delete_specific_cache_key`
-  - **Analytics & Logs:** `get_dashboard_analytics`, `get_logs`, `request_log_export`, `get_log_export_status`, `download_log_export`
-  - **Meta (no login needed):** `get_server_info`, `check_server_health`
-- **Run it:** `cd tools && npm install && npm run build && npm start` (or via PM2/`ecosystem.config.js`, alongside the other services)
+- Installation guides
+- Configuration reference
+- API documentation
+- Troubleshooting
+- Feature comparison (Free vs Premium)
 
 ---
 
-## 💡 Use Cases
+## MCP Tool Server
 
-### 🏢 Small Business
-- Easy-to-remember domain names for internal services
-- Enhanced network security and monitoring
-- Centralized DNS management for all employees
+NexoralDNS includes a [Model Context Protocol](https://modelcontextprotocol.io) server for LLM integration. Any MCP-compatible client can manage domains, DNS records, users, and settings via the same authenticated REST API as the dashboard.
 
-### 👨‍💻 Development Teams
-- Custom `.local` or `.dev` domains for development projects
-- No more host file modifications across team machines
-- Simplified development environment setup
+- **Endpoint:** `http://<LAN-IP>:4774/mcp`
+- **54 tools** covering the full REST surface
+- **OAuth 2.1** browser sign-in
 
-### 🏫 Educational Institutions
-- Manage and monitor student access to web resources
-- **One-click anti-porn mode** to block adult content across campus
-- **One-click anti-ads mode** to block ads and improve network bandwidth
-- Filter inappropriate content automatically
-- Track network usage patterns
-
-### 🏠 Home Networks
-- **Anti-porn mode for family safety** - protect kids with one click
-- **Anti-ads mode for privacy and speed** - block 200+ ad/tracking domains
-- Parental controls and device monitoring
-- Custom domain management for smart homes
-- Enhanced security for IoT devices
+See the [MCP documentation](https://dns.nexoral.in/) for setup and usage.
 
 ---
 
-## 📋 System Requirements
-- **Operating System:** Linux Debian/Ubuntu
-- **Memory:** Minimum 1GB RAM (Docker will be installed and requires additional memory)
-- **Storage:** Minimum 4GB free space
-- **Network:** LAN connectivity
-- **Privileges:** Administrator/root access for installation
+## Use Cases
+
+- **Home Networks** — Parental controls, ad blocking, IoT security
+- **Development Teams** — Custom `.local` domains without host file edits
+- **Small Businesses** — Centralized DNS management and monitoring
+- **Educational Institutions** — Content filtering and network oversight
 
 ---
 
-## 🔗 Links & Resources
+## Links
 
-- **Dashboard:** `http://[server-ip]:4000`
-- **GitHub Repository:** [https://github.com/nexoral/NexoralDNS](https://github.com/nexoral/NexoralDNS)
-- **Documentation:** Available in the web interface
-- **Support:** Open an issue on GitHub
-
----
-
-## 📜 License
-
-Proprietary Source-Available License - See [LICENSE](LICENSE) file for details.
-
-**Free to use with limited features. Full features require a commercial license from [nexoral.in](https://nexoral.in)**
-
-Source code is available for reference and learning purposes only. Modifications are not permitted.
+- **Documentation:** [dns.nexoral.in](https://dns.nexoral.in/)
+- **Author:** [ankan.in](https://ankan.in)
+- **Issues:** [GitHub Issues](https://github.com/nexoral/NexoralDNS/issues)
+- **Releases:** [GitHub Releases](https://github.com/nexoral/NexoralDNS/releases)
+- **Docker Image:** [ghcr.io/nexoral/nexoraldns](https://github.com/nexoral/NexoralDNS/pkgs/container/nexoraldns)
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-We welcome bug reports, feature requests, and security vulnerability reports! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+We welcome bug reports, feature requests, and security vulnerability reports. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-Note: This is source-available software. Code contributions are not accepted, but we highly value your feedback and issue reports.
-
----
-
-> **🎉 Ready to get started?** Run the installation command and transform your network's DNS in minutes!
+Note: This is source-available software. Code contributions are not accepted, but feedback and issue reports are valued.
 
 ---
 
-## 🆘 Troubleshooting
+## License
 
-### Common Issues
+Proprietary Source-Available License — see [LICENSE](LICENSE) for details.
 
-**DNS not working after installation:**
-- Ensure your router's DNS is set to the NexoralDNS machine IP
-- Check if the Docker containers are running: `sudo docker compose ps`
-- Verify port 53 is not blocked by firewall
-
-**Web interface not accessible:**
-- Check if port 4000 is open
-- Restart services: `sudo docker compose restart`
-
-**Version updates not working:**
-- Ensure internet connectivity
-- Check Docker image permissions
-
-**If updates fail or network requests are blocked:**
-
-- If the `update` command fails to fetch new images or the network is restricted, you can remove and reinstall the service as a recovery path:
-
-```bash
-nexoraldns remove
-```
-
-- If removal also fails due to network/DNS problems, re-enable the system resolver and restart it to restore system DNS resolution before retrying:
-
-```bash
-sudo systemctl enable systemd-resolved
-sudo systemctl restart systemd-resolved
-```
-
-- If you still need to manually restore local name resolution, edit `/etc/resolv.conf` and set the nameserver to the local stub resolver:
-
-```bash
-sudo nano /etc/resolv.conf
-# set or ensure the file contains:
-nameserver 127.0.0.53
-```
-
-### Complete Uninstallation
-
-If you need to completely remove NexoralDNS from your system:
-
-```bash
-nexoraldns remove
-```
-
-This will:
-- Stop all NexoralDNS services
-- Remove Docker containers and images
-- Delete all configuration files and data
-- Clean up the installation directory
-
-> ⚠️ **Warning:** This action is irreversible and will delete all your custom DNS configurations.
+Free to use with limited features. Full features require a commercial license from [nexoral.in](https://nexoral.in).
 
 ---
 
