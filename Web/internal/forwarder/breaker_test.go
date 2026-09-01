@@ -211,3 +211,77 @@ func TestSnapshot_ConcurrentSafety(t *testing.T) {
 	}
 	<-done
 }
+
+// ── allowRequest half-open with no probe ────────────────────────────────────
+
+func TestAllowRequest_HalfOpen_NoProbeInFlight(t *testing.T) {
+	cb := newCircuitBreaker("8.8.8.8", "Google")
+	// Trip the breaker
+	for range failureThreshold {
+		cb.recordFailure()
+	}
+	// Move to half-open
+	cb.mu.Lock()
+	cb.lastFailureTime = time.Now().Add(-breakerCooldown - time.Second)
+	cb.mu.Unlock()
+
+	// First call promotes to half-open and sets probeInFlight
+	cb.allowRequest()
+	// Simulate probe completing (recordFailure resets probeInFlight)
+	cb.recordFailure()
+
+	// Now re-open, wait for cooldown again
+	cb.mu.Lock()
+	cb.lastFailureTime = time.Now().Add(-breakerCooldown - time.Second)
+	cb.mu.Unlock()
+
+	// Should allow again (new probe)
+	if !cb.allowRequest() {
+		t.Error("should allow new probe after previous probe completed")
+	}
+}
+
+// ── recordFailure resets probeInFlight ──────────────────────────────────────
+
+func TestRecordFailure_ResetsProbeInFlight(t *testing.T) {
+	cb := newCircuitBreaker("8.8.8.8", "Google")
+	// Trip and move to half-open
+	for range failureThreshold {
+		cb.recordFailure()
+	}
+	cb.mu.Lock()
+	cb.lastFailureTime = time.Now().Add(-breakerCooldown - time.Second)
+	cb.mu.Unlock()
+	cb.allowRequest() // sets probeInFlight = true
+
+	cb.recordFailure() // should reset probeInFlight = false
+
+	cb.mu.Lock()
+	probe := cb.probeInFlight
+	cb.mu.Unlock()
+	if probe {
+		t.Error("probeInFlight should be false after recordFailure")
+	}
+}
+
+// ── recordSuccess resets probeInFlight ──────────────────────────────────────
+
+func TestRecordSuccess_ResetsProbeInFlight(t *testing.T) {
+	cb := newCircuitBreaker("8.8.8.8", "Google")
+	for range failureThreshold {
+		cb.recordFailure()
+	}
+	cb.mu.Lock()
+	cb.lastFailureTime = time.Now().Add(-breakerCooldown - time.Second)
+	cb.mu.Unlock()
+	cb.allowRequest()
+
+	cb.recordSuccess()
+
+	cb.mu.Lock()
+	probe := cb.probeInFlight
+	cb.mu.Unlock()
+	if probe {
+		t.Error("probeInFlight should be false after recordSuccess")
+	}
+}

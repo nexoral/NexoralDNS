@@ -391,3 +391,103 @@ func TestIpv4Bytes_IPv6(t *testing.T) {
 		t.Errorf("got %v, want [0 0 0 0]", got)
 	}
 }
+
+// ── Additional edge cases ───────────────────────────────────────────────────
+
+func TestParseDNSResponse_TruncatedRdata(t *testing.T) {
+	// Build a response where rdlength claims more bytes than available
+	msg := buildQuery("example.com", 1)
+	binary.BigEndian.PutUint16(msg[2:], 0x8180)
+	binary.BigEndian.PutUint16(msg[6:], 1)
+
+	msg = append(msg, 0xc0, 0x0c)
+	msg = binary.BigEndian.AppendUint16(msg, 1)   // type A
+	msg = binary.BigEndian.AppendUint16(msg, 1)   // class IN
+	msg = binary.BigEndian.AppendUint32(msg, 300)  // TTL
+	msg = binary.BigEndian.AppendUint16(msg, 100) // rdlength = 100, but only 0 bytes follow
+
+	record := ParseDNSResponse(msg, "A")
+	if record != nil {
+		t.Errorf("expected nil for truncated rdata, got %v", record)
+	}
+}
+
+func TestParseDNSResponse_ZeroLengthRdata(t *testing.T) {
+	msg := buildQuery("example.com", 1)
+	binary.BigEndian.PutUint16(msg[2:], 0x8180)
+	binary.BigEndian.PutUint16(msg[6:], 1)
+
+	msg = append(msg, 0xc0, 0x0c)
+	msg = binary.BigEndian.AppendUint16(msg, 1)   // type A
+	msg = binary.BigEndian.AppendUint16(msg, 1)   // class IN
+	msg = binary.BigEndian.AppendUint32(msg, 300)  // TTL
+	msg = binary.BigEndian.AppendUint16(msg, 0)   // rdlength = 0
+
+	record := ParseDNSResponse(msg, "A")
+	if record != nil {
+		t.Errorf("expected nil for zero-length A rdata, got %v", record)
+	}
+}
+
+func TestBuildResponsePayload_VeryLongDomain(t *testing.T) {
+	longName := "a.very.long.subdomain.example.com"
+	query := buildQuery(longName, 1)
+	resp := BuildResponsePayload(query, longName, "10.0.0.1", 60)
+	if len(resp) < headerLen {
+		t.Fatal("response too short")
+	}
+	if ancount := binary.BigEndian.Uint16(resp[6:]); ancount != 1 {
+		t.Errorf("ancount = %d, want 1", ancount)
+	}
+}
+
+func TestModifyResponseTTL_ZeroTTL(t *testing.T) {
+	ip := net.ParseIP("10.0.0.1").To4()
+	msg := buildResponse("example.com", ip, 300)
+	modified := ModifyResponseTTL(msg, 0)
+
+	offset := skipQuestions(modified, headerLen)
+	offset = skipName(modified, offset)
+	offset += 4
+	if ttl := binary.BigEndian.Uint32(modified[offset:]); ttl != 0 {
+		t.Errorf("TTL = %d, want 0", ttl)
+	}
+}
+
+func TestModifyResponseTTL_MaxTTL(t *testing.T) {
+	ip := net.ParseIP("10.0.0.1").To4()
+	msg := buildResponse("example.com", ip, 300)
+	modified := ModifyResponseTTL(msg, 0xFFFFFFFF)
+
+	offset := skipQuestions(modified, headerLen)
+	offset = skipName(modified, offset)
+	offset += 4
+	if ttl := binary.BigEndian.Uint32(modified[offset:]); ttl != 0xFFFFFFFF {
+		t.Errorf("TTL = %d, want max uint32", ttl)
+	}
+}
+
+func TestParseQueryNameAt_ZeroOffset(t *testing.T) {
+	// Name at offset 0 (unusual but valid)
+	msg := []byte{
+		3, 'w', 'w', 'w',
+		7, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
+		3, 'c', 'o', 'm',
+		0,
+	}
+	got := ParseQueryNameAt(msg, 0)
+	if got != "www.example.com" {
+		t.Errorf("got %q, want %q", got, "www.example.com")
+	}
+}
+
+func TestParseQueryType_MultipleQuestions(t *testing.T) {
+	// Build a packet with qdcount=2 but only one question (malformed)
+	msg := buildQuery("example.com", 1)
+	binary.BigEndian.PutUint16(msg[4:], 2) // qdcount = 2
+	// ParseQueryType should still work for the first question
+	got := ParseQueryType(msg)
+	if got != "A" {
+		t.Errorf("got %q, want A", got)
+	}
+}
