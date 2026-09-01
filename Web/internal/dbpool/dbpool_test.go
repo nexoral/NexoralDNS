@@ -67,8 +67,8 @@ func TestResolve_SimpleARecord(t *testing.T) {
 func TestResolve_CNAMERedirection(t *testing.T) {
 	finder := &mockDocFinder{
 		records: map[string]dnsmsg.Record{
-			"www.example.com":   {Type: "CNAME", Name: "www.example.com", Value: "example.com", TTL: 300},
-			"example.com":       {Type: "A", Name: "example.com", Value: "1.2.3.4", TTL: 300},
+			"www.example.com": {Type: "CNAME", Name: "www.example.com", Value: "example.com", TTL: 300},
+			"example.com":     {Type: "A", Name: "example.com", Value: "1.2.3.4", TTL: 300},
 		},
 	}
 	svc := NewService(&mockCollectionSource{finder: finder})

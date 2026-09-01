@@ -403,7 +403,7 @@ func TestParseDNSResponse_TruncatedRdata(t *testing.T) {
 	msg = append(msg, 0xc0, 0x0c)
 	msg = binary.BigEndian.AppendUint16(msg, 1)   // type A
 	msg = binary.BigEndian.AppendUint16(msg, 1)   // class IN
-	msg = binary.BigEndian.AppendUint32(msg, 300)  // TTL
+	msg = binary.BigEndian.AppendUint32(msg, 300) // TTL
 	msg = binary.BigEndian.AppendUint16(msg, 100) // rdlength = 100, but only 0 bytes follow
 
 	record := ParseDNSResponse(msg, "A")
@@ -420,7 +420,7 @@ func TestParseDNSResponse_ZeroLengthRdata(t *testing.T) {
 	msg = append(msg, 0xc0, 0x0c)
 	msg = binary.BigEndian.AppendUint16(msg, 1)   // type A
 	msg = binary.BigEndian.AppendUint16(msg, 1)   // class IN
-	msg = binary.BigEndian.AppendUint32(msg, 300)  // TTL
+	msg = binary.BigEndian.AppendUint32(msg, 300) // TTL
 	msg = binary.BigEndian.AppendUint16(msg, 0)   // rdlength = 0
 
 	record := ParseDNSResponse(msg, "A")
