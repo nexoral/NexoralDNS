@@ -252,9 +252,8 @@ jobs:
         run: npm run coverage:dhcp
 
   verify-web:
-    # Web/ is the core DNS server, a Go module. It has no test suite yet, so the
-    # gate is a clean compile, a clean vet and correct formatting — enough to stop
-    # a broken DNS server reaching the image.
+    # Web/ is the core DNS server, a Go module. The gate is a clean compile,
+    # a clean vet, correct formatting and passing unit tests.
     needs: detect-changes
     if: needs.detect-changes.outputs.check_web == 'true'
     runs-on: ubuntu-latest
@@ -286,6 +285,14 @@ jobs:
             echo "$unformatted"
             exit 1
           fi
+
+      - name: Run tests with coverage
+        working-directory: Web
+        run: go test -v -count=1 -coverprofile=coverage.out ./...
+
+      - name: Display coverage summary
+        working-directory: Web
+        run: go tool cover -func=coverage.out
 
   build-and-push:
     # Gated on the test suite: the image is only built/pushed once tests pass.
