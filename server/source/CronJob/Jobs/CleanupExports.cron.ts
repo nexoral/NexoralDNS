@@ -1,7 +1,7 @@
 import { logger } from 'nexoraldns-shared';
 import fs from "fs";
 import path from "path";
-import { Retry, Console } from "outers";
+import { Retry } from "nexoraldns-shared";
 
 const EXPORTS_DIR = path.join(__dirname, "..", "..", "..", "exports");
 const STALE_READY_MS = 24 * 60 * 60 * 1000; // 24h

@@ -17,6 +17,7 @@ jobs:
       check_web: ${{ steps.changes.outputs.check_web }}
       test_server: ${{ steps.changes.outputs.test_server }}
       test_tools: ${{ steps.changes.outputs.test_tools }}
+      test_dhcp: ${{ steps.changes.outputs.test_dhcp }}
       test_only_changed: ${{ steps.changes.outputs.test_only_changed }}
     steps:
       - name: Checkout repository
@@ -45,6 +46,7 @@ jobs:
             echo "check_web=true" >> "$GITHUB_OUTPUT"
             echo "test_server=true" >> "$GITHUB_OUTPUT"
             echo "test_tools=true" >> "$GITHUB_OUTPUT"
+            echo "test_dhcp=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -58,6 +60,7 @@ jobs:
             echo "check_web=true" >> "$GITHUB_OUTPUT"
             echo "test_server=true" >> "$GITHUB_OUTPUT"
             echo "test_tools=true" >> "$GITHUB_OUTPUT"
+            echo "test_dhcp=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -75,6 +78,7 @@ jobs:
             echo "check_web=false" >> "$GITHUB_OUTPUT"
             echo "test_server=false" >> "$GITHUB_OUTPUT"
             echo "test_tools=false" >> "$GITHUB_OUTPUT"
+            echo "test_dhcp=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -90,22 +94,24 @@ jobs:
           web_changed=false
           server_changed=false
           tools_changed=false
+          dhcp_changed=false
           test_changed=false
           if echo "$CHANGED_FILES" | grep -qE '^Web/';    then web_changed=true;    fi
           if echo "$CHANGED_FILES" | grep -qE '^server/'; then server_changed=true; fi
           if echo "$CHANGED_FILES" | grep -qE '^tools/';  then tools_changed=true;  fi
+          if echo "$CHANGED_FILES" | grep -qE '^DHCP/';   then dhcp_changed=true;   fi
           if echo "$CHANGED_FILES" | grep -qE '^Test/';   then test_changed=true;   fi
 
-          # Check if ONLY Test/ changed (no Web/, server/, tools/ changes)
+          # Check if ONLY Test/ changed (no Web/, server/, tools/, DHCP/ changes)
           test_only_changed=false
-          if [ "$test_changed" = "true" ] && [ "$web_changed" = "false" ] && [ "$server_changed" = "false" ] && [ "$tools_changed" = "false" ]; then
+          if [ "$test_changed" = "true" ] && [ "$web_changed" = "false" ] && [ "$server_changed" = "false" ] && [ "$tools_changed" = "false" ] && [ "$dhcp_changed" = "false" ]; then
             test_only_changed=true
           fi
 
           run_tests=false
           test_all=false
-          if [ "$test_only_changed" = "true" ] || [ "$test_changed" = "true" ] || { [ "$server_changed" = "true" ] && [ "$tools_changed" = "true" ]; }; then
-            # Test harness itself changed, or both Node modules changed at once, or Test/ only.
+          if [ "$test_only_changed" = "true" ] || [ "$test_changed" = "true" ] || [ "$dhcp_changed" = "true" ] || { [ "$server_changed" = "true" ] && [ "$tools_changed" = "true" ]; }; then
+            # Test harness itself changed, or DHCP changed (depends on shared/), or both Node modules changed at once, or Test/ only.
             run_tests=true
             test_all=true
             if [ "$test_only_changed" = "true" ]; then
@@ -117,7 +123,7 @@ jobs:
             run_tests=true
             echo "::notice title=Tests::Running per-module suites (server=$server_changed tools=$tools_changed)."
           else
-            echo "::notice title=Tests skipped::No changes under Web/, server/, tools/, or Test/."
+            echo "::notice title=Tests skipped::No changes under Web/, server/, tools/, DHCP/, or Test/."
           fi
 
           echo "run_tests=$run_tests"     >> "$GITHUB_OUTPUT"
@@ -125,6 +131,7 @@ jobs:
           echo "check_web=$web_changed"   >> "$GITHUB_OUTPUT"
           echo "test_server=$server_changed" >> "$GITHUB_OUTPUT"
           echo "test_tools=$tools_changed"   >> "$GITHUB_OUTPUT"
+          echo "test_dhcp=$dhcp_changed"     >> "$GITHUB_OUTPUT"
           echo "test_only_changed=$test_only_changed" >> "$GITHUB_OUTPUT"
 
           # Scripts/install.sh, Scripts/versionControl.sh, and Scripts/cli/* are host-side installer
@@ -238,6 +245,11 @@ jobs:
         if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_tools == 'true'
         working-directory: Test
         run: npm run coverage:tools
+
+      - name: Run DHCP test suite with coverage
+        if: needs.detect-changes.outputs.test_all != 'true' && needs.detect-changes.outputs.test_dhcp == 'true'
+        working-directory: Test
+        run: npm run coverage:dhcp
 
   verify-web:
     # Web/ is the core DNS server, a Go module. It has no test suite yet, so the

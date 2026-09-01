@@ -1,6 +1,6 @@
 
 import { FastifyReply } from "fastify";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import BuildResponse from "../../helper/responseBuilder.helper";
 
 // keys import

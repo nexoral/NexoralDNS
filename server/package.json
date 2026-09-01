@@ -1,6 +1,6 @@
 {
   "name": "nexoraldns-server",
-  "version": "6.22.67-stable",
+  "version": "7.23.68-stable",
   "description": "this server is responsible for managing the all records that are custom build for the all networks",
   "keywords": [
     "server"
@@ -21,12 +21,11 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.5.2",
-    "@fastify/swagger-ui": "^5.2.3",
+    "@fastify/swagger-ui": "^6.1.1",
     "bcryptjs": "^3.0.2",
     "fastify": "^5.6.0",
     "mongodb": "^6.20.0",
     "nexoraldns-shared": "file:../shared",
-    "outers": "^8.6.9",
     "pino": "^10.3.1",
     "redis": "^5.10.0",
     "ts-node": "^10.9.2",

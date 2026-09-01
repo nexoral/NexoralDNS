@@ -1,5 +1,5 @@
 import { FastifyReply } from "fastify";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import { ObjectId } from "mongodb";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";

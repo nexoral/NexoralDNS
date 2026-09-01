@@ -6,7 +6,7 @@ import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware"
 import DomainAddService from "../../Services/Domain/Add_Domain.service";
 
 import BuildResponse from "../../helper/responseBuilder.helper";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import DomainListService from "../../Services/Domain/Domain_List.service";
 import DomainRemoveService from "../../Services/Domain/Remove_Domain.service";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";

@@ -1,5 +1,5 @@
 import { FastifyReply } from "fastify";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
 import LogsExportService, { LogExportFormat } from "../../Services/Logs/LogsExport.service";

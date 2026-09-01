@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Collection, Document } from 'mongodb';
-import { logger, MongoConnectionManager } from 'nexoraldns-shared';
+import { logger, MongoConnectionManager, Encrypt } from 'nexoraldns-shared';
 import { DB_DEFAULT_CONFIGS } from '../core/key';
 import cluster from 'cluster';
 import Bcrypt from '../helper/bcrypt.helper';
-import { ClassBased } from 'outers';
 
 export class MongoCollectionManager {
   private collectionCache = new Map<string, Collection<Document>>();
@@ -183,7 +182,7 @@ export class MongoCollectionManager {
         await serviceCol.insertOne({
           SERVICE_NAME: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.SERVICE_NAME,
           CLOUD_URL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.CLOUD_URL,
-          apiKey: await new ClassBased.CryptoGraphy(process.arch).Encrypt(DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.API_KEY),
+          apiKey: await Encrypt(JSON.stringify(DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.API_KEY) ?? '', process.arch),
           createdAt: Date.now(),
           DefaultTTL: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.DefaultTTL,
           Service_Status: DB_DEFAULT_CONFIGS.DefaultValues.ServiceConfigs.Service_Status,

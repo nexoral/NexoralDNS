@@ -1,4 +1,4 @@
-import { Retry } from "outers";
+import { Retry } from "nexoraldns-shared";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import container from "../../container/appContainer";
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';

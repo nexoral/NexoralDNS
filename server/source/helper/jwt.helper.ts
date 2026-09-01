@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { ClassBased } from 'outers';
+import { Jwt } from 'nexoraldns-shared';
 
 const ACCESS_TOKEN_TTL = '30m';
 const REFRESH_TOKEN_TTL = '48h';
@@ -49,17 +49,17 @@ export const getJWTSecret = (): string => {
 };
 
 export const generateAccessToken = (payload: object): string => {
-  const result = new ClassBased.JWT_Manager(getJWTSecret()).generate(payload, ACCESS_TOKEN_TTL);
+  const result = new Jwt(getJWTSecret()).generate(payload, ACCESS_TOKEN_TTL);
   return result.toKen as string;
 };
 
 export const generateRefreshToken = (payload: object): string => {
-  const result = new ClassBased.JWT_Manager(getJWTSecret()).generate(payload, REFRESH_TOKEN_TTL);
+  const result = new Jwt(getJWTSecret()).generate(payload, REFRESH_TOKEN_TTL);
   return result.toKen as string;
 };
 
 export const verifyToken = (token: string): { valid: boolean; data?: Record<string, unknown> } => {
-  const result = new ClassBased.JWT_Manager(getJWTSecret()).decode(token);
+  const result = new Jwt(getJWTSecret()).decode(token);
   if (result.status !== 'Success') return { valid: false };
   return { valid: true, data: result.data?.data as Record<string, unknown> };
 };

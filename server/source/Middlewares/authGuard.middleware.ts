@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import ResponseBuilder from "../helper/responseBuilder.helper";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import { verifyToken } from "../helper/jwt.helper";
 import container from "../container/appContainer";
 

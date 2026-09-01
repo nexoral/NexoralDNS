@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * jwt.helper resolves the signing secret once and caches it in a module-level
  * variable, and its resolution has several fs branches. We reset the module
  * registry before each test and re-import with a per-test `fs` double so each
- * branch is exercised from a clean slate. `path`/`crypto`/`outers` stay real.
+ * branch is exercised from a clean slate. `path`/`crypto`/`jsonwebtoken` stay real.
  */
 type FsDouble = {
   readFileSync: ReturnType<typeof vi.fn>;

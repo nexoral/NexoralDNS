@@ -1,5 +1,5 @@
 import os from "os";
-import { Retry } from "outers";
+import { Retry } from "nexoraldns-shared";
 import UpdateResolveConfigFileService from "./UpdateResolveConfigFile.service";
 
 export default class IP_SCAN {

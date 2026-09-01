@@ -2,7 +2,7 @@ import container from '../../container/appContainer';
 import { MongoCollectionManager } from '../../Database/MongoCollectionManager';
 import { FastifyReply } from "fastify";
 import BuildResponse from "../../helper/responseBuilder.helper";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import { ObjectId } from "mongodb";
 
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
