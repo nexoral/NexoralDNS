@@ -4,7 +4,7 @@ import ChangePasswordService from "../../Services/Auth/ChangePassword.service";
 import LogoutService from "../../Services/Auth/Logout.service";
 import RefreshTokenService from "../../Services/Auth/RefreshToken.service";
 import VerifySessionService from "../../Services/Auth/VerifySession.service";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import container from '../../container/appContainer';
 

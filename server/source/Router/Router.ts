@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from "fastify";
 import buildResponse from "../helper/responseBuilder.helper";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 
 // All Sub Routers
 import authRouter from "./Auth/Auth.route";

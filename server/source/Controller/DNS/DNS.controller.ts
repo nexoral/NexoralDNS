@@ -1,7 +1,7 @@
 import { logger } from 'nexoraldns-shared';
 import { FastifyReply, FastifyRequest } from "fastify";
 import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import BuildResponse from "../../helper/responseBuilder.helper";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
 

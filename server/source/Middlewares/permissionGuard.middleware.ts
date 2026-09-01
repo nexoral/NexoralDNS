@@ -1,7 +1,7 @@
 import { FastifyReply } from "fastify";
 import ResponseBuilder from "../helper/responseBuilder.helper";
 import { authGuardFastifyRequest } from "./authGuard.middleware";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 
 const FULL_ACCESS_PERMISSION_CODE = 4;
 

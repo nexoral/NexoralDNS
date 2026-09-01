@@ -1,6 +1,6 @@
 import { FastifyReply } from "fastify";
 import buildResponse from "../../helper/responseBuilder.helper";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 
 // Services
 import HealthService from "../../Services/Public/Health.service";

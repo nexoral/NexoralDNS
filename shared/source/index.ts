@@ -12,3 +12,5 @@ export { default as CacheKeys, QueueKeys, DNS_QUERY_STATUS_KEYS, ACLKeys } from 
 export { MongoConnectionManager, IDatabaseConnectionManager } from './Database/MongoConnectionManager';
 
 export { default as logger } from './utilities/logger';
+
+export * from './outers';

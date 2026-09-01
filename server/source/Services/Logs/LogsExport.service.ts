@@ -1,5 +1,5 @@
 import { FastifyReply } from "fastify";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import fs from "fs";
 import crypto from "crypto";
 import BuildResponse from "../../helper/responseBuilder.helper";

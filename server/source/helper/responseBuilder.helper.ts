@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FastifyReply } from "fastify";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import { ResponseBuilder } from "../Interfaces/ResponseBuilder.interface";
 
 /**

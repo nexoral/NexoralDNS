@@ -6,7 +6,7 @@ import { readFile } from "fs/promises";
 import { networkInterfaces } from "os";
 import { reverse } from "dns/promises";
 import getLocalIPRange from "../../utilities/GetWLANIP.utls";
-import { Retry } from "outers";
+import { Retry } from "nexoraldns-shared";
 import { pingIP } from "../../helper/IP_Ping.helper";
 import { DB_DEFAULT_CONFIGS } from "../../core/key";
 import { promisify } from "util";

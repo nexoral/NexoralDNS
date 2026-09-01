@@ -14,12 +14,16 @@
   },
   "dependencies": {
     "amqplib": "^0.10.9",
+    "crypto-js": "^4.2.0",
+    "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.20.0",
     "pino": "^10.3.1",
     "redis": "^5.10.0"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.8",
+    "@types/crypto-js": "^4.2.2",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^24.5.2",
     "typescript": "^5.9.2"
   }

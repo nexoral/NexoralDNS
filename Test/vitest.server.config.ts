@@ -20,7 +20,8 @@ export default defineConfig({
       // keeping the suite fully self-contained (same principle as the web/tools
       // configs). Type-only imports (`fastify`) are erased by the transform and
       // need no alias. Each of these is a Test/ devDependency.
-      outers: path.resolve(__dirname, 'node_modules/outers'),
+      jsonwebtoken: path.resolve(__dirname, 'node_modules/jsonwebtoken'),
+      'crypto-js': path.resolve(__dirname, 'node_modules/crypto-js'),
       mongodb: path.resolve(__dirname, 'node_modules/mongodb'),
       redis: path.resolve(__dirname, 'node_modules/redis'),
       amqplib: path.resolve(__dirname, 'node_modules/amqplib'),

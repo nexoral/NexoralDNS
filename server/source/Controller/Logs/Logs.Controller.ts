@@ -6,7 +6,7 @@ import { authGuardFastifyRequest } from "../../Middlewares/authGuard.middleware"
 import LogsService from "../../Services/Logs/Logs.service";
 
 import BuildResponse from "../../helper/responseBuilder.helper";
-import { StatusCodes } from "outers";
+import { StatusCodes } from "nexoraldns-shared";
 import RequestControllerHelper from "../../helper/Request_Controller.helper";
 import { buildLogsQuery, LogsQueryFilters } from "../../helper/buildLogsQuery.helper";
 import container from '../../container/appContainer';
