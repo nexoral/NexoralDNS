@@ -47,7 +47,7 @@ pull_image_with_progress() {
 # Pulls before system services are stopped, so DNS keeps working during the
 # pull. Image list comes from docker-compose.yml itself (docker compose
 # config --images), never hardcoded — a hardcoded list previously drifted
-# from the compose file's actual redis:alpine tag (this had pinned
+# from the compose file's actual redis tag (this had pinned
 # redis:latest), leaving the real image unpulled. Returns nonzero if any
 # image failed, so the caller knows it is NOT safe to disable the host's
 # DNS resolver yet.

@@ -48,9 +48,9 @@ cmd_remove() {
 
     print_status "Removing Docker images..."
     sudo docker rmi ghcr.io/nexoral/nexoraldns:latest 2>/dev/null || true
-    sudo docker rmi mongo:latest 2>/dev/null || true
-    sudo docker rmi redis:latest 2>/dev/null || true
-    sudo docker rmi rabbitmq:management 2>/dev/null || true
+    sudo docker rmi mongo:7.0.43 2>/dev/null || true
+    sudo docker rmi redis:8.10.2-alpine 2>/dev/null || true
+    sudo docker rmi rabbitmq:4.3.6-management 2>/dev/null || true
     print_success "Docker images removed."
 
     print_status "Removing NexoralDNS directory..."

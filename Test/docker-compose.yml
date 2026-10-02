@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo:7.0.43 # 👈 pinned: MongoDB 8.0+ refuses to start on Linux kernels 6.19–7.0.13 (SERVER-121912)
     container_name: mongo
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
@@ -16,7 +16,7 @@ services:
       - nexoral_network # 👈 keep Mongo in bridge network for safety/port isolation
 
   redis:
-    image: redis:latest
+    image: redis:8.10.2 # 👈 pinned: was redis:latest (moves with upstream)
     container_name: redis
     restart: always
     healthcheck:
@@ -33,7 +33,7 @@ services:
       - redis_data:/data
 
   rabbitmq:
-    image: rabbitmq:management
+    image: rabbitmq:4.3.6-management # 👈 pinned: was rabbitmq:management (moves with upstream)
     container_name: rabbitmq
     restart: always
     healthcheck:
