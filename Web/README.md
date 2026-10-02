@@ -195,22 +195,44 @@ bounded by memory, not by a limiter.
 
 ## Testing
 
-There are no tests yet.
+There are tests. Go requires `_test.go` files to live in the package directory they
+test, so unlike the Node suites in `Test/`, they sit next to the code:
 
 ```bash
-go build ./... && go vet ./...
+go build ./... && go vet ./... && gofmt -l .   # gofmt must print nothing — CI gates on it
+go test ./...
+go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
+go test -run TestWildcard ./internal/cache/ -v   # single test
 ```
 
-When adding them, note that Go requires `_test.go` files to live in the package
-directory they test — they cannot go in the repo's `Test/` folder the way the
-Node suites do.
+From the workspace root, `cd ../Test && npm run test:web` runs the same suite, and
+`npm run coverage:web` produces the coverage report.
 
-`internal/dnsmsg` is the place to start: it depends on nothing (no database, no
-sockets), so it is testable in isolation, and its bounds checks replace behaviour
-JavaScript got from `try/catch` — a mistake there means a malformed packet panics
-the server. `internal/rules` is the natural second target, since its collaborators
-are already interfaces (`AnalyticsPublisher`, `dnsio.Handler`) and can be faked
-without standing up Mongo or Redis.
+| File | Covers |
+|---|---|
+| `internal/cache/acl_test.go` | wildcard matching — `*.example.com`, `google.*`, bare `*`, and near-miss names |
+| `internal/cache/cache_test.go` | cache CRUD, TTL handling, pub/sub |
+| `internal/dbpool/dbpool_test.go` | A records, CNAME redirection, chained CNAME, **circular CNAME**, hop cache |
+| `internal/dnsmsg/dnsmsg_test.go` | wire-format parse and build, bounds checks, TTL rewriting |
+| `internal/forwarder/forwarder_test.go` | upstream pool, saturation, status reporting |
+| `internal/forwarder/breaker_test.go` | circuit-breaker transitions, cooldown, half-open probe |
+| `internal/netutil/localip_test.go`, `socket_test.go` | address discovery, `SO_REUSEPORT` listener setup |
+| `internal/rules/rules_test.go` | `DefaultTTL` across numeric shapes, `servableLocally` |
+| `internal/rules/servicestatus_test.go` | memo expiry, inactive service, offline fallback |
+| `internal/rules/blocklist_test.go` | verdict cache TTL and sweep |
+| `internal/rules/analytics_test.go` | publish path and status mapping |
+| `internal/config/keys_test.go` | key constants and TTL bounds |
+
+`internal/dnsmsg` is the easiest place to add tests — it depends on nothing, so it
+needs no database or sockets. `internal/rules` is the natural second target, since
+its collaborators are already interfaces (`AnalyticsPublisher`, `dnsio.Handler`) and
+can be faked without standing up Mongo or Redis.
+
+## Conventions
+
+See [`AGENTS.md`](AGENTS.md) for the full operating manual: layering rules, the
+invariants on the query path, forwarder design notes, cache TTLs, and the boundaries
+around what to change without asking.
 
 ## Verifying a running server
 
