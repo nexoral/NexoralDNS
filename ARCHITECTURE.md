@@ -10,8 +10,7 @@
 7. [Database Schema](#database-schema)
 8. [Redis Caching Strategy](#redis-caching-strategy)
 9. [RBAC & User Management](#rbac--user-management)
-10. [Anti-Porn Mode Feature](#-anti-porn-mode-feature)
-11. [Anti-Ads Mode Feature](#️-anti-ads-mode-feature)
+10. [Pre-Seeded Blocking Groups](#️-pre-seeded-blocking-groups)
 12. [Performance Targets](#performance-targets)
 13. [Operational Resilience](#operational-resilience)
 14. [Known Gaps & Non-Goals](#known-gaps--non-goals)
@@ -29,7 +28,7 @@
 NexoralDNS is a LAN-only DNS server and management system with:
 - **Sub-5ms query response targets** (cache hit / DB lookup), backed by a Redis-first, MongoDB-fallback resolution pipeline
 - **Three DNS transports**: UDP (port 53), TCP (port 53, RFC 7766), and DoT — DNS over TLS (port 853, RFC 7858) — all sharing the same query-processing logic
-- **Domain blocking** via an Access Control List (ACL) system: per-IP, per-group, or global policies, including pre-built Anti-Porn and Anti-Ads modes
+- **Domain blocking** via an Access Control List (ACL) system: per-IP, per-group, or global policies, plus three pre-seeded domain groups (Anti-Porn, Anti-Ads, Anti-AI) usable as one-click starting points
 - **Analytics** for query monitoring, published async via RabbitMQ and batch-written to MongoDB
 - **Multi-worker clustering** for multi-core utilization
 - **RBAC-based admin dashboard** (users, roles, permissions) for managing the above
@@ -67,15 +66,15 @@ NexoralDNS is a LAN-only DNS server and management system with:
         ▼                      ▼                      ▼
    [CACHE HIT]           [DB LOOKUP]           [UPSTREAM FORWARD]
    Redis record hit      MongoDB record,       No local record —
-                          single-flight-deduped forwarded on a
-                                                dedicated per-query
-                                                socket to a shuffled
-                                                pool (Cloudflare,
-                                                Google, Quad9
-                                                unfiltered), 2s
-                                                per-server timeout,
-                                                capped at 256
-                                                concurrent forwards
+                          single-flight-deduped forwarded over a 64-socket
+                          (CNAME chains to      multiplexing pool using
+                          depth 10)             generated TXIDs, to a
+                                                shuffled 6-IP pool
+                                                (Cloudflare, Google,
+                                                Quad9 unfiltered), 2s
+                                                per-server timeout, each
+                                                upstream behind its own
+                                                circuit breaker
 ```
 
 ### 2. Actual Query Processing Flow (4 checks, not the previously-documented 7)
@@ -96,15 +95,15 @@ NexoralDNS is a LAN-only DNS server and management system with:
                     └──┬──────────────┬───┘
                   NO   │              │ YES
            ┌───────────▼─────┐        │
-           │ Return NXDOMAIN │        │
+           │ Return 0.0.0.0  │        │
            └─────────────────┘        │
                                       │
                            ┌──────────▼──────────┐
-                           │ CHECK 2: BLOCK LIST │  3-layer cache:
-                           │ (ACL)               │  local Map (5s) →
-                           └──────────┬──────────┘  global Map (3s) →
-                                      │              Redis ACL sets
-                           ┌──────────▼──────────┐  (acl:ip:*, acl:all_users)
+                           │ CHECK 2: BLOCK LIST │  in-memory verdict map (5s)
+                           │ (ACL)               │  over the Redis ACL sets:
+                           └──────────┬──────────┘  exact sets first via
+                                      │              SISMEMBER (O(1)), then
+                           ┌──────────▼──────────┐  the small wildcard sets,
                            │   Domain Blocked?   │  with wildcard matching
                            └──┬──────────────┬───┘
                           YES │              │ NO
@@ -163,10 +162,10 @@ NexoralDNS is a LAN-only DNS server and management system with:
 │   (port 4773)                     │   │   (1 process, N=cpus×0.75 listeners)  │
 │                                    │   │                                       │
 │  Router → Controller → Service    │   │  server/udp.go (UDP, reuseport)       │
-│  layers for: DNS records, users,  │   │  server/tcp.go (TCP)                  │
-│  roles, ACL policies, anti-porn/  │   │  server/dot.go (TLS/853)              │
-│  anti-ads mode, domain/IP groups, │   │       │                               │
-│  analytics, health checks         │   │       ▼                               │
+│  layers for: domains, DNS records,│   │  server/tcp.go (TCP)                  │
+│  users, roles, ACL policies,      │   │  server/dot.go (TLS/853)              │
+│  domain/IP groups, analytics,     │   │       │                               │
+│  settings, health checks          │   │       ▼                               │
 │                                    │   │  rules/rules.go (StartRules)          │
 │  Own cluster.fork() pool, own     │   │  rules/servicestatus.go               │
 │  MongoClient, own RabbitMQ conn   │   │  rules/blocklist.go                   │
@@ -215,7 +214,11 @@ Web/                                 # Core DNS server — a Go module
 │   ├── cache/
 │   │   ├── cache.go                 # Cache facade: CRUD, pub/sub, ACL
 │   │   └── acl.go                   # ACL/domain-blocking lookups (Web-only feature)
-│   ├── dnsmsg/codec.go              # DNS wire format encode/decode, bounds-checked
+│   ├── dnsmsg/                      # DNS wire format — imports nothing internal
+│   │   ├── dnsmsg.go                # Record types, shared constants
+│   │   ├── parse.go                 # Bounded, compression-pointer-aware parsing
+│   │   ├── build.go                 # Answer construction (always 4-octet IPv4)
+│   │   └── ttl.go                   # TTL rewriting across answer/authority/additional
 │   ├── dnsio/
 │   │   ├── handler.go               # Handler interface: UDP and TCP/TLS both implement it
 │   │   ├── udp.go                   # Datagram send
@@ -226,13 +229,15 @@ Web/                                 # Core DNS server — a Go module
 │   │   └── ipscan.go                # Detects LAN IP changes, rebinds UDP listeners
 │   ├── server/
 │   │   ├── udp.go                   # UDP listeners (port 53), one per ~75% of CPUs
-│   │   ├── tcp.go                   # TCP listener (port 53, RFC 7766) + framing loop
+│   │   ├── tcp.go                   # TCP listener (port 53) + RFC 1035 framing loop
 │   │   ├── dot.go                   # TLS listener (port 853, RFC 7858)
 │   │   └── cert.go                  # Self-signed cert generation via crypto/x509
 │   ├── rules/
-│   │   ├── rules.go                 # StartRules — the 4-check pipeline
+│   │   ├── rules.go                 # StartRules — wiring, singleflight, cache:invalidate
+│   │   ├── pipeline.go              # The query path, layer by layer
 │   │   ├── servicestatus.go         # Service on/off gate, 5s in-memory memo
-│   │   └── blocklist.go             # ACL check, in-memory verdict cache
+│   │   ├── blocklist.go             # ACL check, in-memory verdict cache
+│   │   └── analytics.go             # Per-query telemetry (fire-and-forget)
 │   ├── dbpool/dbpool.go             # DNS record + CNAME chain resolution
 │   └── forwarder/
 │       ├── forwarder.go             # Upstream DNS forwarding
@@ -251,12 +256,23 @@ server/source/
 ├── (MongoConnectionManager, RedisConnectionManager, RedisCacheStore, RedisPubSub,
 │    CacheKeys/QueueKeys/DNS_QUERY_STATUS_KEYS, RabbitMQService + collaborators —
 │    shared with Web/ via the `shared/` package, not duplicated. See below.)
-├── Router/ · Controller/ · Services/  # DNS records, Users, Roles, ACL policies,
-│                                       # AntiPornMode, AntiAdsMode, DomainGroups,
-│                                       # IPGroups, Analytics, Health
+├── Router/ · Controller/ · Services/  # Domains, DNS records, Users, Roles,
+│                                       # ACL policies, DomainGroups, IPGroups,
+│                                       # Analytics, Dashboard, Logs, Settings,
+│                                       # DHCP devices, Auth, Public (info/health)
+│                                       # (Router/AntiPornMode/ and Router/AntiAdsMode/
+│                                       #  are empty leftover dirs — the "modes" are
+│                                       #  seeded domain groups, not separate APIs)
+├── constants/ · utilities/           # Domain lists + Initialize*Group seeders
+├── container/                        # DIContainer + appContainer (string keys)
+├── Middlewares/                      # authGuard, PermissionGuard, SessionStore, TokenExtractor
 └── CronJob/Jobs/
-    ├── BatchAnalytics.cron.ts       # Consumes DNS_Analytics queue → analytics collection
-    └── LogsExportWorker.cron.ts     # Consumes LOGS_EXPORT queue
+    ├── LoadPolicies.cron.ts          # Policies → Redis ACL sets, every 60s
+    ├── Connected_IP_fetcher.cron.ts  # LAN device sweep, every 2 min
+    ├── DashboardAnalytics.cron.ts    # 24h stats rollup, every 5 min
+    ├── BatchAnalytics.cron.ts        # Consumes DNS_Analytics → analytics collection
+    ├── LogsExportWorker.cron.ts      # Consumes LOGS_EXPORT queue
+    └── CleanupExports.cron.ts        # Deletes exports older than 24h
 
 shared/source/                        # `nexoraldns-shared` — file: dependency of server/ and DHCP/
                                       # (Web/ carries its own Go port under Web/shared/)
@@ -266,7 +282,7 @@ shared/source/                        # `nexoraldns-shared` — file: dependency
 └── utilities/logger.ts
 ```
 
-`shared/` holds only what was byte-identical or safely mergeable between `Web/` and `server/` — the connection layer. `Redis.cache.ts`/`RedisAdminInspector.ts`/`AclBlockingService.ts`/`MongoCollectionManager.ts` stay per-module: they wrap the shared connection classes but expose module-specific features (server does RBAC/index/seed bootstrap; Web does ACL-blocking lookups in the DNS hot path) and are *not* duplication to collapse further.
+`shared/` holds only what was byte-identical or safely mergeable between `Web/` and `server/` — the connection layer. `Redis.cache.ts`/`RedisAdminInspector.ts`/`MongoCollectionManager.ts` and the Go `cache/acl.go` stay per-module: they wrap the shared connection classes but expose module-specific features (server does RBAC/index/seed bootstrap; Web does ACL-blocking lookups in the DNS hot path) and are *not* duplication to collapse further.
 
 ---
 
@@ -275,23 +291,25 @@ shared/source/                        # `nexoraldns-shared` — file: dependency
 | Service | File | Responsibility |
 |---|---|---|
 | `StartRules` | `Web/internal/rules/rules.go` | The single query-processing entrypoint shared by all three transports. Owns the 4-check pipeline, single-flight dedup (`singleflight.Group` — one instance is wired in `app.New()` and shared by UDP/TCP/DoT, so dedup **does** cross transports), and the `cache:invalidate` Redis subscription (registered once from `app.Start()`) |
-| `ServiceStatusChecker` | `.../Start/ServiceStatusChecker.service.ts` | Redis-cached service on/off switch, MongoDB `service` collection fallback |
-| `BlockList` | `.../Rules/BlockList.service.ts` | ACL check with 3 cache layers (local `Map` 5s → static global `Map` 3s → Redis `acl:ip:*`/`acl:all_users` sets), wildcard domain matching, fail-open on error |
-| `DomainDBPoolService` | `.../DB/DB_Pool.service.ts` | Resolves a domain to its record, walking CNAME chains up to 10 hops via sequential MongoDB `findOne` calls (each hop depends on the previous — cannot be parallelized) |
-| `GlobalDNSforwarder` | `.../Forwarder/GlobalDNSforwarder.service.ts` | Forwards each query on its own dedicated, short-lived UDP socket (not a shared singleton) to a shuffled 6-IP pool (Cloudflare/Google/Quad9 unfiltered), 2s per-server timeout with fallthrough. Concurrency capped at 256 in-flight forwards via a counting semaphore (`acquireForwardSlot`/`releaseForwardSlot`) — beyond that, requests queue for a slot rather than opening unbounded sockets |
-| `RedisCacheService` | `Web/internal/cache/cache.go` | Singleton Redis client: generic CRUD, pub/sub (cache invalidation), ACL-specific reads (`getBlockedDomainsForIP`, `isDomainBlocked`) |
-| `RabbitMQService` | `shared/source/RabbitMQ/Rabbitmq.config.ts` (single copy, consumed by both `Web/` and `server/` via `nexoraldns-shared`) | Singleton AMQP client. Queue declarations are memoized per-process (`ensureQueue`) — asserted once, not on every publish/consume call |
-| `dnsio.Handler` implementations | `dnsio/udp.go` (UDP), `dnsio/tcp.go` (TCP/TLS) | Both embed the same parsing helpers from `dnsmsg/codec.go`; the stream variant only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
+| `ServiceStatusChecker` | `Web/internal/rules/servicestatus.go` | Redis-cached service on/off switch with a 5s in-memory memo, MongoDB `service` collection fallback. Unreachable MongoDB ⇒ `databaseOffline`, policy enforcement bypassed rather than the query failing |
+| `BlockList` | `Web/internal/rules/blocklist.go` | ACL check over the Redis ACL sets, fronted by an in-memory verdict map (5s TTL, swept at 10k entries). Boundary-aware wildcard matching. **Fails open** on error. Also exposes `CheckDomainsBatch` for bulk lookups and `ACLStats` for introspection |
+| `dbpool.Service` | `Web/internal/dbpool/dbpool.go` | Resolves a domain to its record, walking CNAME chains up to 10 hops via sequential MongoDB `findOne` calls (each hop depends on the previous — cannot be parallelized), with circular-reference detection and a shared 3s per-hop memo |
+| `forwarder.Service` | `Web/internal/forwarder/forwarder.go` | Forwards a query to a shuffled 6-IP pool (Cloudflare/Google/Quad9 unfiltered) over a **64-socket multiplexing pool**, 2s per-upstream timeout with fallthrough. Per-upstream circuit breakers. Publishes analytics in a fire-and-forget goroutine |
+| `cache.Service` | `Web/internal/cache/cache.go` + `acl.go` | Redis client: generic CRUD, pub/sub for cache invalidation, and the ACL-specific reads (`isDomainBlocked`, `getBlockedDomainsForIP`) |
+| RabbitMQ connection layer | `shared/source/RabbitMQ/` (TS, single copy) and `Web/shared/rabbitmq/` (its Go port) | AMQP client. Queue declarations are memoized per-process (`assertedQueues: Set<string>`) — asserted once, not on every publish/consume call |
+| `dnsio.Handler` implementations | `dnsio/udp.go` (UDP), `dnsio/tcp.go` (TCP/TLS) | Both use the parsing helpers from `dnsmsg/`; the stream variant only differs in the 2-byte length-prefixed framing (RFC 1035 §4.2.2) |
+
+> The `.../Start/ServiceStatusChecker.service.ts`, `.../Rules/BlockList.service.ts`, `.../DB/DB_Pool.service.ts` and `.../Forwarder/GlobalDNSforwarder.service.ts` paths that appeared in earlier revisions of this table were the **pre-Go-rewrite TypeScript implementations**. They no longer exist; the engine is Go throughout.
 
 ---
 
 ## Cluster & Concurrency Model
 
 - `server/` runs `cluster.fork()` with `Math.max(1, Math.floor(os.cpus().length * 0.75))` workers and `cluster.schedulingPolicy = cluster.SCHED_RR`. `Web/` reaches the same parallelism inside a single Go process: it opens that same number of UDP listeners on port 53 with `SO_REUSEPORT` so the kernel spreads datagrams across them, drains each on its own goroutine, and handles every query on a goroutine of its own.
-- **MongoDB connection pooling is CPU-scaled**, not left at the driver default. Both `mongodb.db.ts` files compute `maxPoolSize` per worker as `clamp(200 / totalUsableCpus, 20, 50)` — a floor of 20 (so a single busy worker always has headroom) and a ceiling of 50 (since DNS/API lookups are single fast document reads, not bulk operations), targeting roughly 200 aggregate connections across the whole cluster rather than `workers × 100` (the driver default) with no coordination.
-- **The inbound query socket's UDP buffer is explicitly enlarged** (4MB requested via `setRecvBufferSize`/`setSendBufferSize` in `DNS.Service.ts`), applied only after the socket is confirmed bound (`"listening"` event) — calling these setters on an unbound socket throws. The actual granted size is logged, since the OS caps the request at `net.core.rmem_max`/`wmem_max` regardless of what's asked for; on a stock Linux host with default sysctls (`rmem_max` = `rmem_default` = 212992 bytes), the code-level request is silently clamped back to the default unless that ceiling is separately raised.
+- **MongoDB connection pooling is CPU-scaled**, not left at the driver default. `shared/source/Database/MongoConnectionManager.ts` computes `maxPoolSize` per worker as `clamp(200 / totalUsableCpus, 20, 50)`, where `totalUsableCpus` is itself scaled by 0.75 — a floor of 20 (so a single busy worker always has headroom) and a ceiling of 50 (since DNS/API lookups are single fast document reads, not bulk operations), targeting roughly 200 aggregate connections across the whole cluster rather than `workers × 100` (the driver default) with no coordination. An additional `ABSOLUTE_MAX_AGGREGATE = 300` term caps the total once the worker count grows far enough that the per-worker floor would otherwise dominate.
+- **The inbound query socket's UDP buffer is explicitly enlarged** (4MB requested via `SetReadBuffer`/`SetWriteBuffer` in `Web/internal/netutil/socket.go`), applied only after the socket is confirmed bound — calling these setters on an unbound socket throws. The kernel's actual granted size is read back and logged (Linux reports 2× the requested value, which is documented bookkeeping, not a discrepancy). The OS caps the request at `net.core.rmem_max`/`wmem_max` regardless of what's asked; on a stock Linux host with default sysctls (`rmem_max` = `rmem_default` = 212992 bytes), the code-level request is silently clamped back to the default unless that ceiling is separately raised.
 - The Docker deployment raises that ceiling automatically: `Scripts/docker-entrypoint.sh` writes to `/proc/sys/net/core/rmem_max`/`wmem_max` at container start (works because the `nexoraldns` service runs `privileged: true` + `network_mode: host` in `docker-compose.yml`/`dev.compose.yaml`, so there's no isolated network namespace — the write lands on the real host value). **The bare-metal `Scripts/install.sh` path does not yet do this** — see Known Gaps.
-- **Outbound upstream forwarding uses a dedicated socket per query, not one shared socket, and does not do buffer tuning** — a real production issue (frequent "no response from any DNS server" failures across unrelated domains) traced back to many concurrent queries sharing one forwarder socket: a direct test sending 20 queries through one shared socket at once dropped 19 of them; giving each query its own socket resolved 20/20, repeatably. Since buffer size wasn't the bottleneck (verified: the same loss occurred even with `rmem_max` already raised to 4MB), the fix was architectural, not a tuning knob. This also let the transaction-ID-rewriting/pending-request map the old shared-socket design needed be removed entirely — a dedicated socket has no other query to disambiguate a response from. Concurrent socket creation is capped at 256 in-flight forwards (`MAX_CONCURRENT_FORWARDS`) to bound file-descriptor usage under extreme concurrency; requests beyond the cap queue for a freed slot, trading added latency for staying alive over crashing outright.
+- **Outbound upstream forwarding uses a 64-socket multiplexing pool, not one shared socket and not a dedicated socket per query.** This was arrived at empirically. A single shared forwarder socket caused a real production issue — frequent "no response from any DNS server" failures across unrelated domains — because many concurrent queries shared it: a direct test sending 20 queries through one shared socket at once dropped 19 of them. Giving each query its own socket fixed that (20/20, repeatably), and since buffer size was not the bottleneck (the same loss occurred even with `rmem_max` already raised to 4MB) the fix was architectural rather than a tuning knob. But a dedicated socket per query does not scale — unbounded file-descriptor growth under load — so the shipped design is `socketPoolSize = 64` sockets, each multiplexing the full `0x10000` TXID space via a generated (not client-reused) transaction ID, with the client's original TXID restored before replying. The rejected alternative and the reasoning are documented in the code comments in `forwarder/pool.go`. Because the model multiplexes rather than queues, `QueueDepth()` is always `0` and there is no blocking semaphore.
 - **Single-flight deduplication** prevents duplicate concurrent MongoDB lookups for the same domain. One `StartRules` instance is shared by all three transports and survives an IP rebind, so a cold domain queried simultaneously over UDP, TCP and DoT collapses into a single database read.
 - **RabbitMQ queue declarations are memoized** per process via an `assertedQueues: Set<string>` guard in a shared `ensureQueue()` helper — every `publish`/`consume`/`publishBatch`/`consumeBatch`/`getQueueMessageCount` call site routes through it, so a queue is declared once per process lifetime rather than on every message (a queue is a durable, broker-side object that survives channel/connection drops, so re-declaring it per-message was pure overhead).
 
@@ -304,6 +322,8 @@ Both `Web/` and `server/` connect to the same MongoDB database (`nexoral_db` by 
 **`Web/`'s DNS engine reads/writes**: `service`, `dns_records`, `domains`, `analytics` (via `Web/internal/config/keys.go`).
 
 **`server/`'s API additionally manages**: `users`, `roles`, `permissions`, `access_control_policies`, `domain_groups`, `ip_groups`, `session_manage` (via `server/source/core/key.ts`).
+
+**Declared but unused**: `logs` and `rules` appear in both key files, in `AllCollections`, and in the index bootstrap, but no code path reads or writes them and neither has a schema. See Known Gaps.
 
 ### `dns_records`
 ```typescript
@@ -342,6 +362,8 @@ Both `Web/` and `server/` connect to the same MongoDB database (`nexoral_db` by 
   targetIPGroup?: ObjectId, targetIPGroups?: ObjectId[],
   blockType: "domain_group" | ...,
   domainGroup?: ObjectId,      // ref -> domain_groups
+  domainGroups?: ObjectId[],   // when blockType is multiple_domain_groups
+  domains?: string[],          // when blockType is specific_domains
   policyName: string,
   isActive: boolean,
   createdAt: number, updatedAt: number
@@ -351,7 +373,14 @@ Both `Web/` and `server/` connect to the same MongoDB database (`nexoral_db` by 
 
 ### `domain_groups`
 ```typescript
-{ _id: ObjectId, name: string, isSystemGroup: boolean, domains: string[] /* wildcard-capable */ }
+{
+  _id: ObjectId,
+  name: string,               // unique indexed
+  description?: string,
+  domains: string[],          // wildcard-capable; plain strings or {domain, isWildcard}
+  isSystemGroup: boolean,     // true for the three pre-seeded groups
+  category?: string
+}
 // Indexes: { name: 1 } (unique), { createdAt: -1 }
 ```
 
@@ -361,9 +390,10 @@ Both `Web/` and `server/` connect to the same MongoDB database (`nexoral_db` by 
   queryName: string, queryType: string, SourceIP: string,
   Status: string,    // DNS_QUERY_STATUS_KEYS: RESOLVED | BLOCKED | SERVICE_DOWN | FAILED | FORWARDED | ...
   From: string,      // FROM_CACHE | FROM_DB | Upstream provider name | FROM_BLOCKED | FROM_FAIL_SAFE
-  timestamp: number, duration: number
+  timestamp: number, duration: number,
+  createdAt: Date, updatedAt: Date   // stamped by the batch consumer
 }
-// Published to RabbitMQ (DNS_Analytics queue) from Web/, batch-consumed and
+// Published to RabbitMQ (DNS_analytics queue) from Web/, batch-consumed and
 // written here by server/source/CronJob/Jobs/BatchAnalytics.cron.ts.
 // Indexes: { timestamp: 1 }, { Status: 1 }, { queryType: 1 }, { From: 1 }, { duration: 1 },
 //          { createdAt: 1 } with expireAfterSeconds: 604800 (7-day auto-cleanup),
@@ -377,31 +407,67 @@ See [RBAC & User Management](#rbac--user-management) below — unchanged from th
 
 ## Redis Caching Strategy
 
-Actual key scheme (`Web/shared/keys/keys.go`) — narrower than earlier drafts of this document suggested:
+The key scheme is defined **once per language** and mirrored exactly: `Web/shared/keys/keys.go` for the engine, `shared/source/Redis/CacheKeys.cache.ts` for the TS services. They are a deliberate port, not a duplication to collapse — see [Directory Structure](#directory-structure).
 
 ```typescript
 enum CacheKeys {
-  Service_Status = "dns-server-status",
-  Domain_DNS_Record = "Domain_DNS_Record",   // used as `${Domain_DNS_Record}:${queryName}`
+  Service_Status = "dns-server-status",     // 60s TTL, plus a 5s in-process memo
+  Domain_DNS_Record = "Domain_DNS_Record",  // used as `${Domain_DNS_Record}:${queryName}`
   Block_Domains = "Blocked_Domain"
 }
 
 enum QueueKeys {
-  DNS_Analytics = "DNS_analytcs"             // [sic] — RabbitMQ queue name, not a Redis key
+  DNS_Analytics = "DNS_analytcs"            // [sic] — RabbitMQ queue name, not a Redis key
+  LOGS_EXPORT   = "logs_export"
 }
 ```
 
-**ACL / block-list keys** (read by `Redis.cache.ts`'s `isDomainBlocked`/`getBlockedDomainsForIP`/`getGloballyBlockedDomains`): `acl:ip:<ip>` (Redis Set, per-IP blocked domains) and `acl:all_users` (Redis Set, global blocks) — populated by a cron job in `server/`, not by the DNS engine itself. Entries may be plain domain strings or JSON `{domain, isWildcard}` objects; wildcard matching supports `*.example.com` (subdomain), `example.*` (prefix), and bare `*` (block everything).
+### ACL / block-list keys
 
-**Record cache**: `${Domain_DNS_Record}:${queryName}` → the resolved record JSON, TTL = the record's own `ttl` field. Set both on a fresh MongoDB resolution and on a successful upstream forward.
+Populated by `server/source/CronJob/Jobs/LoadPolicies.cron.ts`, **not** by the DNS engine. Six keys, split exact from wildcard so the hot path can use O(1) `SISMEMBER`:
 
-**Cache invalidation**: pub/sub on the `cache:invalidate` channel (not a polling/expiry-only model) — on receipt, `BlockList.ClearCaches()` clears the in-process verdict cache, `ServiceStatusChecker.ClearMemo()` drops the 5s service-status memo, and the `Service_Status` Redis key is deleted, forcing the next query to re-read from MongoDB. The subscription is registered once from `app.Start()`.
+| Key | Type | Contents |
+|---|---|---|
+| `acl:ip:<ip>:exact` | Set | exact blocked domains for one client |
+| `acl:ip:<ip>:wild` | Set | wildcard patterns for one client |
+| `acl:all_users:exact` | Set | exact blocks applying network-wide |
+| `acl:all_users:wild` | Set | wildcard blocks applying network-wide |
+| `acl:metadata` | String | policy/group counts and last-load time |
+
+All with a 1-day TTL, written in a **single atomic `MULTI`** after the old `acl:*` keys are `SCAN`ned and dropped, so the engine never reads a half-replaced rule set. Entries may be plain domain strings or JSON `{domain, isWildcard}` objects; the loader accepts both shapes for backwards compatibility.
+
+**Lookup strategy** (`Web/internal/cache/acl.go`): the two `:exact` sets are checked first with `SISMEMBER`. Only on a miss does the code scan the `:wild` sets — small, but not indexable. Wildcard matching is boundary-aware:
+
+| Pattern | Matches | Does not match |
+|---|---|---|
+| `*.example.com` | `example.com`, `a.example.com`, `a.b.example.com` | `notexample.com` |
+| `google.*` | `google.com`, `google.co.uk` | `googlexyz.com` |
+| `example.com` | `example.com` and its subdomains | — |
+| `*` | everything | — |
+
+**Propagation is immediate, not polled.** Every policy create/update/toggle/delete and every domain-group mutation calls `forceReloadACLPolicies()` synchronously; the 60s cron only catches drift. The 3–5s figure quoted in earlier revisions of this document described the cron-only path and no longer applies to API-driven changes.
+
+### Other caches
+
+| Cache | TTL | Location |
+|---|---|---|
+| Record cache | the record's own `ttl` | `Web/internal/cache/cache.go` |
+| Service status | 60s Redis + 5s in-process memo | `rules/servicestatus.go` |
+| Block verdicts | 5s in-memory, swept at 10k entries | `rules/blocklist.go` |
+| CNAME hops | 3s in-memory, swept at 10k entries | `dbpool/dbpool.go` |
+| Dashboard stats | 30 min, recomputed every 5 min | `CronJob/Jobs/DashboardAnalytics.cron.ts` |
+| Sessions | 30 min, explicitly evicted | `Middlewares/SessionStore.ts` |
+| Log-export metadata | 24h | `Services/Logs/LogsExport.service.ts` |
+
+**Record cache**: `${Domain_DNS_Record}:${queryName}` → the resolved record JSON. Set both on a fresh MongoDB resolution and on a successful upstream forward.
+
+**Cache invalidation**: pub/sub on the `cache:invalidate` channel (not a polling/expiry-only model) — on receipt, `BlockList.ClearCaches()` clears the in-process verdict cache, the 5s service-status memo is dropped, and the `Service_Status` Redis key is deleted, forcing the next query to re-read from MongoDB. The subscription is registered once from `app.Start()`.
 
 ---
 
 ## RBAC & User Management
 
-This is the admin-facing management layer on top of the existing RBAC primitives (`users`, `roles`, `permissions` collections — see `server/source/core/key.ts` and `server/source/Database/mongodb.db.ts` for the seeded permission catalog and default roles). It is administrative surface, not part of the DNS query path.
+This is the admin-facing management layer on top of the existing RBAC primitives (`users`, `roles`, `permissions` collections — see `server/source/core/key.ts` and `server/source/Database/MongoCollectionManager.ts` for the seeded permission catalog and default roles). It is administrative surface, not part of the DNS query path.
 
 ### Users Collection (current shape)
 
@@ -453,109 +519,51 @@ An admin cannot deactivate, demote, or delete their own account through this API
 
 ---
 
-## 🔞 Anti-Porn Mode Feature
+## 🛡️ Pre-Seeded Blocking Groups
 
 ### Overview
 
-NexoralDNS includes a built-in **Anti-Porn Mode** feature that provides easy-to-use adult content filtering at the DNS level. This feature blocks access to a pre-seeded list of known adult content websites and can be enabled for specific users, IP groups, or globally across your entire network. It's a thin, purpose-built layer on top of the general `access_control_policies` / `domain_groups` ACL system described above — not a separate blocking mechanism.
+NexoralDNS ships three ready-made domain lists — Anti-Porn, Anti-Ads and Anti-AI — so an admin can enable content filtering without assembling a domain list by hand.
+
+**They are not a separate feature with their own API, service, controller or UI.** Each one is a `domain_groups` document with `isSystemGroup: true`, seeded at boot and then managed through the **same generic access-control API** as any user-created group. Enabling one means creating an `access_control_policies` document that targets an IP, IP group or `all` with `blockType: 'domain_group'` pointing at that group.
+
+> **Documentation correction.** Earlier revisions of this document described dedicated `/api/anti-porn-mode/*` and `/api/anti-ads-mode/*` routes, `Services/AntiPornMode/*`, `Controller/AntiPornMode/*`, and `client/components/anti-porn-mode/*`. **None of those exist in the current codebase.** `server/source/Router/AntiPornMode/` and `Router/AntiAdsMode/` are empty leftover directories with no files. Any reference to them is stale.
+
+### The three groups
+
+| Group name (`domain_groups.name`) | Domains | Source | Seeded by |
+|---|---|---|---|
+| `Adult Content (Anti-Porn)` | 92 | Major adult sites and variants | `server/source/utilities/InitializeAdultContentGroup.utls.ts` |
+| `Ads & Trackers (Anti-Ads)` | 155 | Advertising, analytics, tracking and ad-CDN domains | `InitializeAdBlockingGroup.utls.ts` |
+| `AI Chat & Generative Tools (Anti-AI)` | 42 | AI assistants, model APIs, AI coding tools | `InitializeAIContentGroup.utls.ts` |
+
+All three are invoked sequentially during startup in `server/source/core/fastify.ts`, before the HTTP listener binds.
 
 ### Key Features
 
-1. **Pre-configured Domain List**: 100+ adult content domains, auto-seeded at server startup
-2. **Flexible Targeting**: Block for specific IPs, IP groups, or all users
-3. **Easy Management**: Simple UI for enabling/disabling policies
-4. **Real-time Updates**: Changes propagate via the `cache:invalidate` Redis pub/sub channel described above
-5. **No separate enforcement path**: Uses the same ACL check every other block policy uses (`BlockList.service.ts`)
-
-### Architecture
-
-#### Server Components
-
-**1. Domain Group (Adult Content)**
-- **Collection**: `domain_groups`, `isSystemGroup: true`, name `"Adult Content (Anti-Porn)"`
-- Auto-created/updated on server restart
-
-**2. AntiPornMode Service** — `server/source/Services/AntiPornMode/AntiPornMode.service.ts`
-- `enableAntiPornMode(params)`, `disableAntiPornMode(policyId)`, `toggleAntiPornMode(policyId)`, `getAntiPornModeStatus(filter)`, `isEnabledForIP(ip)`
-
-**3. AntiPornMode Controller** — `server/source/Controller/AntiPornMode/AntiPornMode.controller.ts`, routed at `/api/anti-porn-mode`
-
-#### Client Components
-
-- `client/components/anti-porn-mode/AntiPornPolicyModal.jsx` — 2-step wizard (target selection → details)
-- `client/components/anti-porn-mode/AntiPornModeSection.jsx` — dashboard grid view, toggle/delete/filter
-- Integrated at `client/app/dashboard/access-control/page.js` ("Anti-Porn Mode" tab)
-
-### API Endpoints
-
-```typescript
-POST   /api/anti-porn-mode/enable
-DELETE /api/anti-porn-mode/:policyId
-PATCH  /api/anti-porn-mode/:policyId/toggle
-GET    /api/anti-porn-mode/status?filter=all|active|inactive
-GET    /api/anti-porn-mode/check-ip/:ip
-```
-
-`enable` body:
-```typescript
-{
-  targetType: 'single_ip' | 'multiple_ips' | 'ip_group' | 'multiple_ip_groups' | 'all',
-  targetIP?: string, targetIPs?: string[],
-  targetIPGroup?: string, targetIPGroups?: string[],
-  policyName?: string
-}
-```
+1. **Pre-configured domain lists** — plain domain strings and wildcard patterns, held in `server/source/Constants/{AdultContentDomains,AdBlockingDomains,AIContentDomains}.constant.ts`
+2. **Flexible targeting** — any of the five policy target types: `single_ip`, `multiple_ips`, `ip_group`, `multiple_ip_groups`, `all`
+3. **Easy management** — create, toggle, edit or delete the policy from the Access Control page's Policies tab
+4. **Real-time propagation** — policy mutations call `forceReloadACLPolicies()` synchronously, then publish on `cache:invalidate`; the 60s cron is only the backstop, so an API-driven change lands immediately rather than after a tick
+5. **No separate enforcement path** — the engine runs the identical ACL check it runs for any other block rule; there is no special-cased fast path
 
 ### How It Works
 
-1. On server startup, the adult content domain group is created/updated if missing
-2. Enabling the mode creates a policy linking the target (IP/group/all) to that domain group
-3. On each DNS query, `BlockList.service.ts` checks active policies exactly as it would for any other block rule — no special-cased fast path
-4. Policy changes trigger the `cache:invalidate` pub/sub event, clearing in-process caches across all workers within the cache's own TTL window (3-5s)
+1. On startup, each seeder upserts its group on `{ name, isSystemGroup: true }`, comparing the domain count to decide create vs. update
+2. An admin creates a policy targeting the desired clients with `blockType: 'domain_group'` and the group's `_id`
+3. `LoadPolicies.cron.ts` expands all active policies into Redis ACL sets — `acl:ip:<ip>:exact`/`:wild`, `acl:all_users:exact`/`:wild` — resolving group references in parallel and replacing the old keys atomically in a single `MULTI`
+4. On each DNS query, `internal/rules/blocklist.go` evaluates the two exact sets first (`SISMEMBER`, O(1)), falling back to scanning the small wildcard sets only on a miss
+5. A match produces a `0.0.0.0` answer
 
 ### Maintenance
 
-- Add domains: edit `server/source/Constants/AdultContentDomains.constant.ts`, restart to re-seed
-- Check status: `mongo nexoral_db --eval "db.domain_groups.findOne({ isSystemGroup: true, name: 'Adult Content (Anti-Porn)' })"`
-- Debug: `redis-cli keys "acl:*"`, server logs prefixed `[Anti-Porn]`
+- **Add domains**: edit the relevant `Constants/*.constant.ts`, update the `lastUpdated` metadata, restart to re-seed
+- **Check status**: `mongo nexoral_db --eval "db.domain_groups.findOne({ isSystemGroup: true, name: 'Adult Content (Anti-Porn)' })"`
+- **Debug**: `redis-cli keys "acl:*"`, then inspect the expanded sets
 
----
+### Security notes
 
-## 🛡️ Anti-Ads Mode Feature
-
-### Overview
-
-Same mechanism as Anti-Porn Mode, targeting advertising/tracking domains instead — a domain group (`"Ads & Trackers (Anti-Ads)"`, 200+ domains sourced from Hagezi/AdGuard/EasyList) linked to ACL policies via the same `access_control_policies` system.
-
-### Architecture
-
-- **Service**: `server/source/Services/AntiAdsMode/AntiAdsMode.service.ts` — `enableAntiAdsMode`, `disableAntiAdsMode`, `toggleAntiAdsMode`, `getAntiAdsModeStatus`, `isEnabledForIP`
-- **Controller**: `server/source/Controller/AntiAdsMode/AntiAdsMode.controller.ts`, routed at `/api/anti-ads-mode`
-- **Client**: `client/components/anti-ads-mode/{AntiAdsPolicyModal,AntiAdsModeSection}.jsx`, `client/app/dashboard/access-control/page.js` ("Anti-Ads Mode" tab)
-
-### API Endpoints
-
-```typescript
-POST   /api/anti-ads-mode/enable      // same body shape as anti-porn-mode
-DELETE /api/anti-ads-mode/:policyId
-PATCH  /api/anti-ads-mode/:policyId/toggle
-GET    /api/anti-ads-mode/status?filter=all|active|inactive
-GET    /api/anti-ads-mode/check-ip/:ip
-```
-
-### Domain Categories (200+ total)
-
-Google Ads/Analytics, Meta/Facebook tracking, major ad networks & exchanges (Amazon, Bing, AppNexus, Criteo, Outbrain, Taboola), analytics/tracking services (Adobe, Hotjar, Mixpanel, Segment, Comscore), social media pixels, mobile ad networks (AdMob, InMobi, Unity, Vungle), video ad platforms, retargeting networks, affiliate tracking, aggressive pop-up ad networks, ad CDN infrastructure.
-
-### Maintenance
-
-- Add domains: edit `server/source/Constants/AdBlockingDomains.constant.ts`, update `lastUpdated`/`version` metadata, restart to re-seed
-- Check status: `mongo nexoral_db --eval "db.domain_groups.findOne({ isSystemGroup: true, name: 'Ads & Trackers (Anti-Ads)' })"`
-- Debug: `redis-cli keys "acl:*"`, server logs prefixed `[Anti-Ads]`
-
-### Security notes (both modes)
-
-Input validation, safe ObjectId conversion (NoSQL injection prevention), policy-name sanitization, array size limits (100 IPs / 50 groups) on policy creation, sanitized error responses, JWT-gated endpoints.
+Input validation, safe `ObjectId` conversion (NoSQL injection prevention), policy-name sanitization, array size limits on policy creation, sanitized error responses, and JWT-gated endpoints — all inherited from the generic access-control layer rather than reimplemented.
 
 ---
 
@@ -567,7 +575,7 @@ The per-path latency table below lists **design targets**, not per-path measurem
 |-------|---------------|-------|
 | Redis cache hit (record + service status) | **<2ms** | 2 sequential Redis round trips (service status, then record) — intentionally sequential, not parallelized, because either check can short-circuit the query before the more expensive path runs |
 | MongoDB lookup (cache miss) | **<5ms** | Single-flight-deduped `findOne`, sequential per CNAME hop (1 hop = 1 round trip; a 10-hop chain is ~10x a direct hit) |
-| Upstream forward | **<50ms** | 2s timeout per upstream server, automatic fallthrough across a shuffled 6-IP/3-provider pool (worst case 12s if all 6 fail), on a dedicated per-query socket |
+| Upstream forward | **<50ms** | 2s timeout per upstream server, automatic fallthrough across a shuffled 6-IP/3-provider pool (worst case 12s if all 6 fail), over a 64-socket multiplexing pool with generated TXIDs |
 
 ### Measured results
 
@@ -599,9 +607,9 @@ Scaling beyond this is bounded by hardware and by domain concentration, with Mon
 
 - **Fail-safe on DB outage**: `internal/rules/rules.go` catches MongoDB errors at the service-status and ACL-check stages and sets `databaseOffline = true`, bypassing policy enforcement rather than returning SERVFAIL — the query still resolves via cache or upstream forward.
 - **Fail-open on ACL errors**: `BlockList.checkDomain` and `RedisCache.isDomainBlocked` both return `false` (allow) on internal errors rather than blocking all traffic.
-- **Multi-provider upstream forwarding**: 3 providers, 6 IPs (Cloudflare, Google, Quad9 unfiltered), shuffled per query, 2s per-server timeout with automatic fallthrough to the next provider on timeout or send failure — each query on its own dedicated socket, so one slow/failing query can't affect another's attempts.
+- **Multi-provider upstream forwarding**: 3 providers, 6 IPs (Cloudflare, Google, Quad9 unfiltered), shuffled per query, 2s per-server timeout with automatic fallthrough to the next provider on timeout or send failure. Each upstream has its own circuit breaker, and queries are spread over a 64-socket multiplexing pool with **generated** transaction IDs, so one slow or failing upstream cannot affect another query's attempt and two concurrent clients cannot have their responses confused.
 - **Automatic LAN IP rebinding**: `internal/netutil/ipscan.go` polls the local IP every 10s and rebinds the UDP listeners if it changes (e.g., DHCP lease renewal on the host itself); a failed rebind is retried on the next tick. TCP:53 and DoT:853 bind once at startup and do **not** follow an address change.
-- **Self-signed DoT certificates**: auto-generated via `openssl` on first startup if absent, persisted to `/etc/nexoral/cert` (configurable via `DOT_CERT_DIR`) so the same cert survives restarts.
+- **Self-signed DoT certificates**: auto-generated in Go via `crypto/x509` (RSA-2048, 730-day validity) on first startup if absent, then persisted atomically — temp file + `Sync` + `Rename` — to `/etc/nexoral/cert` (configurable via `DOT_CERT_DIR`) so the same cert survives restarts. The key is written `0600`. No external `openssl` call.
 
 ---
 
@@ -609,29 +617,66 @@ Scaling beyond this is bounded by hardware and by domain concentration, with Mon
 
 Honest list, current as of this document's last update — not aspirational:
 
-1. **No automated test suite.** `Test/` contains only a `dnsperf` query list and a docker-compose for test infra — no unit or integration tests for either `Web/` or `server/`. This is a real gap against this project's own `CLAUDE.md` testing rule.
-2. **No real-time metrics/observability.** Analytics land in MongoDB via a RabbitMQ batch consumer — queryable after the fact, but no live p50/p95/p99 dashboard. The sub-5ms targets above cannot currently be verified in production without manual querying.
-3. ~~Duplicated infrastructure code between `Web/` and `server/`.~~ **Resolved** — the RabbitMQ, Redis, and MongoDB connection layers now live once in `shared/source/` (the `nexoraldns-shared` package, a `file:` dependency of both). This had already caused one real bug — an `assertQueue` argument mismatch between `Web`'s publisher and `server`'s consumer paths — that existed in both copies and had to be found and fixed in both independently; that class of bug is now structurally impossible for these three layers. `Redis.cache.ts`/`RedisAdminInspector.ts`/`AclBlockingService.ts`/`MongoCollectionManager.ts` remain per-module by design (see Directory Structure) since they wrap the shared connection classes with module-specific behavior, not duplicate them.
+1. ~~**No automated test suite.**~~ **Resolved** — see [Testing](#testing). `Test/` now runs four suites (50 Vitest specs across `server`/`tools`/`dhcp`, plus 13 Go test files under `Web/`), all infrastructure is faked so nothing needs a live backing service, and CI gates the container push on them.
+2. **No real-time metrics/observability.** Analytics land in MongoDB via a RabbitMQ batch consumer — queryable after the fact, but no live p50/p95/p99 dashboard and no metrics exporter. The forwarder *does* compute a useful `Status()` struct (`activeForwards`, `successRate`, per-breaker state), but no endpoint exposes it. The sub-5ms targets above therefore cannot be verified in production without manual querying.
+3. ~~Duplicated infrastructure code between `Web/` and `server/`.~~ **Resolved** — the RabbitMQ, Redis, and MongoDB connection layers now live once in `shared/source/` (the `nexoraldns-shared` package, a `file:` dependency of both). This had already caused one real bug — an `assertQueue` argument mismatch between `Web`'s publisher and `server`'s consumer paths — that existed in both copies and had to be found and fixed in both independently; that class of bug is now structurally impossible for these three layers. `Redis.cache.ts`/`RedisAdminInspector.ts`/`MongoCollectionManager.ts` and the Go `cache/acl.go` remain per-module by design (see Directory Structure) since they wrap the shared connection classes with module-specific behavior, not duplicate them.
 4. **Bare-metal deployment doesn't get the UDP buffer fix.** `Scripts/docker-entrypoint.sh` raises `net.core.rmem_max`/`wmem_max` for the Docker path; `Scripts/install.sh` (the bare-metal LAN install path) does not yet do the equivalent.
-5. **No domain rerouting/rewriting** and **no per-user plan gating** in the DNS query path, despite both being mentioned as product features elsewhere (`CLAUDE.md`, `FEATURES.md`) — see the note in [System Overview](#system-overview).
+5. **No domain rerouting/rewriting** and **no per-user plan gating** in the DNS query path — see the note in [System Overview](#system-overview).
 6. **MongoDB connection pool sizing assumes co-location isn't extreme.** The CPU-scaled `maxPoolSize` targets ~200 aggregate connections for `Web/`'s cluster and another ~200 for `server/`'s cluster independently — the two don't coordinate with each other, so total real connection load against one MongoDB instance is the sum of both, not a jointly-tuned number.
 7. **`tools/` (MCP server) holds no sessions of its own.** Clients authenticate via OAuth and keep their own tokens, which `server/` validates, so restarting `tools/` does not sign anyone out. What is still process-local is the in-flight OAuth state (parked authorization requests, unredeemed codes, the 30s token-verification cache), so it cannot yet be horizontally scaled behind a load balancer without moving that to Redis (deferred — see [MCP Tool Server](#mcp-tool-server-tools)).
+8. **No admission control on the DNS query path.** `internal/server/udp.go` spawns a goroutine per datagram with no per-IP rate limit or concurrency cap, so under saturation the server is bounded by memory rather than by a limiter. The forwarder *does* bound itself (64 sockets × the full TXID space), and `concurrencyLimit()` is exposed on the forwarder's `Status()` but unused.
+9. **`logs` and `rules` MongoDB collections are declared but never used** — they appear in `server/source/core/key.ts`, `Web/internal/config/keys.go`, `AllCollections` and the index bootstrap, but no code path reads or writes them, and neither has a schema.
+10. **Dead code, worth deleting rather than reviving.** `components/access-control/AnalyticsTab.js` is not rendered by `access-control/page.js`; `client/config/keys.js` defines five endpoints that don't exist on the server (`DNS_RECORDS`, `ZONES`, `STATISTICS`, `SETTINGS`, `LIST_OF_DEVICES`) along with three unused service functions; `server/source/Router/AntiPornMode/` and `Router/AntiAdsMode/` are empty leftover directories; `PUT /dns/delete` is the only destructive route using `PUT` instead of `DELETE`.
+11. **Two live bugs in the device broker.** `DHCP/src/service/UpdateResolveConfigFile.service.ts` rewrites `search` lines to `search <IP>` — an IP where a domain list belongs, reading like a copy-paste from the `nameserver` branch above it (it also swallows all errors). `LookupIP` in `Services/DHCP/Router_connection.service.ts` filters out every device ending in `.1` and then decrements the count by exactly `1` regardless of how many were filtered; it should be `originalLength - filtered.length`.
+12. **CORS is permissive by configuration.** `CORS_CONFIG.ORIGIN: "*"` is combined with `ALLOW_CREDENTIALS: true` and `trustProxy: true` on a LAN-exposed API. Acceptable given the LAN-only deployment model, but it is a deliberate exception rather than an oversight.
 
 ---
 
 ## Testing
 
-**Current state**: `Test/` contains `dnsperf.txt` (a 49-domain query list for the external `dnsperf` load-testing tool) and a `docker-compose.yml` for spinning up test infrastructure (Mongo/Redis/RabbitMQ) — no automated unit or integration tests exist for either `Web/` or `server/` today.
-
-**Recommended immediate next step**: run `dnsperf` against a live instance —
+**Four suites, all runnable offline.** No test requires a live MongoDB, Redis or RabbitMQ — the infrastructure is faked.
 
 ```bash
-dnsperf -d Test/dnsperf.txt -s <server-ip> -p 53 -c 100 -l 60
+cd Test
+npm test                # all four, in order
+npm run test:server     # 28 Vitest specs
+npm run test:tools      # 18 Vitest specs
+npm run test:dhcp       # 4 Vitest specs
+npm run test:web        # cd ../Web && go test -v -count=1 ./...
+npm run coverage        # all four with coverage
 ```
 
-— on hardware matching the real target deployment, to replace the capacity estimates in this document with measured numbers.
+| Suite | Coverage |
+|-------|----------|
+| `Test/server/` | Middlewares (`TokenExtractor`, `SessionStore`, `authGuard`, `permissionGuard`), database, helpers (`IP_Ping`, `responseBuilder`, `bcrypt`, `jwt`, `buildLogsQuery`, `passwordPolicy`), Redis (`RedisConnectionManager`, `RedisAdminInspector`, `RedisCacheStore`, `RedisPubSub`, `CacheKeys`), the DI container, the logs service, RabbitMQ (publisher, queue manager, consumer, connection manager) |
+| `Test/tools/` | All ten `register*Tools` groups, `toolResult`, `ApiClient`, `HealthMonitor`, core keys, `NexoralOAuthProvider` |
+| `Test/dhcp/` | `config/key`, `config/DHCP`, `AutoScanIPchange.service`, `UpdateResolveConfigFile.service` |
+| `Web/**/*_test.go` | 13 files: ACL wildcard matching, cache CRUD/TTL/pubsub, CNAME resolution including **circular CNAME** and hop caching, forwarder pool and circuit breakers, DNS wire format, sockets and local IP, pipeline layers (`DefaultTTL` across numeric shapes, `servableLocally`, service status memo and offline fallback, blocklist verdict TTL, analytics status mapping), config keys |
 
-**Per this project's `CLAUDE.md`** ("ALWAYS test: Add/update tests in `Test/` for ANY feature change"), new feature work should come with tests even though the existing baseline doesn't have them yet.
+Fakes live in `Test/server/_testUtils/` (`fakeMongo`, `fakeRedis`, `fakeAmqp`, `fakeReply`, `fakeRequest`, `mockContainer`) and `Test/tools/_testUtils/` (`fakeHttp`, `fakeMcpServer`). `fakeReply`/`fakeRequest` stand in for Fastify's objects so services are called with the same argument shape production uses.
+
+### CI
+
+`.github/workflows/push_to_github_registry.yml` runs four jobs:
+
+1. `detect-changes` — diffs against the `before` SHA to decide which suites are relevant
+2. `test-environment` — Node 20, `npm ci` in `Test/`, runs the selected suites **with coverage**
+3. `verify-web` — `go build`, `go vet`, a **`gofmt -l` gate that fails on unformatted files**, then `go test -coverprofile`
+4. `build-and-push` — **gated on the tests passing** (a failure blocks it); pushes `ghcr.io/nexoral/nexoraldns:latest` with size/digest annotations
+
+A separate release job builds `.deb` and `.tar.gz` artifacts for `amd64`/`arm64`/`i386`, publishes the GitHub Release, and prunes all but the two most recent releases.
+
+### Load testing
+
+Aggregate throughput numbers in this document come from `dnsperf`, not from the unit suites:
+
+```bash
+dnsperf -s <lan-ip> -d Test/dnsperf.txt -c 5 -q 50 -l 30
+```
+
+Still outstanding: a run on dedicated hardware with the load generator on a separate host, and per-layer rather than aggregate timing.
+
+**Standing rule:** any behaviour change ships with a test update in the same commit.
 
 ---
 
@@ -659,7 +704,7 @@ A fifth, independent process that lets an LLM (any [Model Context Protocol](http
   - `registerPublicTools`: `get_server_info`, `check_server_health` — the only tools that need no account permissions and (for health) skip the gate itself
   - `download_log_export` is the one special case in `ApiClient`: the REST endpoint's success response is a raw text file, not the JSON envelope every other route uses, so it's parsed by content-type rather than through the shared `parseEnvelope` helper, and truncated past 200k characters to avoid flooding the model's context.
 - **Known limitations**:
-  - OAuth 2.1 permits plain `http` only on loopback, and `mcpAuthRouter` enforces this at startup (`Error: Issuer URL must be HTTPS`) — so the origin baked into the discovery metadata cannot simply be switched to a LAN IP. `ecosystem.config.js` therefore sets `MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL=true` on the `tools` process, which the SDK reads (as a module-level const, so it must come from the environment, not from application code) to relax that check; `MCP_PUBLIC_URL` then defaults to this machine's first non-internal IPv4 (`core/key.ts`), so agents on other LAN devices authenticate with no further configuration. The cost is that the sign-in page and every token cross the LAN unencrypted — setting `MCP_PUBLIC_URL` to an https origin behind a certificate overrides both defaults and is the right choice on an untrusted network. A public HTTPS origin remains out of scope by design (LAN-only, see `CLAUDE.md`).
+  - OAuth 2.1 permits plain `http` only on loopback, and `mcpAuthRouter` enforces this at startup (`Error: Issuer URL must be HTTPS`) — so the origin baked into the discovery metadata cannot simply be switched to a LAN IP. `ecosystem.config.js` therefore sets `MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL=true` on the `tools` process, which the SDK reads (as a module-level const, so it must come from the environment, not from application code) to relax that check; `MCP_PUBLIC_URL` then defaults to this machine's first non-internal IPv4 (`core/key.ts`), so agents on other LAN devices authenticate with no further configuration. The cost is that the sign-in page and every token cross the LAN unencrypted — setting `MCP_PUBLIC_URL` to an https origin behind a certificate overrides both defaults and is the right choice on an untrusted network. A public HTTPS origin remains out of scope by design (LAN-only, see `AGENTS.md`).
   - Parked authorization requests, issued codes and the token-verification cache live in this process's memory, so restarting `tools/` mid-sign-in means starting the flow again. Already-issued tokens survive, because the MCP client holds them and `server/` validates them.
   - `server/` keeps one session document per user, so signing in from an MCP client invalidates that account's dashboard session and vice versa — a dedicated account for agent access avoids it. Pre-existing behaviour, not introduced by the OAuth flow.
 
@@ -667,7 +712,7 @@ A fifth, independent process that lets an LLM (any [Model Context Protocol](http
 
 ## Deployment
 
-LAN-only — see `CLAUDE.md`. Two supported paths:
+LAN-only — see `AGENTS.md`. Two supported paths:
 
 ### Docker (`Scripts/docker-compose.yml` / `dev.compose.yaml`)
 - `nexoraldns` service: `network_mode: host`, `privileged: true`, `cap_add: [NET_ADMIN]` — required to bind port 53/853 and to tune host-level UDP socket buffers
@@ -678,18 +723,29 @@ LAN-only — see `CLAUDE.md`. Two supported paths:
 - Installs Node, PM2, and the four services directly on the host
 - Does **not** currently raise the OS-level UDP buffer ceiling (see [Known Gaps](#known-gaps--non-goals))
 
-Both paths run five PM2-managed processes per `ecosystem.config.js`: `server` (Fastify API), `client` (Next.js dashboard), `dhcp` (DHCP server), `web` (this DNS engine), `tools` (MCP tool server, see [MCP Tool Server](#mcp-tool-server-tools)) — each restarting independently (`restart_delay: 5000`, `max_restarts: 3`) on crash.
+### Process supervision
+
+`ecosystem.config.js` defines **four** PM2 processes — `server` (Fastify API), `client` (Next.js dashboard), `dhcp` (LAN device broker), `tools` (MCP tool server) — each restarting independently (`restart_delay: 5000`, `max_restarts: 3`) on crash.
+
+The DNS engine (`web`) is **deliberately not** a PM2 process. `ecosystem.config.js` excludes it with an explanatory comment and `Scripts/docker-entrypoint.sh` supervises the compiled Go binary directly with a restart loop before `exec`ing `pm2-runtime` as PID 1 — pm2 supervises the Node services, and a compiled binary only needs a restart loop.
+
+> Earlier revisions of this document listed five PM2 processes including `web`. That was wrong.
 
 ---
 
 ## Security Considerations
 
-1. **Input validation**: domain names sanitized before DNS packet construction and MongoDB queries; ACL policy inputs validated with array size limits and safe `ObjectId` conversion
+1. **Input validation**: domain names sanitized before DNS packet construction and MongoDB queries; ACL policy inputs validated with array size limits and safe `ObjectId` conversion; `escapeRegex()` applied to every user-supplied log filter, shared by the paginated endpoint and the export worker so they cannot drift
 2. **Fail-open, not fail-closed, on internal errors**: a deliberate choice (see [Operational Resilience](#operational-resilience)) — an ACL/DB outage degrades policy enforcement rather than taking down LAN-wide DNS resolution
 3. **No public exposure**: this is explicitly a LAN-only system — never expose port 53/853 or the API (4773) to the public internet; ISPs will block DNS behavior that looks like spoofing from a public IP
-4. **JWT-based admin authentication** with `session_manage` collection tracking access/refresh tokens, auto-expiring inactive sessions after 48h
+4. **JWT-based admin authentication** — access token 30 min, refresh 48h, both in httpOnly cookies and never returned in a JSON body. `session_manage` tracks them with a 48h TTL index. The JWT secret is generated 256-bit random and written with flag `wx` and mode `0600` so concurrent cluster workers race safely (losers on `EEXIST` read the winner's value)
 5. **Self-lockout guards** on admin user/role mutation endpoints (see RBAC section)
-6. **Rate limiting**: not verified as implemented for the DNS query path itself in this pass — worth confirming before treating this as a defense against query floods
+6. **Password policy from a single source**: ≥8 characters with upper, lower and digit, applied identically on user creation, admin reset and self-service change — so the three paths cannot diverge
+7. **Admin password reset kills the session immediately** — `passwordUpdatedAt` is re-armed to `null` *and* the target's Redis and `session_manage` entries are dropped
+8. **Rate limiting**: global 100 req/min/IP on the API, 10/15min on login, 20/15min on refresh. **There is no rate limiting on the DNS query path** — `internal/server/udp.go` spawns a goroutine per datagram with no admission control, so a query flood is bounded by memory rather than by a limiter. Do not treat the API limits as protection for port 53.
+9. **Command-injection safety**: LAN device probing uses `execFile("ping", [...])` with an argument array, never a shell string
+10. **MCP credential hygiene**: no login/logout tool, no tool accepting a password, password-shaped tool arguments redacted from logs, raw tokens never returned to the model
+11. **CORS is permissive** (`origin: "*"` + `credentials: true` + `trustProxy: true`). Acceptable under the LAN-only model, but a deliberate exception — see Known Gaps
 
 ---
 
@@ -698,21 +754,27 @@ Both paths run five PM2-managed processes per `ecosystem.config.js`: `server` (F
 Roughly in priority order based on what's actually been found gap-hunting this codebase, not a wishlist:
 
 1. ~~Extract shared Mongo/RabbitMQ connection code~~ **Done** — see `shared/` in Directory Structure and item 3 in [Known Gaps](#known-gaps--non-goals). Also folded Redis's connection/cache-store/pub-sub/cache-keys layer into the same package while at it.
-2. **Add a test suite for `Web/`** — Go tests for `rules/rules.go`'s 4-check pipeline, `cache/acl.go`'s wildcard matching, and `dbpool/dbpool.go`'s CNAME chain resolution and circular-reference detection. Start with `dnsmsg/codec.go`: its bounds checks replace behaviour JavaScript got from `try/catch`, so a mistake there panics the server on a malformed packet
+2. ~~**Add a test suite for `Web/`**~~ **Done** — 13 `_test.go` files covering the 4-check pipeline, ACL wildcard matching, CNAME chain resolution including circular-reference detection, the forwarder and its circuit breakers, wire format, sockets, and the analytics path. See [Testing](#testing).
 3. ~~**Real load testing** via `dnsperf` to replace estimated capacity numbers with measured ones~~ **Done** — 12,746 QPS at 3.8 ms average, 0 lost; see [Performance Targets](#performance-targets). Still outstanding: a benchmark run on *dedicated* hardware with the load generator on a separate host, and per-layer (rather than aggregate) timing
-4. **Real-time metrics** (Prometheus/Grafana or similar) for p50/p95/p99 query latency, cache hit rate, and per-layer timing — currently only available after-the-fact via the `analytics` collection
-5. **Bare-metal UDP buffer parity** — add the equivalent of `Scripts/docker-entrypoint.sh`'s sysctl tuning to `Scripts/install.sh`
-6. DNSSEC support, full IPv6/AAAA support, geo-based routing — longer-term, not currently scoped
+4. **Real-time metrics** (Prometheus/Grafana or similar) for p50/p95/p99 query latency, cache hit rate, and per-layer timing — currently only available after-the-fact via the `analytics` collection. The forwarder's `Status()` struct already computes most of what an exporter would need, so this is largely a matter of exposing it
+5. **Admission control on the query path** — a per-IP rate limit or bounded worker pool on `internal/server/udp.go`. This is a real availability gap, but it must not be implemented as a blocking check in the hot path without measuring first
+6. **Bare-metal UDP buffer parity** — add the equivalent of `Scripts/docker-entrypoint.sh`'s sysctl tuning to `Scripts/install.sh`
+7. **Delete the dead code** listed in Known Gaps item 10 rather than leaving it to rot
+8. **Fix the two device-broker bugs** in Known Gaps item 11
+9. DNSSEC support, local AAAA record serving, an IPv6 transport, geo-based routing — longer-term, not currently scoped
 
 ---
 
 ## Support & Maintenance
 
 ### Log Locations (Docker/PM2 — see `ecosystem.config.js`)
-- DNS engine (`Web/`): `/var/log/web.log`, `/var/log/web.err.log`
-- API (`server/`): `/var/log/server.log`, `/var/log/server.err.log`
+- DNS engine (`Web/`): `/var/log/web.log`, `/var/log/web.err.log` — structured JSON via `log/slog`, level from `LOG_LEVEL`
+- API (`server/`): `/var/log/server.log`, `/var/log/server.err.log` — pino
 - Dashboard (`client/`): `/var/log/client.log`, `/var/log/client.err.log`
-- DHCP: `/var/log/dhcp.log`, `/var/log/dhcp.err.log`
+- Device broker (`DHCP/`): `/var/log/dhcp.log`, `/var/log/dhcp.err.log`
+- MCP server (`tools/`): `/var/log/tools.log`, `/var/log/tools.err.log`
+
+Set `LOG_LEVEL=debug` on the engine to log every incoming query. It is off by default: at production query rates that single line is the most expensive thing on the path. `DEBUG_DNS=1` logs every upstream forward.
 
 ### Common Checks
 
@@ -720,9 +782,10 @@ Roughly in priority order based on what's actually been found gap-hunting this c
 # Is port 53 actually listening?
 sudo netstat -tulpn | grep :53
 
-# PM2 process status / logs
+# PM2 process status / logs (note: `web` is not a PM2 process)
 pm2 status
-pm2 logs web --lines 100
+pm2 logs server --lines 100
+sudo tail -f /var/log/web.log
 
 # ACL cache contents
 redis-cli keys "acl:*"
@@ -730,13 +793,18 @@ redis-cli keys "acl:*"
 # Slow MongoDB queries
 db.setProfilingLevel(1, { slowms: 100 })
 db.system.profile.find().limit(5).sort({ ts: -1 }).pretty()
+
+# Verify a live server end to end
+dig @<lan-ip> example.com               # UDP
+dig @<lan-ip> +tcp example.com          # TCP framing
+kdig +tls @<lan-ip> -p 853 example.com  # DoT
 ```
 
 ---
 
 ## 📄 License
 
-MIT License - See LICENSE file for details
+**Proprietary Source-Available License** — see the `LICENSE` file. Not MIT, and not open source. Use, view and report issues are permitted; modification and redistribution are not, and code contributions are not accepted.
 
 ---
 
@@ -746,5 +814,5 @@ MIT License - See LICENSE file for details
 
 ---
 
-**Last Updated:** 2026-07-02
-**Version:** 4.7.46-stable
+**Last Updated:** 2026-10-02
+**Version:** 7.24.71-stable

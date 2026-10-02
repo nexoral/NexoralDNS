@@ -60,11 +60,13 @@ NexoralDNS is a self-hosted DNS management system that transforms your network's
 
 **Key capabilities:**
 - Custom domain management (e.g., `myapp.local`)
-- Real-time DNS traffic monitoring and analytics
-- Security filtering with one-click blocking modes
+- Real-time DNS traffic monitoring and analytics (7-day retention)
+- Access control with per-device, per-group or network-wide blocking
+- DNS over UDP, TCP and TLS (DoT)
+- Connected-device inventory for the whole LAN
 - Web dashboard at `http://localhost:4000`
-- MCP tool server for LLM integration
-- DHCP server integration (Premium)
+- MCP tool server for LLM/agent integration
+- Role-based access control with 22 granular permissions
 
 ---
 
@@ -73,11 +75,16 @@ NexoralDNS is a self-hosted DNS management system that transforms your network's
 | Feature | Description |
 |---------|-------------|
 | **Custom Domains** | Create internal domains without external DNS servers |
-| **Traffic Monitoring** | Comprehensive logging and real-time analytics |
-| **Anti-Porn Mode** | Block 100+ adult content websites with one click |
-| **Anti-Ads Mode** | Block 200+ advertising and tracking domains |
-| **Anti-AI Mode** | Block major AI chatbot and tool domains |
-| **RBAC** | Role-based access control with custom roles |
+| **Traffic Monitoring** | Query logging and analytics, 7-day automatic retention |
+| **Access Control** | Block domains per IP, per IP group, or network-wide |
+| **Domain & IP Groups** | Group devices and domains into reusable policies |
+| **Anti-Porn Group** | Pre-seeded group of 92 adult content domains |
+| **Anti-Ads Group** | Pre-seeded group of 155 advertising and tracking domains |
+| **Anti-AI Group** | Pre-seeded group of 42 AI chatbot and generative-tool domains |
+| **DNS over TLS** | Encrypted DNS on port 853, self-signed cert generated automatically |
+| **Device Inventory** | Automatic LAN sweep every 2 minutes with reverse-DNS and ARP enrichment |
+| **RBAC** | 22 permissions, 5 seeded roles, custom roles from any subset |
+| **REST API** | Full admin API on port 4773, Swagger UI at `/docs` |
 | **MCP Server** | LLM integration via Model Context Protocol (54 tools) |
 | **Docker Deployment** | One-command installation via Docker |
 
@@ -131,7 +138,22 @@ Full documentation is available at **[dns.nexoral.in](https://dns.nexoral.in/)**
 - Configuration reference
 - API documentation
 - Troubleshooting
-- Feature comparison (Free vs Premium)
+
+In-repo documentation:
+
+| Document | Contents |
+|----------|----------|
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | System design, query flow, data model, known gaps |
+| [`FEATURES.md`](FEATURES.md) | Complete technical feature inventory |
+| [`SECURITY.md`](SECURITY.md) | Security model and hardening guidance |
+| [`Web/README.md`](Web/README.md) | Go DNS engine internals and a query walkthrough |
+| [`AGENTS.md`](AGENTS.md) | Operating manual for AI coding agents |
+
+Per-module agent guides, each carrying that stack's conventions and boundaries:
+
+[`Web/AGENTS.md`](Web/AGENTS.md) · [`server/AGENTS.md`](server/AGENTS.md) ·
+[`client/AGENTS.md`](client/AGENTS.md) · [`tools/AGENTS.md`](tools/AGENTS.md) ·
+[`DHCP/AGENTS.md`](DHCP/AGENTS.md) · [`Test/AGENTS.md`](Test/AGENTS.md)
 
 ---
 
@@ -153,6 +175,25 @@ See the [MCP documentation](https://dns.nexoral.in/) for setup and usage.
 - **Development Teams** — Custom `.local` domains without host file edits
 - **Small Businesses** — Centralized DNS management and monitoring
 - **Educational Institutions** — Content filtering and network oversight
+
+---
+
+## Architecture at a glance
+
+| Component | Technology | Port |
+|-----------|-----------|------|
+| Core DNS engine | Go, UDP/TCP/DoT | 53, 853 |
+| Admin REST API | Fastify (TypeScript) | 4773 |
+| Dashboard | Next.js | 4000 |
+| MCP tool server | Express + MCP SDK | 4774 |
+| Backing services | MongoDB, Redis, RabbitMQ | — |
+
+The DNS query path is a **4-layer pipeline**: service status → access control →
+local record (Redis, then MongoDB) → upstream forward. Failures degrade policy
+enforcement rather than resolution — a LAN losing all DNS is worse than
+temporarily missing a blocklist.
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full design.
 
 ---
 
