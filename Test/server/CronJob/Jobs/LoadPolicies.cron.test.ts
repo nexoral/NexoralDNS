@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeDomainEntry } from '@server/CronJob/Jobs/LoadPolicies.cron';
+import { normalizeDomainEntry } from '@server/source/CronJob/Jobs/LoadPolicies.cron';
 
 describe('normalizeDomainEntry', () => {
   it('uses the DNS canonical form for exact domains', () => {
