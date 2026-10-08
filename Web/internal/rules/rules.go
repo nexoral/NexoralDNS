@@ -22,7 +22,6 @@ import (
 	"nexoraldns/web/internal/cache"
 	"nexoraldns/web/internal/dbpool"
 	"nexoraldns/web/internal/forwarder"
-	"nexoraldns/web/shared/keys"
 	"nexoraldns/web/shared/logger"
 )
 
@@ -62,17 +61,20 @@ func NewStartRules(
 	}
 }
 
-// SubscribeInvalidations clears the in-memory caches whenever a policy change is
-// broadcast, so a rule edit takes effect without waiting for a TTL to lapse.
+// SubscribeInvalidations clears only the cache affected by each event.
 func (s *StartRules) SubscribeInvalidations(ctx context.Context) {
 	err := s.cache.Subscribe(ctx, invalidateChannel, func(message string) {
 		logger.Warn(fmt.Sprintf("🔔 Received Cache Invalidation Request: %s", message))
 
-		s.blockList.ClearCaches()
-		s.statusChecker.ClearMemo()
-		s.cache.Delete(context.Background(), keys.ServiceStatus)
+		if message == "service_status" {
+			s.statusChecker.ClearMemo()
+			logger.Info("✅ Service status memo cleared")
+			return
+		}
 
-		logger.Info("✅ Local Caches Cleared")
+		s.blockList.ClearCaches()
+
+		logger.Info("✅ ACL verdict caches cleared")
 	})
 	if err != nil {
 		logger.Error("❌ Failed to subscribe to cache:invalidate channel:", err)
