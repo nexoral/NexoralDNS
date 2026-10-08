@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	goredis "github.com/redis/go-redis/v9"
 
@@ -45,14 +46,52 @@ func (p *PubSub) Subscribe(ctx context.Context, channel string, callback func(st
 	logger.Info("📡 Connected to Redis Subscriber Client")
 	logger.Info(fmt.Sprintf("👂 Subscribed to channel: %s", channel))
 
-	go func() {
+	go p.receive(ctx, channel, sub, callback)
+
+	return nil
+}
+
+// receive reconnects after Redis closes a subscription.
+func (p *PubSub) receive(ctx context.Context, channel string, sub *goredis.PubSub, callback func(string)) {
+	for {
 		for msg := range sub.Channel() {
 			callback(msg.Payload)
 		}
-		logger.Warn("🔴 Subscriber connection closed")
-	}()
 
-	return nil
+		if ctx.Err() != nil {
+			return
+		}
+		logger.Warn("🔴 Subscriber connection closed; reconnecting")
+
+		for ctx.Err() == nil {
+			timer := time.NewTimer(time.Second)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+
+			client, err := p.conn.Client(ctx)
+			if err != nil {
+				logger.Warn("⚠️  Failed to reconnect Redis subscriber:", err)
+				continue
+			}
+			next := client.Subscribe(ctx, channel)
+			if _, err := next.Receive(ctx); err != nil {
+				logger.Warn("⚠️  Failed to resubscribe to Redis channel:", err)
+				_ = next.Close()
+				continue
+			}
+
+			p.mu.Lock()
+			p.subs = append(p.subs, next)
+			p.mu.Unlock()
+			sub = next
+			logger.Info(fmt.Sprintf("👂 Resubscribed to channel: %s", channel))
+			break
+		}
+	}
 }
 
 func (p *PubSub) Publish(ctx context.Context, channel, message string) int64 {
