@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import CopyCodeBlock from './CopyCodeBlock';
+import { animate, stagger, inView, isReducedMotion } from '@/lib/anime';
 
 /* ── Block type definitions ─────────────────────────────────────────── */
 export type Block =
@@ -61,10 +62,24 @@ const listMark = {
   dot:   { mark: '▸', color: '#5b8cff' },
 };
 
-/* ── Sub-renderers ──────────────────────────────────────────────────── */
+/* ── Sub-renderers with anime.js scroll animations ──────────────────── */
 function Heading({ b }: { b: Extract<Block, { type: 'h' }> }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      animate(el, {
+        opacity: [0, 1],
+        translateY: [14, 0],
+        duration: 450,
+        ease: 'outQuad',
+      });
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 42 }}>
+    <div ref={ref} style={{ marginTop: 42 }}>
       {b.eyebrow && (
         <div style={{
           fontFamily: 'var(--font-geist-mono)',
@@ -82,12 +97,39 @@ function Heading({ b }: { b: Extract<Block, { type: 'h' }> }) {
 }
 
 function Steps({ b }: { b: Extract<Block, { type: 'steps' }> }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      const stepItems = el.querySelectorAll('.step-row');
+      const badges = el.querySelectorAll('.step-badge');
+      if (stepItems.length > 0) {
+        animate(stepItems, {
+          opacity: [0, 1],
+          translateX: [-12, 0],
+          delay: stagger(100),
+          duration: 500,
+          ease: 'outQuad',
+        });
+      }
+      if (badges.length > 0) {
+        animate(badges, {
+          scale: [0.75, 1],
+          delay: stagger(100),
+          duration: 400,
+          ease: 'outBack',
+        });
+      }
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 26 }}>
+    <div ref={ref} style={{ marginTop: 26 }}>
       {b.steps.map((s, i) => (
-        <div key={i} style={{ display: 'flex', gap: 18, paddingBottom: 8 }}>
+        <div key={i} className="step-row" style={{ display: 'flex', gap: 18, paddingBottom: 8 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{
+            <div className="step-badge" style={{
               width: 36, height: 36,
               borderRadius: '50%',
               background: 'linear-gradient(135deg,#5b8cff,#34e1d4)',
@@ -125,8 +167,26 @@ function Steps({ b }: { b: Extract<Block, { type: 'steps' }> }) {
 }
 
 function Table({ b }: { b: Extract<Block, { type: 'table' }> }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      const rows = el.querySelectorAll('.table-row');
+      if (rows.length > 0) {
+        animate(rows, {
+          opacity: [0, 1],
+          translateY: [8, 0],
+          delay: stagger(35),
+          duration: 400,
+          ease: 'outQuad',
+        });
+      }
+    });
+  }, []);
+
   return (
-    <div style={{
+    <div ref={ref} style={{
       marginTop: 20,
       border: '1px solid rgba(130,165,220,.12)',
       borderRadius: 13,
@@ -154,7 +214,7 @@ function Table({ b }: { b: Extract<Block, { type: 'table' }> }) {
           ))}
         </div>
         {b.rows.map((row, i) => (
-          <div key={i} style={{
+          <div key={i} className="table-row" style={{
             display: 'grid',
             gridTemplateColumns: b.grid,
             gap: 14,
@@ -176,21 +236,39 @@ function Table({ b }: { b: Extract<Block, { type: 'table' }> }) {
 
 function Cards({ b }: { b: Extract<Block, { type: 'cards' }> }) {
   const cols = b.cols ?? 2;
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      const cards = el.querySelectorAll('.card-item');
+      if (cards.length > 0) {
+        animate(cards, {
+          opacity: [0, 1],
+          translateY: [16, 0],
+          delay: stagger(60),
+          duration: 480,
+          ease: 'outQuad',
+        });
+      }
+    });
+  }, []);
+
   return (
-    <div style={{
+    <div ref={ref} style={{
       marginTop: 20,
       display: 'grid',
       gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`,
       gap: 14,
     }} className="responsive-cards">
       {b.items.map((c, i) => (
-        <div key={i} style={{
+        <div key={i} className="card-item card-hover" style={{
           borderRadius: 14,
           padding: 18,
           background: 'rgba(12,17,26,.5)',
           border: '1px solid rgba(130,165,220,.1)',
-          transition: 'border-color .2s',
-        }} className="card-hover">
+          transition: 'border-color .2s, transform .2s ease',
+        }}>
           {c.icon && <div style={{ fontSize: 21, marginBottom: 11 }}>{c.icon}</div>}
           <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: '#eef3f9' }}>{c.title}</h3>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: '#8b98ac' }}>{c.desc}</p>
@@ -202,10 +280,28 @@ function Cards({ b }: { b: Extract<Block, { type: 'cards' }> }) {
 
 function BulletList({ b }: { b: Extract<Block, { type: 'list' }> }) {
   const { mark, color } = listMark[b.variant];
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      const items = el.querySelectorAll('.list-item');
+      if (items.length > 0) {
+        animate(items, {
+          opacity: [0, 1],
+          translateX: [-8, 0],
+          delay: stagger(40),
+          duration: 420,
+          ease: 'outQuad',
+        });
+      }
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 16 }}>
+    <div ref={ref} style={{ marginTop: 16 }}>
       {b.items.map((item, i) => (
-        <div key={i} style={{ display: 'flex', gap: 11, padding: '6px 0', fontSize: 14.5, lineHeight: 1.55, color: '#aeb9ca' }}>
+        <div key={i} className="list-item" style={{ display: 'flex', gap: 11, padding: '6px 0', fontSize: 14.5, lineHeight: 1.55, color: '#aeb9ca' }}>
           <span style={{ color, flexShrink: 0, fontWeight: 700 }}>{mark}</span>
           {item}
         </div>
@@ -215,8 +311,22 @@ function BulletList({ b }: { b: Extract<Block, { type: 'list' }> }) {
 }
 
 function KV({ b }: { b: Extract<Block, { type: 'kv' }> }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      animate(el, {
+        opacity: [0, 1],
+        translateY: [10, 0],
+        duration: 450,
+        ease: 'outQuad',
+      });
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 18, borderRadius: 13, border: '1px solid rgba(130,165,220,.12)', overflow: 'hidden' }}>
+    <div ref={ref} style={{ marginTop: 18, borderRadius: 13, border: '1px solid rgba(130,165,220,.12)', overflow: 'hidden' }}>
       {b.items.map((kv, i) => (
         <div key={i} style={{
           display: 'flex',
@@ -241,8 +351,22 @@ function Matrix({ b }: { b: Extract<Block, { type: 'matrix' }> }) {
     if (v.includes('✓')) return '#74e6a4';
     return '#cdd9e8';
   };
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      animate(el, {
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 450,
+        ease: 'outQuad',
+      });
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 20 }}>
+    <div ref={ref} style={{ marginTop: 20 }}>
       {b.heading && (
         <div style={{
           fontFamily: 'var(--font-geist-mono)',
@@ -274,10 +398,28 @@ function Matrix({ b }: { b: Extract<Block, { type: 'matrix' }> }) {
 }
 
 function Timeline({ b }: { b: Extract<Block, { type: 'timeline' }> }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      const items = el.querySelectorAll('.timeline-ver');
+      if (items.length > 0) {
+        animate(items, {
+          opacity: [0, 1],
+          translateY: [16, 0],
+          delay: stagger(80),
+          duration: 500,
+          ease: 'outQuad',
+        });
+      }
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 24 }}>
+    <div ref={ref} style={{ marginTop: 24 }}>
       {b.versions.map((v, vi) => (
-        <div key={vi} style={{ display: 'flex', gap: 20 }}>
+        <div key={vi} className="timeline-ver" style={{ display: 'flex', gap: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
             <div style={{
               width: 16, height: 16, borderRadius: '50%',
@@ -321,15 +463,33 @@ function Timeline({ b }: { b: Extract<Block, { type: 'timeline' }> }) {
 }
 
 function FAQ({ b }: { b: Extract<Block, { type: 'faq' }> }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      const items = el.querySelectorAll('.faq-box');
+      if (items.length > 0) {
+        animate(items, {
+          opacity: [0, 1],
+          translateY: [10, 0],
+          delay: stagger(50),
+          duration: 450,
+          ease: 'outQuad',
+        });
+      }
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 11 }}>
+    <div ref={ref} style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 11 }}>
       {b.heading && (
         <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#5b8cff', marginBottom: 2 }}>{b.heading}</div>
       )}
       {b.items.map((f, i) => (
-        <details key={i} style={{ borderRadius: 13, border: '1px solid rgba(130,165,220,.12)', background: 'rgba(12,17,26,.45)', overflow: 'hidden' }}>
+        <details key={i} className="faq-box" style={{ borderRadius: 13, border: '1px solid rgba(130,165,220,.12)', background: 'rgba(12,17,26,.45)', overflow: 'hidden', transition: 'border-color .18s' }}>
           <summary style={{ padding: '16px 18px', fontSize: 15, fontWeight: 600, color: '#dbe4ef', cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ color: '#34e1d4', fontSize: 18 }}>›</span>{f.q}
+            <span style={{ color: '#34e1d4', fontSize: 18, transition: 'transform .18s' }}>›</span>{f.q}
           </summary>
           <div style={{ padding: '0 18px 16px 42px', fontSize: 14, lineHeight: 1.65, color: '#9aa8bd' }}>{f.a}</div>
           {f.code && (
@@ -345,8 +505,22 @@ function FAQ({ b }: { b: Extract<Block, { type: 'faq' }> }) {
 
 function Next({ b }: { b: Extract<Block, { type: 'next' }> }) {
   const cols = b.cols ?? 3;
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      animate(el, {
+        opacity: [0, 1],
+        translateY: [14, 0],
+        duration: 480,
+        ease: 'outQuad',
+      });
+    });
+  }, []);
+
   return (
-    <div style={{
+    <div ref={ref} style={{
       marginTop: 30,
       borderRadius: 16,
       padding: 22,
@@ -384,8 +558,26 @@ function Next({ b }: { b: Extract<Block, { type: 'next' }> }) {
 
 function LinkCards({ b }: { b: Extract<Block, { type: 'linkCards' }> }) {
   const cols = b.cols ?? 2;
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current || isReducedMotion()) return;
+    return inView(ref.current, (el) => {
+      const cards = el.querySelectorAll('.link-card');
+      if (cards.length > 0) {
+        animate(cards, {
+          opacity: [0, 1],
+          translateY: [12, 0],
+          delay: stagger(50),
+          duration: 450,
+          ease: 'outQuad',
+        });
+      }
+    });
+  }, []);
+
   return (
-    <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gap: 13 }} className="responsive-cards">
+    <div ref={ref} style={{ marginTop: 20, display: 'grid', gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gap: 13 }} className="responsive-cards">
       {b.items.map((c, i) => (
         <Link
           key={i}
@@ -402,7 +594,7 @@ function LinkCards({ b }: { b: Extract<Block, { type: 'linkCards' }> }) {
             textDecoration: 'none',
             transition: 'all .18s',
           }}
-          className="next-link"
+          className="link-card next-link"
         >
           {c.icon && <span style={{ fontSize: 19 }}>{c.icon}</span>}
           <span style={{ fontSize: 14, fontWeight: 600, color: '#dbe4ef' }}>{c.title}</span>
@@ -417,42 +609,61 @@ function LinkCards({ b }: { b: Extract<Block, { type: 'linkCards' }> }) {
 
 /* ── Main DocPage component ─────────────────────────────────────────── */
 export default function DocPage({ group, title, badge, intro, blocks }: DocPageProps) {
+  const headerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!headerRef.current || isReducedMotion()) return;
+    const elements = headerRef.current.querySelectorAll('.doc-header-item');
+    if (elements.length > 0) {
+      animate(elements, {
+        opacity: [0, 1],
+        translateY: [14, 0],
+        delay: stagger(50),
+        duration: 480,
+        ease: 'outQuad',
+      });
+    }
+  }, [title]);
+
   return (
     <>
       <div style={{ maxWidth: 940, margin: '0 auto', padding: '52px 56px 0' }} className="doc-content">
-        {/* Group label */}
-        <div style={{
-          fontFamily: 'var(--font-geist-mono)',
-          fontSize: 11,
-          letterSpacing: '.2em',
-          textTransform: 'uppercase',
-          color: '#34e1d4',
-        }}>{group}</div>
+        <div ref={headerRef}>
+          {/* Group label */}
+          <div className="doc-header-item" style={{
+            fontFamily: 'var(--font-geist-mono)',
+            fontSize: 11,
+            letterSpacing: '.2em',
+            textTransform: 'uppercase',
+            color: '#34e1d4',
+          }}>{group}</div>
 
-        {/* Title + badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
-          <h1 style={{ margin: 0, fontSize: 40, letterSpacing: '-.03em', fontWeight: 700, lineHeight: 1.05, color: '#eef3f9' }}>{title}</h1>
-          {badge && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '5px 12px',
-              borderRadius: 999,
-              background: 'rgba(61,220,132,.1)',
-              border: '1px solid rgba(61,220,132,.26)',
-              fontSize: 12,
-              color: '#74e6a4',
-              fontWeight: 500,
-            }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#3ddc84', display: 'block' }} />
-              {badge}
-            </span>
-          )}
+          {/* Title + badge */}
+          <div className="doc-header-item" style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
+            <h1 style={{ margin: 0, fontSize: 40, letterSpacing: '-.03em', fontWeight: 700, lineHeight: 1.05, color: '#eef3f9' }}>{title}</h1>
+            {badge && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '5px 12px',
+                borderRadius: 999,
+                background: 'rgba(61,220,132,.1)',
+                border: '1px solid rgba(61,220,132,.26)',
+                fontSize: 12,
+                color: '#74e6a4',
+                fontWeight: 500,
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#3ddc84', display: 'block' }} />
+                {badge}
+              </span>
+            )}
+          </div>
+
+          {/* Intro */}
+          <p className="doc-header-item" style={{ margin: '18px 0 0', fontSize: 17, lineHeight: 1.6, color: '#9aa8bd', maxWidth: 680 }}>{intro}</p>
         </div>
 
-        {/* Intro */}
-        <p style={{ margin: '18px 0 0', fontSize: 17, lineHeight: 1.6, color: '#9aa8bd', maxWidth: 680 }}>{intro}</p>
         <div style={{ height: 1, background: 'linear-gradient(90deg,rgba(130,165,220,.22),transparent)', margin: '30px 0 6px' }} />
 
         {/* Blocks */}
@@ -509,8 +720,8 @@ export default function DocPage({ group, title, badge, intro, blocks }: DocPageP
           .doc-content h1 { font-size: 22px !important; }
           .responsive-next { grid-template-columns: 1fr !important; }
         }
-        .card-hover:hover { border-color: rgba(52,225,212,.3) !important; }
-        .next-link:hover { border-color: rgba(52,225,212,.34) !important; background: rgba(255,255,255,.05) !important; }
+        .card-hover:hover { border-color: rgba(52,225,212,.3) !important; transform: translateY(-2px); }
+        .next-link:hover { border-color: rgba(52,225,212,.34) !important; background: rgba(255,255,255,.05) !important; transform: translateY(-1px); }
       `}</style>
     </>
   );
