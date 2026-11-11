@@ -1,81 +1,77 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { animate } from '@/lib/anime';
 
-interface NavItem { title: string; href: string; }
-interface NavSection { section: string; items: NavItem[]; }
+interface NavItem {
+  title: string;
+  href: string;
+}
+
+interface NavSection {
+  section: string;
+  items: NavItem[];
+}
 
 const navigation: NavSection[] = [
   {
-    section: 'Overview',
+    section: 'Getting Started',
     items: [
-      { title: 'Home', href: '/' },
-    ],
-  },
-  {
-    section: 'Get Started',
-    items: [
+      { title: 'Overview', href: '/' },
       { title: 'Getting Started', href: '/docs/getting-started' },
       { title: 'Installation', href: '/docs/installation' },
-      { title: 'Dashboard', href: '/docs/dashboard' },
+      { title: 'Configuration', href: '/docs/configuration' },
     ],
   },
   {
-    section: 'Reference',
+    section: 'Core Guides',
     items: [
-      { title: 'API Reference', href: '/docs/api' },
-      { title: 'Architecture', href: '/docs/architecture' },
-      { title: 'Features', href: '/docs/features' },
-      { title: 'Changelog', href: '/docs/changelog' },
+      { title: 'Web Dashboard', href: '/docs/dashboard' },
+      { title: 'Features & Modules', href: '/docs/features' },
+      { title: 'REST API Reference', href: '/docs/api' },
+      { title: 'MCP Server (AI)', href: '/docs/mcp-server' },
+      { title: 'System Architecture', href: '/docs/architecture' },
     ],
   },
   {
-    section: 'Integrations',
+    section: 'CLI Commands',
     items: [
-      { title: 'MCP Server', href: '/docs/mcp-server' },
+      { title: 'nexoraldns install', href: '/docs/commands/install' },
+      { title: 'nexoraldns start', href: '/docs/commands/start' },
+      { title: 'nexoraldns stop', href: '/docs/commands/stop' },
+      { title: 'nexoraldns update', href: '/docs/commands/update' },
+      { title: 'nexoraldns pack', href: '/docs/commands/pack' },
+      { title: 'nexoraldns remove', href: '/docs/commands/remove' },
     ],
   },
   {
-    section: 'Help',
+    section: 'Reference & Help',
     items: [
       { title: 'FAQ', href: '/docs/faq' },
       { title: 'Troubleshooting', href: '/docs/troubleshooting' },
-      { title: 'Security', href: '/docs/security' },
-    ],
-  },
-  {
-    section: 'Project',
-    items: [
+      { title: 'Security Policy', href: '/docs/security' },
+      { title: 'Changelog', href: '/docs/changelog' },
       { title: 'Contributing', href: '/docs/contributing' },
       { title: 'License', href: '/docs/license' },
       { title: 'Contact', href: '/contact' },
     ],
   },
-  {
-    section: 'Commands',
-    items: [
-      { title: 'Install', href: '/docs/commands/install' },
-      { title: 'Start', href: '/docs/commands/start' },
-      { title: 'Stop', href: '/docs/commands/stop' },
-      { title: 'Remove', href: '/docs/commands/remove' },
-      { title: 'Update', href: '/docs/commands/update' },
-      { title: 'Pack', href: '/docs/commands/pack' },
-    ],
-  },
 ];
 
-export default function Sidebar() {
-  const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
+interface SidebarContentProps {
+  pathname: string;
+  onClose?: () => void;
+}
 
-  const SidebarContent = () => (
+function SidebarContent({ pathname, onClose }: SidebarContentProps) {
+  return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Logo */}
       <Link
         href="/"
-        onClick={() => setMobileOpen(false)}
+        onClick={onClose}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -134,7 +130,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={onClose}
                   style={{
                     position: 'relative',
                     display: 'flex',
@@ -148,8 +144,9 @@ export default function Sidebar() {
                     background: active
                       ? 'linear-gradient(90deg,rgba(91,140,255,.14),rgba(52,225,212,.05))'
                       : 'transparent',
+                    borderLeft: active ? '2px solid #34e1d4' : '2px solid transparent',
                     textDecoration: 'none',
-                    transition: 'background .15s ease, color .15s ease',
+                    transition: 'background .18s ease, color .18s ease, border-left .18s ease',
                     marginBottom: 2,
                   }}
                   className="sidebar-link"
@@ -161,7 +158,7 @@ export default function Sidebar() {
                     flexShrink: 0,
                     background: active ? '#34e1d4' : '#3a4150',
                     boxShadow: active ? '0 0 8px #34e1d4' : 'none',
-                    transition: 'all .15s',
+                    transition: 'all .18s',
                   }} />
                   {item.title}
                 </Link>
@@ -172,6 +169,28 @@ export default function Sidebar() {
       </nav>
     </div>
   );
+}
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileDrawerRef = useRef<HTMLElement | null>(null);
+  const backdropRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (mobileOpen && mobileDrawerRef.current && backdropRef.current) {
+      animate(backdropRef.current, {
+        opacity: [0, 1],
+        duration: 250,
+        ease: 'outQuad',
+      });
+      animate(mobileDrawerRef.current, {
+        translateX: [-272, 0],
+        duration: 300,
+        ease: 'outQuad',
+      });
+    }
+  }, [mobileOpen]);
 
   return (
     <>
@@ -219,35 +238,40 @@ export default function Sidebar() {
         zIndex: 40,
         padding: '22px 16px 40px',
       }} className="desktop-sidebar">
-        <SidebarContent />
+        <SidebarContent pathname={pathname} />
       </aside>
 
       {/* Mobile sidebar */}
       {mobileOpen && (
         <>
           <div
+            ref={backdropRef}
             onClick={() => setMobileOpen(false)}
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(4,6,10,.7)',
-              backdropFilter: 'blur(4px)',
+              background: 'rgba(4,6,10,.75)',
+              backdropFilter: 'blur(6px)',
               zIndex: 38,
             }}
           />
-          <aside style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: 272,
-            height: '100vh',
-            overflowY: 'auto',
-            background: 'linear-gradient(180deg,#090c12,#080a10)',
-            borderRight: '1px solid rgba(130,165,220,.1)',
-            zIndex: 39,
-            padding: '22px 16px 40px',
-          }}>
-            <SidebarContent />
+          <aside
+            ref={mobileDrawerRef}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: 272,
+              height: '100vh',
+              overflowY: 'auto',
+              background: 'linear-gradient(180deg,#090c12,#080a10)',
+              borderRight: '1px solid rgba(130,165,220,.14)',
+              zIndex: 39,
+              padding: '22px 16px 40px',
+              boxShadow: '10px 0 35px -10px rgba(0,0,0,.7)',
+            }}
+          >
+            <SidebarContent pathname={pathname} onClose={() => setMobileOpen(false)} />
           </aside>
         </>
       )}

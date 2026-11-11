@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { animate } from '@/lib/anime';
 
 const pages = [
   { key: '/', label: 'Home', group: 'Overview', icon: '🏠' },
@@ -30,6 +31,8 @@ export default function Header({ version }: { version: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
+  const modalBackdropRef = useRef<HTMLDivElement | null>(null);
+  const modalBoxRef = useRef<HTMLDivElement | null>(null);
 
   const cur = pages.find(p => p.key === pathname) ?? pages[0];
 
@@ -47,6 +50,23 @@ export default function Header({ version }: { version: string }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onKey]);
+
+  useEffect(() => {
+    if (open && modalBackdropRef.current && modalBoxRef.current) {
+      animate(modalBackdropRef.current, {
+        opacity: [0, 1],
+        duration: 200,
+        ease: 'outQuad',
+      });
+      animate(modalBoxRef.current, {
+        opacity: [0, 1],
+        scale: [0.96, 1],
+        translateY: [-10, 0],
+        duration: 250,
+        ease: 'outQuad',
+      });
+    }
+  }, [open]);
 
   const results = pages.filter(p => {
     if (!q.trim()) return true;
@@ -144,27 +164,32 @@ export default function Header({ version }: { version: string }) {
       {/* Command Palette */}
       {open && (
         <div
+          ref={modalBackdropRef}
           onClick={() => setOpen(false)}
           style={{
             position: 'fixed',
             inset: 0,
             zIndex: 100,
-            background: 'rgba(4,6,10,.7)',
-            backdropFilter: 'blur(6px)',
+            background: 'rgba(4,6,10,.75)',
+            backdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'flex-start',
             justifyContent: 'center',
             paddingTop: '14vh',
           }}
         >
-          <div onClick={e => e.stopPropagation()} style={{
-            width: 'min(620px, 92vw)',
-            borderRadius: 16,
-            background: '#0b0f17',
-            border: '1px solid rgba(130,165,220,.2)',
-            boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)',
-            overflow: 'hidden',
-          }}>
+          <div
+            ref={modalBoxRef}
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: 'min(620px, 92vw)',
+              borderRadius: 16,
+              background: '#0b0f17',
+              border: '1px solid rgba(130,165,220,.2)',
+              boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)',
+              overflow: 'hidden',
+            }}
+          >
             <div style={{
               display: 'flex',
               alignItems: 'center',

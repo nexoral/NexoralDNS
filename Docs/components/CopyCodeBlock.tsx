@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { animate } from '@/lib/anime';
 
 interface Props {
   code: string;
@@ -10,13 +11,32 @@ interface Props {
 
 export default function CopyCodeBlock({ code, label = 'bash', prompt = true }: Props) {
   const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
 
   const handleCopy = () => {
     const text = prompt ? code.replace(/^\$ /, '') : code;
-    try { navigator.clipboard.writeText(text); } catch {}
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+      }
+    } catch {
+      // Fallback or ignore
+    }
     setCopied(true);
-    clearTimeout((handleCopy as any)._t);
-    (handleCopy as any)._t = setTimeout(() => setCopied(false), 1600);
+
+    if (btnRef.current) {
+      animate(btnRef.current, {
+        scale: [1, 0.92, 1.05, 1],
+        duration: 350,
+        ease: 'outBack',
+      });
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => setCopied(false), 1600);
   };
 
   return (
@@ -49,7 +69,9 @@ export default function CopyCodeBlock({ code, label = 'bash', prompt = true }: P
           {label}
         </span>
         <button
+          ref={btnRef}
           onClick={handleCopy}
+          aria-label={copied ? 'Copied to clipboard' : 'Copy code to clipboard'}
           style={{
             marginLeft: 'auto',
             display: 'inline-flex',
@@ -59,12 +81,12 @@ export default function CopyCodeBlock({ code, label = 'bash', prompt = true }: P
             fontSize: 11,
             letterSpacing: '.04em',
             color: copied ? '#3ddc84' : '#9fb0c5',
-            background: 'rgba(120,160,220,.08)',
-            border: '1px solid rgba(120,160,220,.16)',
+            background: copied ? 'rgba(61,220,132,.12)' : 'rgba(120,160,220,.08)',
+            border: `1px solid ${copied ? 'rgba(61,220,132,.3)' : 'rgba(120,160,220,.16)'}`,
             borderRadius: 7,
             padding: '5px 10px',
             cursor: 'pointer',
-            transition: 'all .18s ease',
+            transition: 'color .18s ease, background .18s ease, border .18s ease',
           }}
         >
           <span style={{
@@ -72,7 +94,9 @@ export default function CopyCodeBlock({ code, label = 'bash', prompt = true }: P
             height: 6,
             borderRadius: '50%',
             background: copied ? '#3ddc84' : '#5f6b7d',
+            boxShadow: copied ? '0 0 8px #3ddc84' : 'none',
             display: 'block',
+            transition: 'background .18s ease, box-shadow .18s ease',
           }} />
           {copied ? 'Copied' : 'Copy'}
         </button>
