@@ -71,6 +71,8 @@ services:
     environment:
       - MONGO_URI=mongodb://127.0.0.1:27017/nexoraldns # 👈 connect via localhost (because host mode)
       - REDIS_URI=redis://127.0.0.1:6379 # 👈 connect to Redis via localhost
+      - MCP_PUBLIC_URL=http://localhost:4774 # 👈 local Codex OAuth issuer
+      - MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL=true # 👈 allow plain HTTP on loopback
 
 networks:
   nexoral_network:
