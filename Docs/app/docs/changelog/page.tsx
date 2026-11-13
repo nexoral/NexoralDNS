@@ -4,7 +4,15 @@ import type { Block } from '@/components/DocPage';
 const blocks: Block[] = [
   { type: 'timeline', versions: [
     {
-      ver: 'v8.21.64-stable', date: 'August 1, 2026', tag: 'LATEST',
+      ver: 'v7.28.76-stable', date: 'November 13, 2026', tag: 'LATEST',
+      changes: [
+        ['Improved', 'Added measured DNS performance results to the documentation: 19,719 QPS peak stress throughput with zero dnsperf packet loss, plus a profiled 14,954 QPS run with p50, p95 and p99 latency data'],
+        ['Improved', 'Documented the benchmark conditions and limitations, including same-host load generation, CPU and memory contention, Redis latency, swap activity and Linux UDP buffer-drop counters'],
+        ['Improved', 'Updated the homepage and System Architecture page to distinguish peak stress throughput from the profiled latency benchmark'],
+      ],
+    },
+    {
+      ver: 'v8.21.64-stable', date: 'August 1, 2026',
       changes: [
         ['New',      'The core DNS server was rewritten in Go. UDP:53, TCP:53 and DoT:853 all behave as before — same 7-layer pipeline, same fail-safe bypass, same wildcard blocking, same circuit breakers, same upstream list'],
         ['Improved', 'Multi-core work no longer needs cluster.fork(). One process opens a UDP listener per 75% of CPU cores, all sharing port 53 via SO_REUSEPORT, and the kernel spreads datagrams across them. Every query is handled on its own goroutine'],

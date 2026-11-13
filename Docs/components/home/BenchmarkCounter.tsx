@@ -12,7 +12,7 @@ export default function BenchmarkCounter() {
 
     return inView(containerRef.current, () => {
       if (qpsRef.current) {
-        animateCounter(qpsRef.current, 12746, {
+        animateCounter(qpsRef.current, 19719, {
           duration: 1400,
           decimals: 0,
         });
@@ -46,20 +46,20 @@ export default function BenchmarkCounter() {
           WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
         }}
       >
-        12,746
+        19,719
       </div>
       <div style={{ fontSize: 22, fontWeight: 500, color: '#cdd9e8', letterSpacing: '.06em', marginTop: 6 }}>
         queries / second
       </div>
       <div style={{ marginTop: 10, fontSize: 13.5, color: '#7c8aa0' }}>
-        Measured with <b style={{ color: '#bcc8d8' }}>dnsperf</b> against the Go DNS engine — one process, one UDP listener per core share, no external resolver in the path.
+        Peak result from a 60-second <b style={{ color: '#bcc8d8' }}>dnsperf</b> stress run — 32 clients, 2,000 outstanding queries each, same-host load generation.
       </div>
 
       {/* Sub-stats */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 36, flexWrap: 'wrap' }}>
         {[
-          { label: 'Avg latency', value: '3.8ms', accent: '#3ddc84' },
-          { label: 'Cache hit rate', value: '~98%', accent: '#5b8cff' },
+          { label: 'Avg latency', value: '100.8ms', accent: '#f6b352' },
+          { label: 'Profiled p99', value: '≤499.7ms', accent: '#5b8cff' },
           { label: 'Dropped queries', value: '0', accent: '#34e1d4' },
         ].map((s, i) => (
           <div key={i} style={{ textAlign: 'center' }}>
