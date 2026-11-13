@@ -127,12 +127,12 @@ export default async function Home() {
               flexWrap: 'wrap',
             }}>
               <div>
-                <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 15, fontWeight: 700, color: '#f6b352' }}>12,746</div>
+                <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 15, fontWeight: 700, color: '#f6b352' }}>19,719</div>
                 <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em', fontFamily: 'var(--font-geist-mono)' }}>Peak QPS</div>
               </div>
               <div style={{ width: 1, background: 'rgba(148,163,184,.15)' }} />
               <div>
-                <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 15, fontWeight: 700, color: '#38bdf8' }}>&lt; 2.0ms</div>
+                <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 15, fontWeight: 700, color: '#38bdf8' }}>100.8ms</div>
                 <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em', fontFamily: 'var(--font-geist-mono)' }}>Latency</div>
               </div>
               <div style={{ width: 1, background: 'rgba(148,163,184,.15)' }} />

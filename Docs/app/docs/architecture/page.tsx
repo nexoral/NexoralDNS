@@ -40,10 +40,11 @@ const blocks: Block[] = [
     { key: 'Total (Cached)',     cells: ['🎯 <2ms'] },
     { key: 'Total (Uncached)',   cells: ['🎯 <5ms'] },
   ]},
-  { type: 'h', title: 'Measured load test', sub: 'dnsperf against the Go engine over UDP:53 — 49 domains, warm cache. Everything, including the load generator, ran on one machine.' },
-  { type: 'table', grid: '1.6fr 1fr 1fr 1fr', head: ['Load shape', 'QPS', 'Avg latency', 'Lost'], rows: [
-    { key: '5 clients, 50 in flight',    cells: ['12,746', '3.8ms', '0'] },
-    { key: '8 threads, 2000 in flight',  cells: ['10,396', '189ms', '95 (0.03%)'] },
+  { type: 'h', title: 'Measured load test', sub: 'dnsperf against the Go engine over UDP:53 — 49 domains, warm cache. The load generator and DNS server ran on the same machine, so these results include host contention.' },
+  { type: 'table', grid: '1.8fr 1fr 1fr 1.5fr 1fr', head: ['Load shape', 'QPS', 'Avg latency', 'Percentiles', 'Lost'], rows: [
+    { key: '5 clients, 50 in flight',       cells: ['12,746', '3.8ms', 'Not captured', '0'] },
+    { key: '32 clients, 2000 in flight',    cells: ['19,719', '100.8ms', 'Not captured', '0'] },
+    { key: 'Profiled: 32 clients, 2000 in flight', cells: ['14,954', '132.7ms', 'p50 ≤118.8ms · p95 ≤208.9ms · p99 ≤499.7ms', '0'] },
   ]},
   { type: 'kv', items: [
     { k: 'CPU',        v: 'AMD Ryzen 5 5500U — 6 cores / 12 threads, x86_64' },
@@ -52,8 +53,8 @@ const blocks: Block[] = [
     { k: 'Transport',  v: 'UDP:53 over loopback — no NIC in the path' },
     { k: 'Co-located', v: 'MongoDB, Redis, RabbitMQ and dnsperf itself' },
   ]},
-  { type: 'callout', tone: 'tip', title: 'Why the gentler run wins',
-    text: 'At 2000 in flight the load generator competes with the server for the same 12 threads, and the deep queue adds wait time Little’s Law predicts almost exactly (2000 ÷ 10,396 ≈ 192ms) — that run measures the queue, not the server. Because the generator is co-located, 12,746 is a floor rather than the engine’s ceiling.' },
+  { type: 'callout', tone: 'tip', title: 'How to read these numbers',
+    text: '19,719 QPS is the observed peak stress result. The profiled repeat reached 14,954 QPS and adds percentile latency plus system measurements. Both runs completed with zero dnsperf packet loss, but the 100–133ms averages show that the aggressive workload was queueing. A separate load-generator host would provide a cleaner server-only measurement.' },
   { type: 'h', title: 'Redis cache key structure' },
   { type: 'code', prompt: false, label: 'redis keys', code: `service:status            → 'active'        EX 60
 dns:google.com            → {"value":"1.2.3.4","ttl":300}  EX 300

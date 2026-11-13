@@ -1,6 +1,6 @@
 {
   "name": "nexoraldns-server",
-  "version": "7.27.75-stable",
+  "version": "7.28.76-stable",
   "description": "this server is responsible for managing the all records that are custom build for the all networks",
   "keywords": [
     "server"

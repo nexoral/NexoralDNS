@@ -59,6 +59,7 @@ module.exports = {
       // your network isn't trusted.
       env: {
         NODE_ENV: 'production',
+        MCP_PUBLIC_URL: process.env.MCP_PUBLIC_URL,
         MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL: 'true'
       },
       out_file: '/var/log/tools.log',

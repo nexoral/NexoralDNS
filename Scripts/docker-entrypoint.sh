@@ -43,4 +43,4 @@ fi
 ) &
 
 # pm2 stays in the foreground as PID 1, so the container's lifetime follows it.
-exec sudo pm2-runtime start ecosystem.config.js
+exec sudo --preserve-env=MCP_PUBLIC_URL pm2-runtime start ecosystem.config.js
