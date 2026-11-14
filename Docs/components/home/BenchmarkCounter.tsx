@@ -58,8 +58,8 @@ export default function BenchmarkCounter() {
       {/* Sub-stats */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 36, flexWrap: 'wrap' }}>
         {[
-          { label: 'Avg latency', value: '100.8ms', accent: '#f6b352' },
-          { label: 'Profiled p99', value: '≤499.7ms', accent: '#5b8cff' },
+          { label: 'Avg latency (peak run)', value: '100.8ms', accent: '#f6b352' },
+          { label: 'p99 (profiled @ 14,954 QPS)', value: '≤499.7ms', accent: '#5b8cff' },
           { label: 'Dropped queries', value: '0', accent: '#34e1d4' },
         ].map((s, i) => (
           <div key={i} style={{ textAlign: 'center' }}>

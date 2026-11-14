@@ -324,7 +324,7 @@ export default async function Home() {
                   ['TLS 1.2+ enforced', 'TLS 1.3 preferred per RFC 7858 §3.1'],
                   ['Auto cert generation', 'self-signed via openssl, saved to /etc/nexoral/cert'],
                   ['Shared across restarts', 'cert persisted on disk'],
-                  ['Same 7-layer pipeline', 'identical block, cache & upstream logic'],
+                  ['Same 4-step pipeline', 'identical block, cache & upstream logic'],
                 ].map(([k, v], i) => (
                   <div key={i} style={{ display: 'flex', gap: 10, padding: '5px 0', fontSize: 13 }}>
                     <span style={{ color: '#34e1d4', flexShrink: 0, marginTop: 1 }}>▸</span>
@@ -338,7 +338,7 @@ export default async function Home() {
             </div>
 
             <p className="proto-anim-item" style={{ margin: '22px auto 0', maxWidth: 720, fontSize: 13.5, color: '#7c8aa0', lineHeight: 1.55, borderTop: '1px solid rgba(130,165,220,.1)', paddingTop: 18 }}>
-              All three transports share the same <b style={{ color: '#bcc8d8' }}>7-layer query processor</b>, Redis cache, block-list engine, and analytics pipeline — consistent behaviour regardless of how a client connects.
+              All three transports share the same <b style={{ color: '#bcc8d8' }}>4-step query pipeline</b>, Redis cache, block-list engine, and analytics pipeline — consistent behaviour regardless of how a client connects.
             </p>
           </section>
         </ScrollSection>
