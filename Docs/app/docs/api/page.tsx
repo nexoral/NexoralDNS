@@ -39,13 +39,13 @@ export default function ApiPage() {
         </div>
 
         <p style={{ margin: '0 auto 40px', maxWidth: 560, fontSize: 17, lineHeight: 1.65, color: '#9aa8bd' }}>
-          The complete REST API reference is being documented. It will cover all endpoints for DNS records, rewrites, blocking rules, analytics, and user plan management.
+          The complete REST API reference is being documented. It will cover all endpoints for DNS records, blocking rules, analytics, and query logs.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 48, width: '100%', maxWidth: 680 }} className="api-cards">
           {[
             { icon: '🌐', title: 'DNS Records',       desc: 'Create, read, update and delete DNS records via REST.' },
-            { icon: '🔀', title: 'Rewrites & Blocks', desc: 'Manage rerouting rules and blocking policies programmatically.' },
+            { icon: '🛡️', title: 'Blocking',          desc: 'Manage blocking policies and allow lists programmatically.' },
             { icon: '📊', title: 'Analytics',          desc: 'Query logs, performance metrics, and top domains.' },
           ].map((c, i) => (
             <div key={i} style={{ borderRadius: 14, padding: 20, background: 'rgba(12,17,26,.5)', border: '1px solid rgba(130,165,220,.1)' }}>

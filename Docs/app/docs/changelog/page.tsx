@@ -14,7 +14,7 @@ const blocks: Block[] = [
     {
       ver: 'v8.21.64-stable', date: 'August 1, 2026',
       changes: [
-        ['New',      'The core DNS server was rewritten in Go. UDP:53, TCP:53 and DoT:853 all behave as before — same 7-layer pipeline, same fail-safe bypass, same wildcard blocking, same circuit breakers, same upstream list'],
+        ['New',      'The core DNS server was rewritten in Go. UDP:53, TCP:53 and DoT:853 all behave as before — same 4-step pipeline, same fail-safe bypass, same wildcard blocking, same circuit breakers, same upstream list'],
         ['Improved', 'Multi-core work no longer needs cluster.fork(). One process opens a UDP listener per 75% of CPU cores, all sharing port 53 via SO_REUSEPORT, and the kernel spreads datagrams across them. Every query is handled on its own goroutine'],
         ['Improved', 'A malformed packet can no longer take down the server. Each query is isolated, so a panic costs exactly one query instead of every listener in the process — the old cluster model dropped every in-flight query on the affected worker'],
         ['Improved', 'Measured 12,746 queries/second at 3.8 ms average latency on a consumer laptop, with the load generator running on the same machine and zero dropped queries'],
@@ -129,7 +129,7 @@ const blocks: Block[] = [
       changes: [
         ['New',      'DNS over TCP (port 53) — RFC 1035 §4.2.2 / RFC 7766; 2-byte length-prefix framing, 30s idle timeout'],
         ['New',      'DNS over TLS / DoT (port 853) — RFC 7858; TLS 1.2+ enforced, self-signed cert auto-generated via openssl'],
-        ['New',      'IDNSIOHandler interface — unified IO contract so UDP, TCP and TLS share one 7-layer pipeline'],
+        ['New',      'IDNSIOHandler interface — unified IO contract so UDP, TCP and TLS share one 4-step pipeline'],
         ['Improved', 'StartRulesService refactored to singleton per transport with shared single-flight inflight map'],
         ['Improved', 'Static Redis subscription guard prevents duplicate cache:invalidate listeners in cluster mode'],
         ['Improved', 'TLS cert persisted to /etc/nexoral/cert — shared across restarts and cluster workers'],
@@ -200,7 +200,7 @@ const blocks: Block[] = [
     {
       ver: 'v1.0.0', date: 'September 24, 2025', tag: 'INITIAL',
       changes: [
-        ['New', 'Core DNS server with Redis caching (7-layer query pipeline)'],
+        ['New', 'Core DNS server with Redis caching (4-step query pipeline)'],
         ['New', 'Web dashboard — Next.js + React management interface'],
         ['New', 'Support for A, AAAA and CNAME records'],
         ['New', 'Domain blocking with exact-match and wildcard rules'],

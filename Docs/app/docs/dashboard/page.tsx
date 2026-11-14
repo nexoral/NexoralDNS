@@ -13,7 +13,6 @@ const blocks: Block[] = [
   { type: 'cards', cols: 3, items: [
     { icon: '📈', title: 'Overview',    desc: 'Real-time snapshot — total queries, blocked queries, cache hit rate, active clients, and CPU/memory status.' },
     { icon: '🗂️', title: 'DNS Records', desc: 'Manage A, AAAA, CNAME and TXT records mapping hostnames to addresses or aliases.' },
-    { icon: '🔀', title: 'Rewrites',    desc: 'Domain rerouting rules — source domain, target domain, and client-specific overrides.' },
     { icon: '🛡️', title: 'Blocking',    desc: 'Exact-match, wildcard, public block lists, and allow lists that are never blocked.' },
     { icon: '📜', title: 'Query Logs',  desc: 'Every query with timestamp, client IP, domain, type, status (NOERROR/NXDOMAIN/BLOCKED) and response time.' },
     { icon: '⚙️', title: 'Settings',    desc: 'Global server settings — upstream DNS, cache TTL, rate limiting and user management.' },
@@ -41,7 +40,7 @@ export default function Dashboard() {
     <DocPage
       group="Get Started"
       title="Dashboard"
-      intro="The NexoralDNS web interface is the central control hub for records, blocking, rewrites, logs, and settings."
+      intro="The NexoralDNS web interface is the central control hub for records, blocking, logs, and settings."
       blocks={blocks}
     />
   );
