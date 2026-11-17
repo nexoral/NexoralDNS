@@ -94,15 +94,25 @@ See the [full feature comparison](https://dns.nexoral.in/) for Free vs Premium d
 
 ## Performance
 
-Measured with `dnsperf` (UDP:53, 49 domains, warm cache):
+Measured with `dnsperf` against the Go DNS engine (UDP:53, 49 domains, warm cache):
 
 | Metric | Value |
 |--------|-------|
-| **Throughput** | **12,746 queries/second** |
-| Average latency | 3.8 ms |
-| Dropped queries | 0 |
+| **Peak Throughput** | **19,719 queries/second** |
+| Average latency (peak run) | 100.8 ms |
+| Dropped queries | 0 (0% packet loss) |
+| Profiled stress (p99 latency) | 14,954 QPS (p50 ≤118.8ms · p95 ≤208.9ms · p99 ≤499.7ms) |
+| Low-load baseline | 12,746 QPS @ 3.8 ms avg latency |
 
-Test hardware: AMD Ryzen 5 5500U (6C/12T), 7.1 GiB RAM, Linux 6.8, Docker `host` networking, with MongoDB/Redis/RabbitMQ co-located.
+**Benchmark Breakdown:**
+
+| Load shape | Throughput | Avg latency | Latency percentiles | Dropped queries |
+|---|---|---|---|---|
+| **Peak Stress** (32 clients, 2,000 in flight) | **19,719 QPS** | 100.8 ms | — | **0** |
+| **Profiled Run** (32 clients, 2,000 in flight) | **14,954 QPS** | 132.7 ms | p50 ≤118.8ms · p95 ≤208.9ms · p99 ≤499.7ms | **0** |
+| **Moderate Baseline** (5 clients, 50 in flight) | **12,746 QPS** | 3.8 ms | — | **0** |
+
+Test hardware: AMD Ryzen 5 5500U (6C/12T), 7.1 GiB RAM, Linux 6.8, Docker `host` networking, loopback transport, with MongoDB/Redis/RabbitMQ and `dnsperf` co-located.
 
 ---
 
